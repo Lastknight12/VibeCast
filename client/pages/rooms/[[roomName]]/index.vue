@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { useRoom } from "~/composables/room";
 
-const router = useRouter();
-
 const authClient = useAuthClient();
 const { data: session } = await authClient.getSession();
 
