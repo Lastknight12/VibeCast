@@ -303,6 +303,7 @@ export function sfuModule(
   });
 
   socket.on("leave", (roomName) => {
+    console.log("emit leave");
     const { user } = socket.data;
 
     const room = rooms.get(roomName);
@@ -312,35 +313,26 @@ export function sfuModule(
     }
 
     const peer = room.peers.get(user.id);
-    if (!peer) {
-      console.log("event 'leave':", `no peer exist in room ${roomName}`);
-      return;
-    }
 
-    peer.sockets.delete(socket.id);
+    peer?.sockets.delete(socket.id);
 
-    if (peer.sockets.size() === 0) {
-      if (peer.transports.send) peer.transports.send.close();
-      if (peer.transports.recv) peer.transports.recv.close();
-
-      peer.producers.audio?.close();
-      peer.producers.video?.close();
-
-      for (const c of peer.consumers.values()) c.close();
+    if (peer?.sockets.size() === 0) {
+      peer.cleanupPeerConnection();
 
       room.peers.delete(user.id);
-      if (room.peers.size === 0) {
-        rooms.delete(roomName);
-
-        if (room.type === "public") {
-          socket.broadcast.emit("roomDeleted", roomName);
-          socket.emit("roomDeleted", roomName);
-        }
-      }
 
       socket.broadcast.to(roomName).emit("userDisconnect", user.id);
       socket.broadcast.emit("userLeftRoom", roomName, user.id);
       socket.emit("userLeftRoom", roomName, user.id);
+    }
+
+    if (room.peers.size === 0) {
+      rooms.delete(roomName);
+
+      if (room.type === "public") {
+        socket.broadcast.emit("roomDeleted", roomName);
+        socket.emit("roomDeleted", roomName);
+      }
     }
   });
 }

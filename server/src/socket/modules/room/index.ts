@@ -60,9 +60,6 @@ export function roomsModule(
     }
 
     const peer = room.peers.get(socket.data.user.id);
-    if (!peer) {
-      cb({ error: "user not in room" });
-    }
 
     socket.join(roomName);
     socket.data.user.roomName = roomName;
@@ -78,7 +75,7 @@ export function roomsModule(
       peer.sockets.add(socket.id);
       peerSocket.leave(roomName);
       peerSocket.emit("leaveRoom");
-      peer.deleteOldConn();
+      peer.cleanupPeerConnection();
     } else {
       room.peers.set(user.id, {
         sockets: new Stack([socket.id]),

@@ -18,24 +18,21 @@ type peer = {
 };
 
 export class PeersMap<K> extends Map<K, peer> {
-  private deleteOldSocket(p: peer) {
+  private cleanupPeerConnection(p: peer) {
     p.voiceMuted = true;
-    Object.values(p.transports).forEach((t) => {
-      t.close();
-    });
-
-    Object.values(p.producers).forEach((p) => {
-      p.close();
-    });
 
     Object.values(p.consumers).forEach((c) => {
       c.close();
     });
-
-    p.sockets.pop();
+    Object.values(p.producers).forEach((p) => {
+      p.close();
+    });
+    Object.values(p.transports).forEach((t) => {
+      t.close();
+    });
   }
 
-  get(key: K): (peer & { deleteOldConn: () => void }) | undefined {
+  get(key: K): (peer & { cleanupPeerConnection: () => void }) | undefined {
     const p = super.get(key);
     if (!p) {
       return undefined;
@@ -43,7 +40,7 @@ export class PeersMap<K> extends Map<K, peer> {
 
     return {
       ...p!,
-      deleteOldConn: () => this.deleteOldSocket(p!),
+      cleanupPeerConnection: () => this.cleanupPeerConnection(p),
     };
   }
 }
