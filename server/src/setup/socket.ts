@@ -15,6 +15,6 @@ export function setupSocket(fastifyServer: FastifyInstance) {
   io.use(socketGuard);
 
   io.on("connection", async (socket) => {
-    setupSocketRoutes(socket);
+    setupSocketRoutes(socket, io);
   });
 }

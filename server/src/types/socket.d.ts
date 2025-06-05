@@ -1,7 +1,8 @@
 import { type Socket } from "socket.io";
+import { EventsMap } from "socket.io/dist/typed-events";
 
 export interface SocketData {
-  user?: {
+  user: {
     id: string;
     name: string;
     email: string;
@@ -14,6 +15,6 @@ export interface SocketData {
 }
 
 export type CustomSocket<
-  ClientToServerEvents = any,
-  ServerToClientEvents = any,
+  ClientToServerEvents extends EventsMap = any,
+  ServerToClientEvents extends EventsMap = any,
 > = Socket<ClientToServerEvents, ServerToClientEvents, any, SocketData>;

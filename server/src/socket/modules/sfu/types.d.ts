@@ -2,8 +2,8 @@ import {
   MediaKind,
   RtpCapabilities,
   RtpParameters,
-} from "mediasoup/node/lib/rtpParametersTypes";
-import { DtlsParameters } from "mediasoup/node/lib/WebRtcTransportTypes";
+  DtlsParameters,
+} from "mediasoup/node/lib/types";
 
 type TransportType = "send" | "recv";
 type ProducerType = "video" | "audio";

@@ -10,8 +10,8 @@ export const auth = betterAuth({
   }),
   socialProviders: {
     google: {
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID!,
       async mapProfileToUser(profile) {
         try {
           const res = await axios.get(profile.picture, {
@@ -33,5 +33,5 @@ export const auth = betterAuth({
       },
     },
   },
-  trustedOrigins: [process.env.FRONTEND_URL],
+  trustedOrigins: [process.env.FRONTEND_URL!],
 });

@@ -31,7 +31,7 @@ export default async function authRouter(fastify: FastifyInstance) {
         response.headers.forEach((value, key) => reply.header(key, value));
 
         if (url.toString().includes("/api/auth/callback")) {
-          reply.redirect(process.env.FRONTEND_URL);
+          reply.redirect(process.env.FRONTEND_URL!);
         } else {
           reply.send(response.body ? await response.text() : null);
         }

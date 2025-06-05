@@ -3,9 +3,13 @@ import { worker } from "../../../main";
 import { rooms } from "../../../lib/roomState";
 import { CustomSocket } from "../../../types/socket";
 import type { ClientToServerEvents, ServerToClientEvents } from "./type";
+import { type Server } from "socket.io";
+import { PeersMap } from "../../../lib/peersMap";
+import { Stack } from "../../../lib/stack";
 
 export function roomsModule(
-  socket: CustomSocket<ClientToServerEvents, ServerToClientEvents>
+  socket: CustomSocket<ClientToServerEvents, ServerToClientEvents>,
+  io: Server<ClientToServerEvents, ServerToClientEvents>
 ) {
   socket.on(
     "createRoom",
@@ -31,7 +35,7 @@ export function roomsModule(
 
       rooms.set(roomName, {
         router,
-        peers: new Map(),
+        peers: new PeersMap(),
         type: roomType,
       });
 
@@ -41,55 +45,66 @@ export function roomsModule(
       }
 
       cb({
-        error: null,
+        error: undefined,
       });
     }
   );
 
   socket.on("joinRoom", (roomName, cb) => {
-    if (!rooms.has(roomName)) {
-      cb({ error: "no room with id" + roomName + "exist" });
+    const { user } = socket.data;
+
+    const room = rooms.get(roomName);
+    if (!room) {
+      cb({ error: `no room with name '${roomName}' exist` });
       return;
     }
 
-    const room = rooms.get(roomName);
+    const peer = room.peers.get(socket.data.user.id);
+    if (!peer) {
+      cb({ error: "user not in room" });
+    }
 
     socket.join(roomName);
     socket.data.user.roomName = roomName;
 
-    if (room.peers.has(socket.data.user.id)) {
-      cb({ error: "Already in room" });
-      // just add current socket and skip steps below
-      room.peers.get(socket.data.user.id).sockets.add(socket.id);
-      return;
-    }
+    if (peer) {
+      const peerSocket = io.sockets.sockets.get(peer.sockets.peek()!);
+      if (!peerSocket) {
+        cb({ error: "Server error" });
+        return;
+      }
 
-    room.peers.set(socket.data.user.id, {
-      sockets: new Set([socket.id]),
-      transports: {},
-      producers: {},
-      consumers: new Map(),
-      user: {
-        id: socket.data.user.id,
-        name: socket.data.user.name,
-        image: socket.data.user.image,
-      },
-      voiceMuted: true,
-    });
-
-    socket.broadcast
-      .to(roomName)
-      .emit("userJoined", { user: socket.data.user });
-
-    if (room.type === "public") {
-      socket.broadcast.emit("userJoinRoom", roomName, {
-        id: socket.data.user.id,
-        name: socket.data.user.name,
-        image: socket.data.user.image,
+      peer.sockets.pop();
+      peer.sockets.add(socket.id);
+      peerSocket.leave(roomName);
+      peerSocket.emit("leaveRoom");
+      peer.deleteOldConn();
+    } else {
+      room.peers.set(user.id, {
+        sockets: new Stack([socket.id]),
+        transports: {},
+        producers: {},
+        consumers: new Map(),
+        user: {
+          id: user.id,
+          name: user.name,
+          image: user.image,
+        },
+        voiceMuted: true,
       });
+
+      socket.broadcast.to(roomName).emit("userJoined", { user });
+
+      if (room.type === "public") {
+        socket.broadcast.emit("userJoinRoom", roomName, {
+          id: user.id,
+          name: user.name,
+          image: user.image!,
+        });
+      }
     }
 
-    cb({ error: null });
+    cb({ error: undefined });
   });
 
   socket.on("getAllRooms", (cb) => {
@@ -115,8 +130,16 @@ export function roomsModule(
   });
 
   socket.on("getRoomPeers", (cb) => {
-    const room = rooms.get(socket.data.user.roomName);
+    const { user } = socket.data;
+    if (!user.roomName) {
+      console.log("User not joined room");
+      return;
+    }
 
+    const room = rooms.get(user.roomName);
+    if (!room) {
+      return cb({ error: "Room not found" });
+    }
     const peers = new Array<{
       user: Pick<User, "id" | "name" | "image">;
       voiceMuted: boolean;
