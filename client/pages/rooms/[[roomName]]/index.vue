@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useRoom } from "~/composables/room";
 
+const router = useRouter();
+
 const authClient = useAuthClient();
 const { data: session } = await authClient.getSession();
 
@@ -41,14 +43,33 @@ onUnmounted(() => {
     "beforeunload",
     room.clearFunctions.handleBeforeUnload
   );
+
   room.clearFunctions.handleBeforeUnload();
-  mediaConn.closeAll();
+  mediaConn.close();
 });
+
+function reload() {
+  window.location.reload();
+}
 </script>
 
 <template>
-  <div v-if="room.refs.joinRoomErrorMessage.value">
-    {{ room.refs.joinRoomErrorMessage.value }}
+  <div
+    v-if="room.refs.disconnected.value"
+    class="flex justify-center items-center w-full h-full flex-col gap-2"
+  >
+    <p class="text-2xl">You joined on another device</p>
+    <UiButton @click="reload" variant="secondary">Reload</UiButton>
+  </div>
+
+  <div
+    v-else-if="room.refs.joinRoomErrorMessage.value"
+    class="flex justify-center items-center w-full h-full flex-col gap-2"
+  >
+    <p class="text-2xl text-red-400">
+      {{ room.refs.joinRoomErrorMessage.value }}
+    </p>
+    <UiButton @click="reload" variant="secondary">Reload</UiButton>
   </div>
 
   <div v-else>

@@ -2,7 +2,6 @@ import type { User } from "better-auth/types";
 import type { Producer } from "mediasoup-client/types";
 
 export function useRoom(roomName: string, mediaConn: mediasoupConn) {
-  const config = useRuntimeConfig();
   const socket = useSocket();
 
   const localVideo = ref<HTMLVideoElement | null>(null);
@@ -12,6 +11,8 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const muted = ref(mediaConn.muted);
 
   const joinRoomErrorMessage = ref<string | null>(null);
+
+  const disconnected = ref<boolean>(false);
 
   const peers = ref<
     Map<
@@ -36,6 +37,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     socket.on("micOn", handleUserUnMuted);
     socket.on("addActiveSpeaker", handleAddSpeaker);
     socket.on("removeActiveSpeaker", handleRemoveSpeaker);
+    socket.on("leaveRoom", handleLeaveRoom);
   };
 
   const removeSocketListeners = () => {
@@ -47,6 +49,12 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     socket.off("micOn", handleUserUnMuted);
     socket.off("addActiveSpeaker", handleAddSpeaker);
     socket.off("removeActiveSpeaker", handleRemoveSpeaker);
+    socket.off("leaveRoom", handleLeaveRoom);
+  };
+
+  const handleLeaveRoom = () => {
+    mediaConn.close();
+    disconnected.value = true;
   };
 
   const handleAddSpeaker = (userId: string) => {
@@ -208,9 +216,9 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       roomName,
       async ({ error }: { error: string | null }) => {
         if (error) {
-          if (error === "Already in room") {
-            navigateTo("/");
-          }
+          // if (error === "Already in room") {
+          //   navigateTo("/");
+          // }
           joinRoomErrorMessage.value = error;
           return;
         } else {
@@ -240,6 +248,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       isSpeaking,
       joinRoomErrorMessage,
       peers,
+      disconnected,
     },
     registerSocketListeners,
     removeSocketListeners,

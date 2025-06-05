@@ -103,7 +103,7 @@ export class mediasoupConn {
             resolve(null);
 
             this.transports.send.on("connectionstatechange", (state) => {
-              console.log("producerTransport state:", state);
+              console.log(`${type}ProducerTransport state:`, state);
             });
 
             this.transports.send.on(
@@ -138,7 +138,7 @@ export class mediasoupConn {
             resolve(null);
 
             this.transports.recv.on("connectionstatechange", (state) => {
-              console.log("consumerTransport state:", state);
+              console.log(`${type}ConsumerTransport state:`, state);
             });
 
             this.transports.recv.on(
@@ -168,6 +168,10 @@ export class mediasoupConn {
     if (!producerId) {
       console.error("No producerId provided");
       return;
+    }
+
+    if (!this.transports.recv) {
+      console.log("no transport created");
     }
 
     let stream: MediaStream = new MediaStream();
@@ -220,7 +224,7 @@ export class mediasoupConn {
       (type === "video" && !this.localStream) ||
       (type === "audio" && !this.audioStream)
     ) {
-      console.error(type + "stream not available. Call getMedia first");
+      console.error(type + "stream not available. Call getMediaStream first");
       return;
     }
 
@@ -270,7 +274,7 @@ export class mediasoupConn {
     const videoProducer = this.producers.video;
 
     if (!videoProducer) {
-      console.log("no producer created");
+      console.log("no video producer created");
       return;
     }
 
@@ -300,15 +304,29 @@ export class mediasoupConn {
     }
   }
 
-  closeAll() {
-    this.transports.recv?.close();
-    this.transports.send?.close();
+  close() {
+    this.roomName = "";
+    this.localStream = null;
+    this.audioStream = null;
+    this.activeSpeakers = null;
+    this.muted = true;
 
-    this.producers.audio?.close();
-    this.producers.video?.close();
+    console.log(this.transports.recv?.getStats(), "before");
+    Object.values(this.transports).forEach((t) => {
+      t.close();
+    });
+    console.log(this.transports.recv?.getStats(), "after");
+
+    Object.values(this.producers).forEach((p) => {
+      p.close();
+    });
 
     this.consumers.forEach((c) => {
       c.close();
     });
+
+    this.transports = {};
+    this.producers = {};
+    this.consumers = new Map();
   }
 }
