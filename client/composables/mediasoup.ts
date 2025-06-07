@@ -242,11 +242,31 @@ export class mediasoupConn {
         ? this.localStream!.getVideoTracks()[0]
         : this.audioStream?.getAudioTracks()[0];
 
+    const encodings =
+      type === "video"
+        ? [
+            { rid: "h", maxBitrate: 1200 * 1024, maxFramerate: 30 },
+            {
+              rid: "m",
+              maxBitrate: 600 * 1024,
+              scaleResolutionDownBy: 2,
+              maxFramerate: 30,
+            },
+            {
+              rid: "l",
+              maxBitrate: 300 * 1024,
+              scaleResolutionDownBy: 4,
+              maxFramerate: 30,
+            },
+          ]
+        : undefined;
+
     const producer = await this.transports.send.produce({
       track: track,
       codecOptions: {
         videoGoogleStartBitrate: 1000,
       },
+      encodings,
     });
 
     switch (type) {
