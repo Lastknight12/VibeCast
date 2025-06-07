@@ -308,7 +308,6 @@ export function sfuModule(
   });
 
   socket.on("leave", (roomName) => {
-    console.log("emit leave");
     const { user } = socket.data;
 
     const room = rooms.get(roomName);

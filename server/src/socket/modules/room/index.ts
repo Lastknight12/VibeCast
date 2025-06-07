@@ -29,7 +29,6 @@ export function roomsModule(
             channels: 2,
           },
           { kind: "video", mimeType: "video/VP8", clockRate: 90000 },
-          { kind: "video", mimeType: "video/H264", clockRate: 90000 },
         ],
       });
 

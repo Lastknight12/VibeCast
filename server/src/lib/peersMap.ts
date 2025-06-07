@@ -22,13 +22,13 @@ export class PeersMap<K> extends Map<K, peer> {
     p.voiceMuted = true;
 
     Object.values(p.consumers).forEach((c) => {
-      c.close();
+      c && c.close();
     });
     Object.values(p.producers).forEach((p) => {
-      p.close();
+      p && p.close();
     });
     Object.values(p.transports).forEach((t) => {
-      t.close();
+      t && t.close();
     });
   }
 
