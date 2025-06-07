@@ -1,9 +1,7 @@
 {
-  "name": "fastify-typescript",
+  "name": "vibecast-server",
   "version": "1.0.0",
-  "author": "hmake98",
-  "license": "MIT",
-  "description": "Fastify typescript starter boilerplate",
+  "description": "VibeCast SFU server",
   "main": "main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",

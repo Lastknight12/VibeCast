@@ -15,7 +15,8 @@
     "paths": {
       "config/*": ["config/*"]
     },
-    "types": ["node", "./src/types/fastify"]
+    "types": ["node", "./src/types/fastify"],
+    "skipLibCheck": true
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "coverage"]
