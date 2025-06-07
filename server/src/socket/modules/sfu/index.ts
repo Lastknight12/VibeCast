@@ -267,10 +267,14 @@ export function sfuModule(
     );
   });
 
-  socket.on("micOff", (roomName) => {
+  socket.on("micOff", () => {
     const { user } = socket.data;
+    if (!user.roomName) {
+      console.log("User not joined room");
+      return;
+    }
 
-    const room = rooms.get(roomName);
+    const room = rooms.get(user.roomName);
     if (!room) {
       console.log("no room exist");
       return;
@@ -284,13 +288,17 @@ export function sfuModule(
 
     peer.voiceMuted = true;
 
-    socket.broadcast.to(roomName).emit("micOff", user.id);
+    socket.broadcast.to(user.roomName).emit("micOff", user.id);
   });
 
-  socket.on("micOn", (roomName) => {
+  socket.on("micOn", () => {
     const { user } = socket.data;
+    if (!user.roomName) {
+      console.log("User not joined room");
+      return;
+    }
 
-    const room = rooms.get(roomName);
+    const room = rooms.get(user.roomName);
     if (!room) {
       console.log("no room exist");
       return;
@@ -304,7 +312,7 @@ export function sfuModule(
 
     peer.voiceMuted = false;
 
-    socket.broadcast.to(roomName).emit("micOn", user.id);
+    socket.broadcast.to(user.roomName).emit("micOn", user.id);
   });
 
   socket.on("leave", (roomName) => {
