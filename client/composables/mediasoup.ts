@@ -42,7 +42,9 @@ export class mediasoupConn {
 
   async getAudioStream() {
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
+      audio: {
+        autoGainControl: true,
+      },
     });
 
     stream.getAudioTracks().forEach((track) => (track.enabled = true));
@@ -94,60 +96,70 @@ export class mediasoupConn {
       return;
     }
 
-    this.socket.emit("createTransport", type, (transport: any) => {
-      switch (type) {
-        case "send": {
-          this.transports.send = this.device!.createSendTransport(transport);
+    await new Promise((resolve, _) => {
+      this.socket.emit("createTransport", type, (transport: any) => {
+        switch (type) {
+          case "send": {
+            this.transports.send = this.device!.createSendTransport(transport);
 
-          this.transports.send.on("connectionstatechange", (state) => {
-            console.log(`${type}ProducerTransport state:`, state);
-          });
+            resolve(null);
 
-          this.transports.send.on("connect", ({ dtlsParameters }, callback) => {
-            this.socket.emit(
-              "connectTransport",
-              { dtlsParameters, type },
-              () => {
-                callback();
-              }
-            );
-          });
-
-          this.transports.send.on("produce", async (parameters, callback) => {
-            this.socket.emit(
-              "produce",
-              {
-                ...parameters,
-                type: parameters.kind,
-              },
-              (data: { id: string }) => {
-                callback(data);
-              }
-            );
-          });
-          return;
-        }
-        case "recv":
-          {
-            this.transports.recv = this.device!.createRecvTransport(transport);
-
-            this.transports.recv.on("connectionstatechange", (state) => {
-              console.log(`${type}ConsumerTransport state:`, state);
+            this.transports.send.on("connectionstatechange", (state) => {
+              console.log(`${type}ProducerTransport state:`, state);
             });
 
-            this.transports.recv.on(
+            this.transports.send.on(
               "connect",
               ({ dtlsParameters }, callback) => {
                 this.socket.emit(
                   "connectTransport",
                   { dtlsParameters, type },
-                  callback
+                  async () => {
+                    callback();
+                  }
                 );
               }
             );
+
+            this.transports.send.on("produce", async (parameters, callback) => {
+              this.socket.emit(
+                "produce",
+                {
+                  ...parameters,
+                  type: parameters.kind,
+                },
+                (data: { id: string }) => {
+                  callback(data);
+                }
+              );
+            });
+            return;
           }
-          return;
-      }
+          case "recv":
+            {
+              this.transports.recv =
+                this.device!.createRecvTransport(transport);
+
+              resolve(null);
+
+              this.transports.recv.on("connectionstatechange", (state) => {
+                console.log(`${type}ConsumerTransport state:`, state);
+              });
+
+              this.transports.recv.on(
+                "connect",
+                ({ dtlsParameters }, callback) => {
+                  this.socket.emit(
+                    "connectTransport",
+                    { dtlsParameters, type },
+                    callback
+                  );
+                }
+              );
+            }
+            return;
+        }
+      });
     });
   }
 
@@ -245,18 +257,16 @@ export class mediasoupConn {
     const encodings =
       type === "video"
         ? [
-            { rid: "h", maxBitrate: 1200 * 1024, maxFramerate: 30 },
+            { rid: "h", maxBitrate: 1200 * 1024 },
             {
               rid: "m",
               maxBitrate: 600 * 1024,
               scaleResolutionDownBy: 2,
-              maxFramerate: 30,
             },
             {
               rid: "l",
               maxBitrate: 300 * 1024,
               scaleResolutionDownBy: 4,
-              maxFramerate: 30,
             },
           ]
         : undefined;
@@ -300,7 +310,7 @@ export class mediasoupConn {
     if (this.producers.audio) {
       this.producers.audio.pause();
       this.muted = true;
-      this.socket.emit("micOff", this.roomName);
+      this.socket.emit("micOff");
     } else {
       console.log("Audio producer not created");
     }
@@ -310,7 +320,7 @@ export class mediasoupConn {
     if (this.producers.audio) {
       this.producers.audio.resume();
       this.muted = false;
-      this.socket.emit("micOn", this.roomName);
+      this.socket.emit("micOn");
     } else {
       console.log("Audio producer not created");
     }

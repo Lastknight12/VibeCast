@@ -14,14 +14,6 @@ const pinnedVideoStream = ref<{ stream: MediaStream; peerId: string } | null>(
   null
 );
 
-const clicked = ref<boolean>(false);
-
-watch(clicked, async (userInteract) => {
-  if (userInteract) {
-    room.userActions.joinRoom();
-  }
-});
-
 onMounted(() => {
   if (!session) {
     navigateTo("/");
@@ -33,6 +25,7 @@ onMounted(() => {
     room.clearFunctions.handleBeforeUnload
   );
   room.registerSocketListeners();
+  room.userActions.joinRoom();
 });
 
 onUnmounted(() => {
@@ -71,19 +64,7 @@ function reload() {
   </div>
 
   <div v-else>
-    <div
-      v-if="!clicked"
-      @click="
-        () => {
-          clicked = true;
-        }
-      "
-      class="absolute top-0 left-0 w-full h-full bg-black z-10 flex justify-center items-center text-white text-2xl"
-    >
-      Click in any place
-    </div>
-
-    <div class="overflow-auto w-full" v-else>
+    <div class="overflow-auto w-full">
       <div class="w-full flex justify-center">
         <video
           v-if="pinnedVideoStream?.stream"

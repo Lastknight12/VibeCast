@@ -141,8 +141,6 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const startAudio = async () => {
     const stream = await mediaConn.getAudioStream();
 
-    mediaConn.produce("audio");
-
     const audioContext = new AudioContext();
     await audioContext.audioWorklet.addModule("/volume-processor.js");
 
@@ -221,11 +219,11 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
           joinRoomErrorMessage.value = error;
           return;
         } else {
+          await startAudio();
           await mediaConn.createDevice();
           await mediaConn.createTransport("send");
+          await mediaConn.produce("audio");
           await mediaConn.createTransport("recv");
-
-          await startAudio();
 
           socket.emit("getRoomPeers", handlePeers);
         }
