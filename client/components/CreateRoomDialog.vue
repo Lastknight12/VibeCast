@@ -20,7 +20,7 @@ function createRoom() {
     isPrivate.value === true ? "private" : "public",
     (response: { error?: string }) => {
       if (!response.error) {
-        router.replace(`/rooms/${roomName.value}`);
+        navigateTo(`/rooms/${roomName.value}`);
         roomName.value = "";
       } else {
         errorMessage.value = response.error;

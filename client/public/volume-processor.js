@@ -1,7 +1,7 @@
 class VolumeProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this._threshold = 0.0008;
+    this._threshold = 0.0018;
     this._isSpeaking = false;
   }
 

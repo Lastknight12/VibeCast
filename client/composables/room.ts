@@ -31,24 +31,32 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const registerSocketListeners = () => {
     socket.on("userJoined", handleUserJoin);
     socket.on("userDisconnect", handleUserDisconnect);
+
     socket.on("newProducer", handleNewProducer);
     socket.on("consumerClosed", handleClosedConsumer);
+
     socket.on("micOff", handleUserMuted);
     socket.on("micOn", handleUserUnMuted);
+
     socket.on("addActiveSpeaker", handleAddSpeaker);
     socket.on("removeActiveSpeaker", handleRemoveSpeaker);
+
     socket.on("leaveRoom", handleLeaveRoom);
   };
 
   const removeSocketListeners = () => {
     socket.off("userJoined", handleUserJoin);
     socket.off("userDisconnect", handleUserDisconnect);
+
     socket.off("newProducer", handleNewProducer);
     socket.off("consumerClosed", handleClosedConsumer);
+
     socket.off("micOff", handleUserMuted);
     socket.off("micOn", handleUserUnMuted);
+
     socket.off("addActiveSpeaker", handleAddSpeaker);
     socket.off("removeActiveSpeaker", handleRemoveSpeaker);
+
     socket.off("leaveRoom", handleLeaveRoom);
   };
 
@@ -111,12 +119,6 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       peer!.stream!.audio = stream!;
     }
   };
-
-  socket.on("userJoined", handleUserJoin);
-
-  socket.on("userDisconnect", handleUserDisconnect);
-
-  socket.on("newProducer", handleNewProducer);
 
   const switchScreenShare = async () => {
     if (!localStream.value) {
@@ -216,9 +218,6 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       roomName,
       async ({ error }: { error: string | null }) => {
         if (error) {
-          // if (error === "Already in room") {
-          //   navigateTo("/");
-          // }
           joinRoomErrorMessage.value = error;
           return;
         } else {

@@ -94,48 +94,42 @@ export class mediasoupConn {
       return;
     }
 
-    await new Promise((resolve, reject) => {
-      this.socket.emit("createTransport", type, (transport: any) => {
-        switch (type) {
-          case "send": {
-            this.transports.send = this.device!.createSendTransport(transport);
+    this.socket.emit("createTransport", type, (transport: any) => {
+      switch (type) {
+        case "send": {
+          this.transports.send = this.device!.createSendTransport(transport);
 
-            resolve(null);
+          this.transports.send.on("connectionstatechange", (state) => {
+            console.log(`${type}ProducerTransport state:`, state);
+          });
 
-            this.transports.send.on("connectionstatechange", (state) => {
-              console.log(`${type}ProducerTransport state:`, state);
-            });
-
-            this.transports.send.on(
-              "connect",
-              ({ dtlsParameters }, callback) => {
-                this.socket.emit(
-                  "connectTransport",
-                  { dtlsParameters, type },
-                  () => {
-                    callback();
-                  }
-                );
+          this.transports.send.on("connect", ({ dtlsParameters }, callback) => {
+            this.socket.emit(
+              "connectTransport",
+              { dtlsParameters, type },
+              () => {
+                callback();
               }
             );
+          });
 
-            this.transports.send.on("produce", async (parameters, callback) => {
-              this.socket.emit(
-                "produce",
-                {
-                  ...parameters,
-                  type: parameters.kind,
-                },
-                ({ id }: any) => {
-                  callback({ id });
-                }
-              );
-            });
-          }
-          case "recv": {
+          this.transports.send.on("produce", async (parameters, callback) => {
+            this.socket.emit(
+              "produce",
+              {
+                ...parameters,
+                type: parameters.kind,
+              },
+              (data: { id: string }) => {
+                callback(data);
+              }
+            );
+          });
+          return;
+        }
+        case "recv":
+          {
             this.transports.recv = this.device!.createRecvTransport(transport);
-
-            resolve(null);
 
             this.transports.recv.on("connectionstatechange", (state) => {
               console.log(`${type}ConsumerTransport state:`, state);
@@ -146,16 +140,14 @@ export class mediasoupConn {
               ({ dtlsParameters }, callback) => {
                 this.socket.emit(
                   "connectTransport",
-                  { dtlsParameters, roomName: this.roomName, type },
-                  () => {
-                    callback();
-                  }
+                  { dtlsParameters, type },
+                  callback
                 );
               }
             );
           }
-        }
-      });
+          return;
+      }
     });
   }
 
