@@ -38,9 +38,8 @@ export class PeersMap<K> extends Map<K, peer> {
       return undefined;
     }
 
-    return {
-      ...p!,
+    return Object.assign(p, {
       cleanupPeerConnection: () => this.cleanupPeerConnection(p),
-    };
+    }) as peer & { cleanupPeerConnection: () => void };
   }
 }

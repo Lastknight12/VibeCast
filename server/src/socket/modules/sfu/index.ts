@@ -100,7 +100,10 @@ export function sfuModule(
           cb({ error: "Transport not found" });
           return;
         }
+
         await peer.transports.send.connect({ dtlsParameters });
+        cb({ connected: true });
+        return;
       }
 
       case "recv": {
@@ -108,11 +111,12 @@ export function sfuModule(
           cb({ error: "Transport not found" });
           return;
         }
+
         await peer.transports.recv.connect({ dtlsParameters });
+        cb({ connected: true });
+        return;
       }
     }
-
-    cb({ connected: true });
   });
 
   socket.on("produce", async ({ kind, rtpParameters, type }, cb) => {
@@ -219,6 +223,7 @@ export function sfuModule(
     });
 
     peer.consumers.set(consumer.id, consumer);
+
     cb({
       id: consumer.id,
       producerId,

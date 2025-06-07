@@ -137,6 +137,7 @@ export function roomsModule(
     if (!room) {
       return cb({ error: "Room not found" });
     }
+
     const peers = new Array<{
       user: Pick<User, "id" | "name" | "image">;
       voiceMuted: boolean;

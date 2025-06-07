@@ -26,7 +26,7 @@ export let worker: Worker;
 
 const startServer = async () => {
   const server = fastify({
-    logger: true,
+    logger: false,
   });
 
   setupModules(server);
