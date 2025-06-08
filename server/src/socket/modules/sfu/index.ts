@@ -6,7 +6,7 @@ import { type Server } from "socket.io";
 
 const createWebRtcTransport = async (router: Router) => {
   const transport = await router.createWebRtcTransport({
-    listenIps: [{ ip: "0.0.0.0", announcedIp: "192.168.0.101" }],
+    listenIps: [{ ip: "0.0.0.0", announcedIp: process.env.ANNOUNCED_IP }],
     enableUdp: true,
     enableTcp: true,
     preferUdp: true,
@@ -102,6 +102,7 @@ export function sfuModule(
         }
 
         await peer.transports.send.connect({ dtlsParameters });
+
         cb({ connected: true });
         return;
       }
@@ -113,6 +114,7 @@ export function sfuModule(
         }
 
         await peer.transports.recv.connect({ dtlsParameters });
+
         cb({ connected: true });
         return;
       }

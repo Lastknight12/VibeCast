@@ -1,11 +1,11 @@
 import { User } from "better-auth/types";
-import { worker } from "../../../main";
 import { rooms } from "../../../lib/roomState";
 import { CustomSocket } from "../../../types/socket";
 import type { ClientToServerEvents, ServerToClientEvents } from "./type";
 import { type Server } from "socket.io";
 import { PeersMap } from "../../../lib/peersMap";
 import { Stack } from "../../../lib/stack";
+import { getMediasoupWorker } from "../../../lib/worker";
 
 export function roomsModule(
   socket: CustomSocket<ClientToServerEvents, ServerToClientEvents>,
@@ -19,6 +19,8 @@ export function roomsModule(
           error: "Room already exists",
         });
       }
+
+      const worker = getMediasoupWorker();
 
       const router = await worker.createRouter({
         mediaCodecs: [

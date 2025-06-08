@@ -3,31 +3,19 @@ import loadConfig from "./config/env.config";
 
 import { setupModules } from "./setup/fastifyModules";
 import { setupSocket } from "./setup/socket";
-import { createWorker } from "mediasoup";
-import { type Worker } from "mediasoup/node/lib/types";
+import { createMediasoupWorkers } from "./lib/worker";
 
 loadConfig();
 
 const port = Number(process.env.API_PORT) || 5001;
 const host = String(process.env.API_HOST ?? "localhost");
 
-export let worker: Worker;
-
-(async () => {
-  worker = await createWorker({
-    logLevel: "debug",
-    logTags: ["info", "ice", "dtls", "rtp", "srtp", "rtcp"],
-  });
-  worker.on("died", () => {
-    console.error("Mediasoup worker died, exiting in 2 seconds...");
-    setTimeout(() => process.exit(1), 2000);
-  });
-})();
-
 const startServer = async () => {
   const server = fastify({
     logger: false,
   });
+
+  await createMediasoupWorkers();
 
   setupModules(server);
   setupSocket(server);

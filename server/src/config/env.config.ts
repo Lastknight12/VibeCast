@@ -15,6 +15,7 @@ export default function loadConfig(): void {
 
   const schema = Joi.object({
     DATABASE_URL: Joi.string().required(),
+    ANNOUNCED_IP: Joi.string().required(),
 
     GOOGLE_CLIENT_ID: Joi.string().required(),
     GOOGLE_CLIENT_SECRET: Joi.string().required(),
