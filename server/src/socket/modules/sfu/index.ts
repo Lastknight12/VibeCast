@@ -121,7 +121,7 @@ export function sfuModule(
     }
   });
 
-  socket.on("produce", async ({ kind, rtpParameters, type }, cb) => {
+  socket.on("produce", async (data, cb) => {
     const { user } = socket.data;
     if (!user.roomName) {
       console.log("User not joined room");
@@ -136,27 +136,37 @@ export function sfuModule(
     if (!peer.transports.send) return cb({ error: "Transport not found" });
 
     const producer = await peer.transports.send.produce({
-      kind,
-      rtpParameters,
+      kind: data.kind,
+      rtpParameters: data.rtpParameters,
       appData: {
         userId: user.id,
       },
     });
 
-    if (type === "video") {
-      peer.producers.video = producer;
-    } else {
-      peer.producers.audio = producer;
+    switch (data.appData.type) {
+      case "audio": {
+        peer.producers.audio = producer;
+        break;
+      }
+      case "video": {
+        peer.producers.screenShare = { video: producer };
+        break;
+      }
+      case "system_audio": {
+        peer.producers.screenShare &&
+          (peer.producers.screenShare.audio = producer);
+        break;
+      }
     }
 
     cb({ id: producer.id });
 
     socket.broadcast
       .to(user.roomName)
-      .emit("newProducer", producer.id, user.id, type);
+      .emit("newProducer", producer.id, user.id, data.appData.type);
   });
 
-  socket.on("closeVideoProducer", () => {
+  socket.on("closeScreenShareProducer", () => {
     const { user } = socket.data;
     if (!user.roomName) {
       console.log("User not joined room");
@@ -174,30 +184,37 @@ export function sfuModule(
       console.log("Peer not found");
       return;
     }
-    if (!peer.producers.video) {
+
+    const videoProducer = peer.producers.screenShare?.video;
+    const systemAudioProducer = peer.producers.screenShare?.audio;
+
+    if (!videoProducer) {
       console.log("Video producer not found");
       return;
     }
 
-    peer.producers.video.close();
+    videoProducer.close();
+    systemAudioProducer?.close();
 
-    const videoProducerId = peer.producers.video.id;
+    socket.broadcast
+      .to(user.roomName)
+      .emit("peerClosedProducer", { peerId: user.id, type: "screenShare" });
 
     for (const [_, peer] of room.peers) {
       const consumerEntries = Array.from(peer.consumers.entries());
 
       for (const [consumerId, consumer] of consumerEntries) {
-        if (consumer.producerId === videoProducerId) {
+        if (
+          consumer.producerId === videoProducer.id ||
+          consumer.producerId === systemAudioProducer?.id
+        ) {
           consumer.close();
           peer.consumers.delete(consumerId);
-
-          socket.broadcast
-            .to(user.roomName)
-            .emit("consumerClosed", consumerId, user.id, consumer.kind);
+          socket.broadcast.to(user.roomName).emit("consumerClosed", consumerId);
         }
       }
     }
-    peer.producers.video = undefined;
+    peer.producers.screenShare = undefined;
   });
 
   socket.on("consume", async ({ producerId, rtpCapabilities }, cb) => {

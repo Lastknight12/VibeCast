@@ -142,17 +142,28 @@ export function roomsModule(
     const peers = new Array<{
       user: Pick<User, "id" | "name" | "image">;
       voiceMuted: boolean;
-      producers: { audio?: { id: string }; video?: { id: string } };
+      producers: {
+        audio?: { id: string };
+        screenShare?: {
+          video: { id: string };
+          audio?: { id: string };
+        };
+      };
     }>();
 
     for (const [id, data] of room.peers.entries()) {
       if (id === socket.data.user.id) continue;
 
+      const videoProducer = data.producers.screenShare?.video;
+      const systemAudioProducer = data.producers.screenShare?.audio;
+      const audioProducer = data.producers.audio;
+
       peers.push({
         producers: {
-          audio: data.producers.audio && { id: data.producers.audio.id },
-          video: data.producers.video && {
-            id: data.producers.video.id,
+          audio: audioProducer && { id: audioProducer.id },
+          screenShare: videoProducer && {
+            video: { id: videoProducer.id },
+            audio: systemAudioProducer && { id: systemAudioProducer.id },
           },
         },
         user: {

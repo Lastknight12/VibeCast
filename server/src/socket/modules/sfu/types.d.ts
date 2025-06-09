@@ -6,7 +6,7 @@ import {
 } from "mediasoup/node/lib/types";
 
 type TransportType = "send" | "recv";
-type ProducerType = "video" | "audio";
+type ProducerType = "video" | "audio" | "system_audio";
 
 export interface ClientToServerEvents {
   getRTPCapabilities: (cb: (caps: any) => void) => void;
@@ -23,10 +23,13 @@ export interface ClientToServerEvents {
       kind: MediaKind;
       rtpParameters: RtpParameters;
       type: ProducerType;
+      appData: {
+        type: ProducerType;
+      };
     },
     cb: (result: any) => void
   ) => void;
-  closeVideoProducer: () => void;
+  closeScreenShareProducer: () => void;
   consume: (
     data: { producerId: string; rtpCapabilities: RtpCapabilities },
     cb: (result: any) => void
@@ -40,11 +43,11 @@ export interface ClientToServerEvents {
 
 export interface ServerToClientEvents {
   newProducer: (producerId: string, userId: string, type: ProducerType) => void;
-  consumerClosed: (
-    consumerId: string,
-    userId: string,
-    consumerKind: MediaKind
-  ) => void;
+  consumerClosed: (consumerId: string) => void;
+  peerClosedProducer: (data: {
+    peerId: string;
+    type: "screenShare" | "audio";
+  }) => {};
   addActiveSpeaker: (userId: string) => void;
   removeActiveSpeaker: (userId: string) => void;
   micOff: (userId: string) => void;

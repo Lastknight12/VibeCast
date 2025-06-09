@@ -6,8 +6,11 @@ type peer = {
   sockets: Stack<string>;
   voiceMuted: boolean;
   producers: {
-    audio?: Producer<{ userId: string }>;
-    video?: Producer<{ userId: string }>;
+    screenShare?: {
+      video: Producer;
+      audio?: Producer;
+    };
+    audio?: Producer;
   };
   consumers: Map<string, Consumer>;
   transports: {
@@ -21,12 +24,6 @@ export class PeersMap<K> extends Map<K, peer> {
   private cleanupPeerConnection(p: peer) {
     p.voiceMuted = true;
 
-    Object.values(p.consumers).forEach((c) => {
-      c && c.close();
-    });
-    Object.values(p.producers).forEach((p) => {
-      p && p.close();
-    });
     Object.values(p.transports).forEach((t) => {
       t && t.close();
     });

@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { auth } from "../lib/auth";
+import fs from "node:fs";
 
 export default async function authRouter(fastify: FastifyInstance) {
   fastify.decorate("userSession", null);
