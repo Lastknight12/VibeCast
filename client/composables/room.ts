@@ -6,6 +6,9 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
   const localVideo = ref<HTMLVideoElement | null>(null);
   const localStream = ref<MediaStream | null>(null);
+  const localPinnedStream = ref<{ stream: MediaStream; peerId: string } | null>(
+    null
+  );
   const isSpeaking = ref<boolean>(false);
   const activeSpeakers = ref<Set<string>>(new Set());
   const muted = ref(mediaConn.muted);
@@ -18,9 +21,12 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     Map<
       string,
       {
-        stream?: {
+        stream: {
           audio?: MediaStream | null;
-          video?: MediaStream | null;
+          screenShare?: {
+            video: MediaStream;
+            audio?: MediaStream | null;
+          };
         };
         voiceMuted: boolean;
         userData: User;
@@ -33,7 +39,8 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     socket.on("userDisconnect", handleUserDisconnect);
 
     socket.on("newProducer", handleNewProducer);
-    socket.on("consumerClosed", handleClosedConsumer);
+    socket.on("consumerClosed", handleConsumerClosed);
+    socket.on("peerClosedProducer", handlePeerClosedProducer);
 
     socket.on("micOff", handleUserMuted);
     socket.on("micOn", handleUserUnMuted);
@@ -49,7 +56,8 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     socket.off("userDisconnect", handleUserDisconnect);
 
     socket.off("newProducer", handleNewProducer);
-    socket.off("consumerClosed", handleClosedConsumer);
+    socket.off("consumerClosed", handleConsumerClosed);
+    socket.off("peerClosedProducer", handlePeerClosedProducer);
 
     socket.off("micOff", handleUserMuted);
     socket.off("micOn", handleUserUnMuted);
@@ -58,6 +66,14 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     socket.off("removeActiveSpeaker", handleRemoveSpeaker);
 
     socket.off("leaveRoom", handleLeaveRoom);
+  };
+
+  const switchLocalPinStream = (peerId: string, stream: MediaStream) => {
+    if (!localPinnedStream.value) {
+      localPinnedStream.value = { stream, peerId };
+    } else {
+      localPinnedStream.value = null;
+    }
   };
 
   const handleLeaveRoom = () => {
@@ -102,7 +118,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const handleNewProducer = async (
     producerId: string,
     userId: string,
-    type: "video" | "audio"
+    type: "video" | "audio" | "system_audio"
   ) => {
     const stream = await mediaConn.consume(producerId);
 
@@ -112,21 +128,41 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     }
 
     const peer = peers.value.get(userId);
-
-    if (type === "video") {
-      peer!.stream!.video = stream!;
-    } else {
-      peer!.stream!.audio = stream!;
+    if (!peer) {
+      console.log("peer not founded");
+      return;
     }
+
+    switch (type) {
+      case "video": {
+        peer.stream.screenShare = { video: stream };
+        break;
+      }
+      case "audio": {
+        peer.stream.audio = stream;
+        break;
+      }
+      case "system_audio": {
+        peer.stream.screenShare!.audio = stream;
+        break;
+      }
+    }
+  };
+
+  const handleConsumerClosed = (consumerId: string) => {
+    mediaConn.closeConsumer(consumerId);
   };
 
   const switchScreenShare = async () => {
     if (!localStream.value) {
-      await mediaConn.getMediaStream();
+      const stream = await mediaConn.getMediaStream();
+
+      localStream.value = new MediaStream(stream.getVideoTracks()); // only provide video stream, not audio
 
       await mediaConn.produce("video");
-
-      localStream.value = mediaConn.localStream;
+      if (stream.getAudioTracks().length > 0) {
+        await mediaConn.produce("system_audio");
+      }
 
       localStream.value!.getVideoTracks()[0].onended = () => {
         localStream.value = null;
@@ -175,7 +211,17 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     peersList: {
       user: User;
       voiceMuted: boolean;
-      producers: { audio?: Producer; video?: Producer };
+      producers: {
+        audio?: Producer;
+        screenShare?: {
+          video: {
+            id: string;
+          };
+          audio?: {
+            id: string;
+          };
+        };
+      };
     }[]
   ) => {
     for (const peer of peersList) {
@@ -184,29 +230,43 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
         (await mediaConn.consume(peer.producers.audio.id));
 
       const videoStream =
-        peer.producers.video &&
-        (await mediaConn.consume(peer.producers.video.id));
+        peer.producers.screenShare &&
+        (await mediaConn.consume(peer.producers.screenShare.video.id));
+
+      const videoStreamAudio =
+        peer.producers.screenShare?.audio &&
+        (await mediaConn.consume(peer.producers.screenShare.audio.id));
 
       peers.value.set(peer.user.id, {
-        stream: { audio: audioStream, video: videoStream },
+        stream: {
+          audio: audioStream,
+          screenShare: videoStream && {
+            video: videoStream,
+            audio: videoStreamAudio,
+          },
+        },
         voiceMuted: peer.voiceMuted,
         userData: peer.user,
       });
     }
   };
 
-  const handleClosedConsumer = (
-    consumerId: string,
-    socketId: string,
-    type: "video" | "audio"
-  ) => {
-    mediaConn.closeConsumer(consumerId);
-    const stream = peers.value.get(socketId)?.stream;
+  const handlePeerClosedProducer = async (data: {
+    peerId: string;
+    type: "screenShare" | "audio";
+  }) => {
+    const peer = peers.value.get(data.peerId);
 
-    if (type === "video") {
-      if (stream) stream.video = null;
-    } else {
-      if (stream) stream.audio = null;
+    switch (data.type) {
+      case "screenShare":
+        peer?.stream.screenShare && (peer.stream.screenShare = undefined);
+        if (localPinnedStream.value) {
+          localPinnedStream.value = null;
+        }
+        break;
+      case "audio":
+        peer?.stream.audio && (peer.stream.audio = undefined);
+        break;
     }
   };
 
@@ -222,8 +282,8 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
           await startAudio();
           await mediaConn.createDevice();
           await mediaConn.createTransport("send");
-          await mediaConn.produce("audio");
           await mediaConn.createTransport("recv");
+          await mediaConn.produce("audio");
 
           socket.emit("getRoomPeers", handlePeers);
         }
@@ -245,6 +305,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       isSpeaking,
       joinRoomErrorMessage,
       peers,
+      localPinnedStream,
       disconnected,
     },
     registerSocketListeners,
@@ -254,6 +315,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       switchMic,
       switchScreenShare,
       joinRoom,
+      switchLocalPinStream,
     },
     clearFunctions: {
       handleBeforeUnload,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cn } from "@/lib/utils";
 import { useRoom } from "~/composables/room";
 
 const authClient = useAuthClient();
@@ -10,9 +11,6 @@ const roomName = route.params.roomName as string;
 const activeSpeakers = ref<Set<string>>(new Set());
 const mediaConn = new mediasoupConn(roomName, activeSpeakers);
 const room = useRoom(roomName, mediaConn);
-const pinnedVideoStream = ref<{ stream: MediaStream; peerId: string } | null>(
-  null
-);
 
 onMounted(() => {
   if (!session) {
@@ -42,23 +40,23 @@ onUnmounted(() => {
 function reload() {
   window.location.reload();
 }
+
+async function leave() {
+  await navigateTo("/");
+}
 </script>
 
 <template>
   <div
-    v-if="room.refs.disconnected.value"
+    v-if="room.refs.joinRoomErrorMessage.value"
     class="flex justify-center items-center w-full h-full flex-col gap-2"
   >
-    <p class="text-2xl">You joined on another device</p>
-    <UiButton @click="reload" variant="secondary">Reload</UiButton>
-  </div>
-
-  <div
-    v-else-if="room.refs.joinRoomErrorMessage.value"
-    class="flex justify-center items-center w-full h-full flex-col gap-2"
-  >
-    <p class="text-2xl text-red-400">
-      {{ room.refs.joinRoomErrorMessage.value }}
+    <p :class="cn('text-2xl', !room.refs.disconnected && 'text-red-400')">
+      {{
+        room.refs.joinRoomErrorMessage.value && room.refs.disconnected
+          ? "You joined on another device"
+          : room.refs.joinRoomErrorMessage.value
+      }}
     </p>
     <UiButton @click="reload" variant="secondary">Reload</UiButton>
   </div>
@@ -67,18 +65,13 @@ function reload() {
     <div class="overflow-auto w-full">
       <div class="w-full flex justify-center">
         <video
-          v-if="pinnedVideoStream?.stream"
-          :srcObject="pinnedVideoStream.stream"
-          @click="
-            () => {
-              pinnedVideoStream = null;
-            }
-          "
-          ref="localVideo"
+          v-if="room.refs.localPinnedStream.value"
+          :srcObject="room.refs.localPinnedStream.value.stream"
+          @click="() => (room.refs.localPinnedStream.value = null)"
           autoplay
           playsinline
           class="w-full h-full object-cover rounded-lg shadow max-w-[780px]"
-        ></video>
+        />
       </div>
       <div
         class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-fr p-4"
@@ -104,12 +97,11 @@ function reload() {
 
           <video
             v-if="room.refs.localStream.value"
-            ref="localVideo"
             :srcObject="room.refs.localStream.value"
             autoplay
             playsinline
             class="w-full h-full object-cover rounded-lg shadow"
-          ></video>
+          />
 
           <img
             v-else
@@ -144,17 +136,16 @@ function reload() {
           </div>
 
           <video
-            v-if="data.stream?.video && pinnedVideoStream?.peerId !== id"
-            @click="
-              () => {
-                pinnedVideoStream = {stream: data.stream?.video!, peerId: id};
-              }
+            v-if="
+              data.stream?.screenShare &&
+              room.refs.localPinnedStream.value?.peerId !== id
             "
-            :srcObject="data.stream.video"
+            @click="() => room.userActions.switchLocalPinStream(id, data.stream.screenShare!.video)"
+            :srcObject="data.stream.screenShare.video"
             autoplay
             playsinline
-            class="w-full h-full object-cover rounded-lg shadow"
-          ></video>
+            class="w-full h-full rounded-lg"
+          />
 
           <img
             v-else
@@ -163,10 +154,17 @@ function reload() {
             height="60"
             class="rounded-full"
           />
-
+          <!-- user mic audio -->
           <audio
             v-if="data.stream?.audio"
             :srcObject="data.stream.audio"
+            autoplay
+          />
+
+          <!-- stream audio -->
+          <audio
+            v-if="data.stream?.screenShare?.audio"
+            :srcObject="data.stream.screenShare.audio"
             autoplay
           />
         </div>
@@ -198,6 +196,15 @@ function reload() {
           v-if="!room.refs.localStream.value"
         />
         <Icon name="ic:outline-stop-screen-share" size="20" v-else />
+      </UiButton>
+
+      <UiButton
+        variant="destructive"
+        size="icon"
+        class="text-red-200"
+        @click="leave"
+      >
+        <Icon name="material-symbols-light:call-end" size="20" />
       </UiButton>
     </div>
   </div>

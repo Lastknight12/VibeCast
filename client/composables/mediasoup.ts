@@ -17,27 +17,24 @@ export class mediasoupConn {
 
   roomName: string;
   muted: boolean;
-  activeSpeakers: Ref<Set<string>> | null;
+  activeSpeakers?: Ref<Set<string>>;
 
   device?: mediasoup.Device;
   transports: {
     send?: Transport;
     recv?: Transport;
   };
-  producers: {
-    video?: Producer;
-    audio?: Producer;
-  };
+  producers: Map<"video" | "audio" | "system_audio", Producer | undefined>;
   consumers: Map<string, Consumer>;
 
-  constructor(roomName: string, activeSpeakersRef: Ref<Set<string>>) {
+  constructor(roomName: string, activeSpeakersRef?: Ref<Set<string>>) {
     this.roomName = roomName;
     this.muted = true;
     this.activeSpeakers = activeSpeakersRef;
 
     this.transports = {};
     this.consumers = new Map();
-    this.producers = {};
+    this.producers = new Map();
   }
 
   async getAudioStream() {
@@ -61,6 +58,7 @@ export class mediasoupConn {
         height: { ideal: 1080 },
         frameRate: { ideal: 30 },
       },
+      audio: true,
     });
 
     this.localStream = stream;
@@ -84,10 +82,7 @@ export class mediasoupConn {
       routerRtpCapabilities: toRaw(rtpCapabilities)!,
     });
 
-    console.log(
-      "Device created with RTP capabilities:",
-      toRaw(rtpCapabilities)
-    );
+    console.log("Device created with RTP capabilities:", rtpCapabilities);
   }
 
   async createTransport(type: "send" | "recv") {
@@ -97,11 +92,15 @@ export class mediasoupConn {
     }
 
     await new Promise((resolve, _) => {
+      if (!this.device) {
+        console.log("no device created");
+        return;
+      }
+
       this.socket.emit("createTransport", type, (transport: any) => {
         switch (type) {
           case "send": {
             this.transports.send = this.device!.createSendTransport(transport);
-
             resolve(null);
 
             this.transports.send.on("connectionstatechange", (state) => {
@@ -114,9 +113,7 @@ export class mediasoupConn {
                 this.socket.emit(
                   "connectTransport",
                   { dtlsParameters, type },
-                  async () => {
-                    callback();
-                  }
+                  callback
                 );
               }
             );
@@ -139,7 +136,6 @@ export class mediasoupConn {
             {
               this.transports.recv =
                 this.device!.createRecvTransport(transport);
-
               resolve(null);
 
               this.transports.recv.on("connectionstatechange", (state) => {
@@ -201,9 +197,7 @@ export class mediasoupConn {
           });
 
           this.consumers.set(consumer.id, consumer);
-
           stream.addTrack(consumer.track);
-
           this.socket.emit("consumerReady", consumer.id);
 
           resolve(null);
@@ -215,15 +209,18 @@ export class mediasoupConn {
   }
 
   async closeConsumer(consumerId: string) {
-    if (!this.consumers.get(consumerId)) {
+    const consumer = this.consumers.get(consumerId);
+
+    if (!consumer) {
       console.log("no consumer with this id exist" + consumerId);
       return;
     }
 
-    this.consumers.get(consumerId)!.close();
+    consumer.close();
+    this.consumers.delete(consumerId);
   }
 
-  async produce(type: "video" | "audio") {
+  async produce(type: "video" | "audio" | "system_audio") {
     if (
       (type === "video" && !this.localStream) ||
       (type === "audio" && !this.audioStream)
@@ -242,58 +239,84 @@ export class mediasoupConn {
       return;
     }
 
-    if (!this.device.canProduce(type)) {
+    const parsedType = type === "system_audio" ? "audio" : type;
+    if (!this.device.canProduce(parsedType)) {
       console.error(
         `Device cannot produce ${type} with current RTP Capabilities`
       );
       return;
     }
 
-    const track =
-      type === "video"
-        ? this.localStream!.getVideoTracks()[0]
-        : this.audioStream?.getAudioTracks()[0];
+    let track: MediaStreamTrack | undefined;
+
+    switch (type) {
+      case "video": {
+        track = this.localStream?.getVideoTracks()[0];
+        break;
+      }
+      case "audio": {
+        track = this.audioStream?.getAudioTracks()[0];
+        break;
+      }
+      case "system_audio": {
+        track = this.localStream?.getAudioTracks()[0];
+        break;
+      }
+    }
 
     const encodings =
       type === "video"
         ? [
-            { rid: "h", maxBitrate: 1200 * 1024 },
             {
-              rid: "m",
-              maxBitrate: 600 * 1024,
-              scaleResolutionDownBy: 2,
+              rid: "fhd",
+              maxBitrate: 6000 * 1024,
+              scaleResolutionDownBy: 1,
             },
             {
-              rid: "l",
-              maxBitrate: 300 * 1024,
-              scaleResolutionDownBy: 4,
+              rid: "hd", // 720p
+              maxBitrate: 4000 * 1024,
+              scaleResolutionDownBy: 1.5,
+            },
+            {
+              rid: "sd", // 480p
+              maxBitrate: 2000 * 1024,
+              scaleResolutionDownBy: 2.25,
+            },
+            {
+              rid: "ld", // 360p
+              maxBitrate: 1000 * 1024,
+              scaleResolutionDownBy: 3,
             },
           ]
         : undefined;
 
     const producer = await this.transports.send.produce({
       track: track,
-      codecOptions: {
-        videoGoogleStartBitrate: 1000,
-      },
       encodings,
+      appData: {
+        type,
+      },
     });
 
     switch (type) {
       case "video": {
-        this.producers.video = producer;
-        return;
+        this.producers.set("video", producer);
+        break;
       }
       case "audio": {
-        this.producers.audio = producer;
+        this.producers.set("audio", producer);
         producer.pause();
-        return;
+        break;
       }
+      case "system_audio":
+        this.producers.set("system_audio", producer);
+        break;
     }
   }
 
   stopStream() {
-    const videoProducer = this.producers.video;
+    const videoProducer = this.producers.get("video");
+    const systemAudioProducer = this.producers.get("system_audio");
 
     if (!videoProducer) {
       console.log("no video producer created");
@@ -301,14 +324,18 @@ export class mediasoupConn {
     }
 
     videoProducer.close();
+    systemAudioProducer?.close();
+
     this.localStream = null;
 
-    this.socket.emit("closeVideoProducer");
+    this.socket.emit("closeScreenShareProducer");
   }
 
   muteMic() {
-    if (this.producers.audio) {
-      this.producers.audio.pause();
+    const audioProducer = this.producers.get("audio");
+
+    if (audioProducer) {
+      audioProducer.pause();
       this.muted = true;
       this.socket.emit("micOff");
     } else {
@@ -317,8 +344,10 @@ export class mediasoupConn {
   }
 
   unMuteMic() {
-    if (this.producers.audio) {
-      this.producers.audio.resume();
+    const audioProducer = this.producers.get("audio");
+
+    if (audioProducer) {
+      audioProducer.resume();
       this.muted = false;
       this.socket.emit("micOn");
     } else {
@@ -330,25 +359,15 @@ export class mediasoupConn {
     this.roomName = "";
     this.localStream = null;
     this.audioStream = null;
-    this.activeSpeakers = null;
+    this.activeSpeakers = undefined;
     this.muted = true;
 
-    console.log(this.transports.recv?.getStats(), "before");
     Object.values(this.transports).forEach((t) => {
       t.close();
     });
-    console.log(this.transports.recv?.getStats(), "after");
-
-    Object.values(this.producers).forEach((p) => {
-      p.close();
-    });
-
-    this.consumers.forEach((c) => {
-      c.close();
-    });
 
     this.transports = {};
-    this.producers = {};
+    this.producers = new Map();
     this.consumers = new Map();
   }
 }
