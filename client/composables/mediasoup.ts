@@ -268,7 +268,7 @@ export class mediasoupConn {
       type === "video"
         ? [
             {
-              rid: "fhd",
+              rid: "fhd", // 1080p
               maxBitrate: 6000 * 1024,
               scaleResolutionDownBy: 1,
             },

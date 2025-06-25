@@ -212,7 +212,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       user: User;
       voiceMuted: boolean;
       producers: {
-        audio?: Producer;
+        audio?: { id: string };
         screenShare?: {
           video: {
             id: string;
