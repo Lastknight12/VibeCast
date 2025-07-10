@@ -1,11 +1,13 @@
 import { Router } from "mediasoup/node/lib/RouterTypes";
 import { PeersMap } from "./peersMap";
 
+export type RoomType = "private" | "public";
+
 export const rooms = new Map<
   string,
   {
-    type: "private" | "public";
+    type: RoomType;
     router: Router;
-    peers: PeersMap<string>;
+    peers: PeersMap;
   }
 >();

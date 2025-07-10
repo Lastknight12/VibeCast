@@ -11,13 +11,8 @@
     "moduleResolution": "node",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
-    "paths": {
-      "config/*": ["config/*"]
-    },
-    "types": ["node", "./src/types/fastify"],
+    "baseUrl": ".",
     "skipLibCheck": true
   },
-  "include": ["src"],
   "exclude": ["node_modules", "dist", "coverage"]
 }

@@ -24,13 +24,12 @@ export class mediasoupConn {
     send?: Transport;
     recv?: Transport;
   };
-  producers: Map<"video" | "audio" | "system_audio", Producer | undefined>;
+  producers: Map<"video" | "audio" | "video_audio", Producer | undefined>;
   consumers: Map<string, Consumer>;
 
-  constructor(roomName: string, activeSpeakersRef?: Ref<Set<string>>) {
+  constructor(roomName: string) {
     this.roomName = roomName;
     this.muted = true;
-    this.activeSpeakers = activeSpeakersRef;
 
     this.transports = {};
     this.consumers = new Map();
@@ -56,7 +55,7 @@ export class mediasoupConn {
       video: {
         width: { ideal: 1920 },
         height: { ideal: 1080 },
-        frameRate: { ideal: 30 },
+        frameRate: { ideal: 60 },
       },
       audio: true,
     });
@@ -97,7 +96,7 @@ export class mediasoupConn {
         return;
       }
 
-      this.socket.emit("createTransport", type, (transport: any) => {
+      this.socket.emit("createTransport", { type }, (transport: any) => {
         switch (type) {
           case "send": {
             this.transports.send = this.device!.createSendTransport(transport);
@@ -121,10 +120,7 @@ export class mediasoupConn {
             this.transports.send.on("produce", async (parameters, callback) => {
               this.socket.emit(
                 "produce",
-                {
-                  ...parameters,
-                  type: parameters.kind,
-                },
+                { parameters },
                 (data: { id: string }) => {
                   callback(data);
                 }
@@ -198,7 +194,7 @@ export class mediasoupConn {
 
           this.consumers.set(consumer.id, consumer);
           stream.addTrack(consumer.track);
-          this.socket.emit("consumerReady", consumer.id);
+          this.socket.emit("consumerReady", { id: consumer.id });
 
           resolve(null);
         }
@@ -220,7 +216,7 @@ export class mediasoupConn {
     this.consumers.delete(consumerId);
   }
 
-  async produce(type: "video" | "audio" | "system_audio") {
+  async produce(type: "video" | "audio" | "video_audio") {
     if (
       (type === "video" && !this.localStream) ||
       (type === "audio" && !this.audioStream)
@@ -239,7 +235,7 @@ export class mediasoupConn {
       return;
     }
 
-    const parsedType = type === "system_audio" ? "audio" : type;
+    const parsedType = type === "video_audio" ? "audio" : type;
     if (!this.device.canProduce(parsedType)) {
       console.error(
         `Device cannot produce ${type} with current RTP Capabilities`
@@ -254,12 +250,12 @@ export class mediasoupConn {
         track = this.localStream?.getVideoTracks()[0];
         break;
       }
-      case "audio": {
-        track = this.audioStream?.getAudioTracks()[0];
+      case "video_audio": {
+        track = this.localStream?.getAudioTracks()[0];
         break;
       }
-      case "system_audio": {
-        track = this.localStream?.getAudioTracks()[0];
+      case "audio": {
+        track = this.audioStream?.getAudioTracks()[0];
         break;
       }
     }
@@ -308,15 +304,15 @@ export class mediasoupConn {
         producer.pause();
         break;
       }
-      case "system_audio":
-        this.producers.set("system_audio", producer);
+      case "video_audio":
+        this.producers.set("video_audio", producer);
         break;
     }
   }
 
   stopStream() {
     const videoProducer = this.producers.get("video");
-    const systemAudioProducer = this.producers.get("system_audio");
+    const systemAudioProducer = this.producers.get("video_audio");
 
     if (!videoProducer) {
       console.log("no video producer created");
@@ -328,7 +324,7 @@ export class mediasoupConn {
 
     this.localStream = null;
 
-    this.socket.emit("closeScreenShareProducer");
+    this.socket.emit("closeProducer", { type: "video" });
   }
 
   muteMic() {
@@ -359,15 +355,13 @@ export class mediasoupConn {
     this.roomName = "";
     this.localStream = null;
     this.audioStream = null;
-    this.activeSpeakers = undefined;
     this.muted = true;
+    this.producers = new Map();
+    this.consumers = new Map();
 
     Object.values(this.transports).forEach((t) => {
       t.close();
     });
-
     this.transports = {};
-    this.producers = new Map();
-    this.consumers = new Map();
   }
 }

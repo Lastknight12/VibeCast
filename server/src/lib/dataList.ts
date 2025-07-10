@@ -1,4 +1,4 @@
-export class Stack<Data> {
+export class DataList<Data> {
   items: Data[] = [];
 
   constructor(initItems?: Data[]) {
@@ -16,7 +16,11 @@ export class Stack<Data> {
       return;
     }
 
-    this.items.pop();
+    return this.items.pop();
+  }
+
+  clear() {
+    this.items = [];
   }
 
   peek() {
@@ -25,10 +29,6 @@ export class Stack<Data> {
     }
 
     return this.items[this.items.length - 1];
-  }
-
-  delete(key: Data) {
-    this.items = this.items.filter((item) => item !== key);
   }
 
   size() {

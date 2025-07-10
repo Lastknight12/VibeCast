@@ -1,9 +1,9 @@
 import { Consumer, Producer, Transport } from "mediasoup/node/lib/types";
-import { Stack } from "./stack";
+import { DataList } from "./dataList";
 import { User } from "better-auth/types";
 
-type peer = {
-  sockets: Stack<string>;
+type Peer = {
+  sockets: DataList<string>;
   voiceMuted: boolean;
   producers: {
     screenShare?: {
@@ -17,27 +17,44 @@ type peer = {
     send?: Transport;
     recv?: Transport;
   };
-  user: Pick<User, "id" | "name" | "image">;
+  user: User;
 };
 
-export class PeersMap<K> extends Map<K, peer> {
-  private cleanupPeerConnection(p: peer) {
-    p.voiceMuted = true;
-
-    Object.values(p.transports).forEach((t) => {
+export class PeersMap<K extends string = string> extends Map<K, Peer> {
+  private cleanupPeerConnection(peer: Peer) {
+    Object.values(peer.transports).forEach((t) => {
       t && t.close();
     });
   }
 
-  get(key: K): (peer & { cleanupPeerConnection: () => void }) | undefined {
+  set(key: K, value: Peer) {
+    super.set(key, value);
+    return this;
+  }
+
+  get(key: K) {
     const p = super.get(key);
     if (!p) {
       return undefined;
     }
 
-    if (!("cleanupPeerConnection" in p)) {
-      (p as any).cleanupPeerConnection = () => this.cleanupPeerConnection(p);
+    return p;
+  }
+
+  delete(key: K) {
+    const peer = this.get(key);
+    if (peer) {
+      this.cleanupPeerConnection(peer);
     }
-    return p as peer & { cleanupPeerConnection: () => void };
+
+    return super.delete(key);
+  }
+
+  clear() {
+    for (const peer of this.values()) {
+      this.cleanupPeerConnection(peer);
+    }
+
+    super.clear();
   }
 }

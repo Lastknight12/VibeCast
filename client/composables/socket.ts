@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-let socket: ReturnType<typeof io> | null = null;
+let socket: ReturnType<typeof io> | undefined = undefined;
 
 export function useSocket() {
   if (!socket) {

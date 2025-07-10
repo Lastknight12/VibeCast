@@ -1,6 +1,19 @@
 <script setup lang="ts">
-import { cn } from "@/lib/utils";
 import { useRoom } from "~/composables/room";
+
+const loading = ref(true);
+const showContent = ref(false);
+const hasJoinRoomError = computed(() => !!room.refs.joinRoomErrorMessage.value);
+const isDisconnected = computed(() => !!room.refs.disconnected.value);
+const canShowError = computed(
+  () =>
+    (hasJoinRoomError.value || isDisconnected.value) &&
+    !loading.value &&
+    showContent.value
+);
+const canShowContent = computed(
+  () => showContent.value && !hasJoinRoomError.value && !isDisconnected.value
+);
 
 const authClient = useAuthClient();
 const { data: session } = await authClient.getSession();
@@ -8,11 +21,10 @@ const { data: session } = await authClient.getSession();
 const route = useRoute();
 const roomName = route.params.roomName as string;
 
-const activeSpeakers = ref<Set<string>>(new Set());
-const mediaConn = new mediasoupConn(roomName, activeSpeakers);
+const mediaConn = new mediasoupConn(roomName);
 const room = useRoom(roomName, mediaConn);
 
-onMounted(() => {
+onMounted(async () => {
   if (!session) {
     navigateTo("/");
     return;
@@ -23,7 +35,12 @@ onMounted(() => {
     room.clearFunctions.handleBeforeUnload
   );
   room.registerSocketListeners();
-  room.userActions.joinRoom();
+  try {
+    await room.userActions.joinRoom();
+  } catch (_) {
+  } finally {
+    loading.value = false;
+  }
 });
 
 onUnmounted(() => {
@@ -47,13 +64,22 @@ async function leave() {
 </script>
 
 <template>
+  <Transition @afterLeave="showContent = true">
+    <div
+      v-if="loading"
+      class="w-full h-full relative flex justify-center items-center overflow-hidden"
+    >
+      <LoadingIcon />
+    </div>
+  </Transition>
+
   <div
-    v-if="room.refs.joinRoomErrorMessage.value"
+    v-if="canShowError"
     class="flex justify-center items-center w-full h-full flex-col gap-2"
   >
-    <p :class="cn('text-2xl', !room.refs.disconnected && 'text-red-400')">
+    <p class="text-2xl">
       {{
-        room.refs.joinRoomErrorMessage.value && room.refs.disconnected
+        room.refs.disconnected.value
           ? "You joined on another device"
           : room.refs.joinRoomErrorMessage.value
       }}
@@ -61,7 +87,7 @@ async function leave() {
     <UiButton @click="reload" variant="secondary">Reload</UiButton>
   </div>
 
-  <div v-else>
+  <div v-if="canShowContent">
     <div class="overflow-auto w-full">
       <div class="w-full flex justify-center">
         <video
@@ -74,7 +100,7 @@ async function leave() {
         />
       </div>
       <div
-        class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 auto-rows-fr p-4"
+        class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 max-[510px]:grid-cols-1 gap-4 auto-rows-fr p-4"
       >
         <div
           :class="[
@@ -209,3 +235,15 @@ async function leave() {
     </div>
   </div>
 </template>
+
+<style>
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+}
+</style>

@@ -1,5 +1,4 @@
 import type { User } from "better-auth/types";
-import type { Producer } from "mediasoup-client/types";
 
 export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const socket = useSocket();
@@ -118,7 +117,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const handleNewProducer = async (
     producerId: string,
     userId: string,
-    type: "video" | "audio" | "system_audio"
+    type: "video" | "audio" | "video_audio"
   ) => {
     const stream = await mediaConn.consume(producerId);
 
@@ -142,7 +141,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
         peer.stream.audio = stream;
         break;
       }
-      case "system_audio": {
+      case "video_audio": {
         peer.stream.screenShare!.audio = stream;
         break;
       }
@@ -161,7 +160,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
       await mediaConn.produce("video");
       if (stream.getAudioTracks().length > 0) {
-        await mediaConn.produce("system_audio");
+        await mediaConn.produce("video_audio");
       }
 
       localStream.value!.getVideoTracks()[0].onended = () => {
@@ -212,30 +211,26 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       user: User;
       voiceMuted: boolean;
       producers: {
-        audio?: { id: string };
+        audio?: string;
         screenShare?: {
-          video: {
-            id: string;
-          };
-          audio?: {
-            id: string;
-          };
+          video: string;
+          audio?: string;
         };
       };
     }[]
   ) => {
     for (const peer of peersList) {
-      const audioStream =
-        peer.producers.audio &&
-        (await mediaConn.consume(peer.producers.audio.id));
+      const audioStream = peer.producers.audio
+        ? await mediaConn.consume(peer.producers.audio)
+        : undefined;
 
-      const videoStream =
-        peer.producers.screenShare &&
-        (await mediaConn.consume(peer.producers.screenShare.video.id));
+      const videoStream = peer.producers.screenShare
+        ? await mediaConn.consume(peer.producers.screenShare.video)
+        : undefined;
 
-      const videoStreamAudio =
-        peer.producers.screenShare?.audio &&
-        (await mediaConn.consume(peer.producers.screenShare.audio.id));
+      const videoStreamAudio = peer.producers.screenShare?.audio
+        ? await mediaConn.consume(peer.producers.screenShare.audio)
+        : undefined;
 
       peers.value.set(peer.user.id, {
         stream: {
@@ -270,29 +265,37 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     }
   };
 
-  const joinRoom = () => {
-    socket.emit(
-      "joinRoom",
-      roomName,
-      async ({ error }: { error: string | null }) => {
-        if (error) {
-          joinRoomErrorMessage.value = error;
-          return;
-        } else {
-          await startAudio();
-          await mediaConn.createDevice();
-          await mediaConn.createTransport("send");
-          await mediaConn.createTransport("recv");
-          await mediaConn.produce("audio");
+  const joinRoom = async () => {
+    await new Promise((resolve, reject) => {
+      socket.emit(
+        "joinRoom",
+        {
+          roomName,
+        },
+        async ({ error }: { error: string | null }) => {
+          if (error) {
+            joinRoomErrorMessage.value = error;
+            reject(error);
+          } else {
+            await startAudio();
+            await mediaConn.createDevice();
+            await mediaConn.createTransport("send");
+            await mediaConn.createTransport("recv");
+            await mediaConn.produce("audio");
 
-          socket.emit("getRoomPeers", handlePeers);
+            socket.emit("getRoomPeers", handlePeers);
+
+            resolve(null);
+          }
         }
-      }
-    );
+      );
+    });
   };
 
   const handleBeforeUnload = () => {
-    socket.emit("leave", roomName);
+    if (!disconnected.value && !joinRoomErrorMessage.value) {
+      socket.emit("leave", { roomName });
+    }
   };
 
   return {

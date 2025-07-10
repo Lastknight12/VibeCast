@@ -2,7 +2,6 @@
 import { cn } from "@/lib/utils";
 
 const socket = useSocket();
-const router = useRouter();
 
 const roomName = ref<string>("");
 const isPrivate = ref<boolean>(true);
@@ -16,8 +15,10 @@ function createRoom() {
   }
   socket.emit(
     "createRoom",
-    roomName.value,
-    isPrivate.value === true ? "private" : "public",
+    {
+      roomName: roomName.value.toString(),
+      roomType: isPrivate.value === true ? "private" : "public",
+    },
     (response: { error?: string }) => {
       if (!response.error) {
         navigateTo(`/rooms/${roomName.value}`);

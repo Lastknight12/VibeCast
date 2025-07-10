@@ -1,14 +1,11 @@
 import fastify from "fastify";
-import loadConfig from "./config/env.config";
-
+import { env } from "./config";
 import { setupModules } from "./setup/fastifyModules";
-import { setupSocket } from "./setup/socket";
+import { initializeSocketServer } from "./setup/socket";
 import { createMediasoupWorkers } from "./lib/worker";
 
-loadConfig();
-
-const port = Number(process.env.API_PORT) || 5001;
-const host = String(process.env.API_HOST ?? "localhost");
+const port = Number(env.API_PORT) || 5001;
+const host = env.API_HOST || "localhost";
 
 const startServer = async () => {
   const server = fastify({
@@ -18,7 +15,7 @@ const startServer = async () => {
   await createMediasoupWorkers();
 
   setupModules(server);
-  setupSocket(server);
+  initializeSocketServer(server);
 
   const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM"];
   signals.forEach((signal) => {

@@ -3,6 +3,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "./db";
 import { cloudinary } from "./cloudinary";
 import axios from "axios";
+import { env } from "../config";
 
 export const auth = betterAuth({
   database: prismaAdapter(db, {
@@ -10,8 +11,8 @@ export const auth = betterAuth({
   }),
   socialProviders: {
     google: {
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
       async mapProfileToUser(profile) {
         try {
           const res = await axios.get(profile.picture, {
@@ -33,5 +34,5 @@ export const auth = betterAuth({
       },
     },
   },
-  trustedOrigins: [process.env.FRONTEND_URL!],
+  trustedOrigins: [env.FRONTEND_URL],
 });
