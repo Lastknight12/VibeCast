@@ -5,7 +5,7 @@ import type { User } from "better-auth/types";
 const socket = useSocket();
 const authClient = useAuthClient();
 
-const session = await authClient.getSession();
+const session = await authClient.useSession(useCustomFetch);
 
 const rooms = ref<
   Map<string, { peers: Map<string, Pick<User, "id" | "name" | "image">> }>
@@ -93,15 +93,14 @@ onUnmounted(() => {
     >
       <h1 class="text-secondary text-xl">VibeCast</h1>
 
-      <CreateRoomDialog v-if="session.data" />
+      <CreateRoomDialog v-if="session.data.value" />
       <UiButton variant="secondary" size="sm" v-else @click="googleLogin">
         Sign in with Google
       </UiButton>
     </header>
 
     <div
-      class="mt-6 grid gap-8 p-8"
-      style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))"
+      class="mt-6 grid gap-8 p-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
     >
       <div
         v-if="rooms.size > 0"
@@ -131,7 +130,9 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div v-else class="w-full text-center">No rooms created</div>
+      <div v-else class="col-start-1 col-end-[-1] text-center">
+        No rooms created
+      </div>
     </div>
   </div>
 </template>

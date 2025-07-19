@@ -2,19 +2,17 @@ import { Server } from "socket.io";
 import { rooms } from "src/lib/roomState";
 import { CustomSocket } from "src/types/socket";
 
-export type GlobalContext = {
+export interface GlobalContext {
   socket: CustomSocket;
   io: Server;
   rooms: typeof rooms;
-};
+}
 
 export function createGlobalContext(
-  socket: CustomSocket,
-  io: Server
+  data: Pick<GlobalContext, "socket" | "io">
 ): GlobalContext {
   return {
-    socket,
-    io,
+    ...data,
     rooms,
   };
 }

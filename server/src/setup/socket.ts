@@ -2,13 +2,12 @@ import { FastifyInstance } from "fastify";
 import { Server } from "socket.io";
 
 import { env } from "src/config";
-import { TSchema } from "@sinclair/typebox";
-import { SocketHandlerMeta } from "src/socket/core/types";
+import { HandlerMeta } from "src/socket/core/types";
 import { createGlobalContext } from "src/socket/core/globalContext";
 import { socketGuard } from "src/guards/socket";
 import { enhanceSocket, preloadModules } from "src/socket/core";
-import { CustomOnEventConfig } from "src/socket/core/enhanceSocket";
-import { TypeCheck } from "@sinclair/typebox/build/cjs/compiler";
+import { CustomOnConfig } from "src/socket/core/enhanceSocket";
+import { logger } from "src/lib/logger";
 
 let preloadedModules: Awaited<ReturnType<typeof preloadModules>> = {};
 
@@ -17,15 +16,15 @@ let preloadedModules: Awaited<ReturnType<typeof preloadModules>> = {};
 })();
 
 function isExpectCb<Ctx extends object>(
-  meta: SocketHandlerMeta<Ctx, TSchema, boolean>
-): meta is SocketHandlerMeta<Ctx, TSchema, true> {
+  meta: HandlerMeta<Ctx, boolean>
+): meta is HandlerMeta<Ctx, true> {
   return meta.config?.expectCb === true;
 }
 
 export function initializeSocketServer(fastifyServer: FastifyInstance) {
   const io = new Server(fastifyServer.server, {
     cors: {
-      origin: env.FRONTEND_URL || "http://localhost:3000",
+      origin: env.FRONTEND_URL ?? "http://localhost:3000",
       methods: ["GET", "POST"],
       credentials: true,
     },
@@ -35,18 +34,15 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
 
   io.on("connection", async (_socket) => {
     const socket = enhanceSocket(_socket);
-    const globalCtx = createGlobalContext(socket, io);
+    const globalCtx = createGlobalContext({ socket, io });
 
-    for (const [_modName, module] of Object.entries(preloadedModules)) {
+    for (const module of Object.values(preloadedModules)) {
       const moduleCtx = module.createModuleContext
         ? module.createModuleContext({ ...globalCtx, socket })
         : { ...globalCtx };
 
       for (const eventMeta of module.moduleMetas) {
-        const handlerConfig: CustomOnEventConfig<
-          TypeCheck<TSchema>,
-          boolean
-        > = {
+        const handlerConfig: CustomOnConfig<boolean> = {
           ...eventMeta.config,
           schema: eventMeta.config?.schema
             ? module.schemasCache.get(eventMeta.config.schema)
@@ -56,11 +52,7 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
         if (isExpectCb(eventMeta)) {
           socket.customOn({
             event: eventMeta.event,
-            config: handlerConfig as CustomOnEventConfig<
-              TypeCheck<TSchema>,
-              true
-            >, // HACK: isExceptCb narrow eventMeta.config as {exceptCb: true} so we get {payload, cb} in eventMeta.handler,
-            //  but in customOn.config exceptCb is boolean, so in handler we recieve {payload, cb} or just {cb}
+            config: handlerConfig as CustomOnConfig<true>,
             handler: (data, cb) => {
               return eventMeta.handler(moduleCtx, {
                 payload: data,
@@ -69,12 +61,9 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
             },
           });
         } else {
-          socket.customOn<false>({
+          socket.customOn({
             event: eventMeta.event,
-            config: handlerConfig as CustomOnEventConfig<
-              TypeCheck<TSchema>,
-              false
-            >,
+            config: handlerConfig as CustomOnConfig<false>,
             handler: (data) => {
               return eventMeta.handler(moduleCtx, { payload: data });
             },
@@ -83,4 +72,6 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
       }
     }
   });
+
+  logger.info(`Socket server started`);
 }

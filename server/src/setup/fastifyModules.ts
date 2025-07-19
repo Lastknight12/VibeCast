@@ -16,7 +16,7 @@ export function setupModules(server: FastifyInstance) {
   server.register(cors, {
     origin: env.FRONTEND_URL || "http://localhost:3000",
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
     maxAge: 86400,
   });

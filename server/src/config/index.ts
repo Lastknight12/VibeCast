@@ -1,7 +1,6 @@
 import path from "path";
 import Ajv, { JSONSchemaType } from "ajv";
 import dotenv from "dotenv";
-import { _Code } from "ajv/dist/compile/codegen/code";
 
 interface EnvData {
   DATABASE_URL: string;
@@ -22,7 +21,7 @@ interface EnvData {
 
 const ajv = new Ajv();
 
-export let env: EnvData = {} as EnvData;
+export const env: EnvData = {} as EnvData;
 
 (function () {
   const envPath = path.join(__dirname, "..", "..", ".env");
@@ -65,14 +64,16 @@ export let env: EnvData = {} as EnvData;
     ],
   };
 
-  const validate = ajv.compile(envSchema);
-  const valid = validate(process.env);
+  const validator = ajv.compile(envSchema);
+  const valid = validator(process.env);
 
   if (!valid) {
-    throw new Error(`Config validation error: ${validate.errors?.[0].message}`);
+    throw new Error(
+      `Config validation error: ${validator.errors?.[0].message}`
+    );
   }
 
-  for (const key of Object.keys(envSchema.properties!)) {
+  for (const key of Object.keys(envSchema.properties ?? {})) {
     env[key] = process.env[key];
   }
 })();

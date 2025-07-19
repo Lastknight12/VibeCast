@@ -27,9 +27,9 @@ export async function socketGuard(
       return next(new Error("Unauthorized"));
     }
 
-    socket.data.user = session.user;
+    socket.data.user = { ...session.user, roomName: undefined };
     next();
-  } catch (err) {
+  } catch (_) {
     next(new Error("Authentication error"));
   }
 }

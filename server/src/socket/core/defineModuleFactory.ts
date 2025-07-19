@@ -2,65 +2,60 @@ import { TSchema } from "@sinclair/typebox";
 import { GlobalContext } from "./globalContext";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { logger } from "src/lib/logger";
-import { DefaultHandlerCb } from "./enhanceSocket";
+import { DefaultHandlerCb } from "./types";
 
-export type HandlerInput<Data extends { payload?: any; cb?: any }> =
-  "payload" extends keyof Data
-    ? "cb" extends keyof Data
-      ? { payload: Data["payload"]; cb: Data["cb"] }
-      : { payload: Data["payload"] }
-    : "cb" extends keyof Data
-      ? { cb: Data["cb"] }
-      : unknown;
+export type HandlerInput<
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Data extends { payload?: any; cb?: DefaultHandlerCb },
+> = "payload" extends keyof Data
+  ? "cb" extends keyof Data
+    ? { payload: Data["payload"]; cb: Data["cb"] }
+    : { payload: Data["payload"] }
+  : "cb" extends keyof Data
+    ? { cb: Data["cb"] }
+    : never;
 
-type SocketConfig<Schema extends TSchema, ExpectCb extends boolean> = {
-  schema?: Schema;
+export interface SocketConfig<ExpectCb extends boolean> {
+  schema?: TSchema;
   expectCb?: ExpectCb;
-};
+}
 
-export type ErrorCb = (data: { error?: string }) => void;
-export type SocketHandlerMeta<
+export type HandlerMeta<
   Ctx extends object,
-  Schema extends TSchema,
   ExpectCb extends boolean = false,
 > = ExpectCb extends true
   ? {
       event: string;
-      config?: SocketConfig<Schema, ExpectCb>;
+      config?: SocketConfig<ExpectCb>;
       handler: (
         ctx: Ctx,
-        params: {
-          payload: any;
-          cb: DefaultHandlerCb<any>;
-        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        params: HandlerInput<{ payload: any; cb: DefaultHandlerCb }>
       ) => void | Promise<void>;
     }
   : {
       event: string;
-      config?: SocketConfig<Schema, ExpectCb>;
+      config?: SocketConfig<ExpectCb>;
       handler: (
         ctx: Ctx,
-        params: {
-          payload: any;
-        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        params: HandlerInput<{ payload: any }>
       ) => void | Promise<void>;
     };
 
 export function defineModuleFactory<Ctx extends GlobalContext>(data?: {
   createModuleContext?: (globalContext: GlobalContext) => Ctx;
 }) {
-  // SUGGESTION: maybe rename?
-  const moduleMetas: SocketHandlerMeta<Ctx, TSchema, boolean>[] = [];
-  // SUGGESTION: name it like validators?
-  const schemasCache: Map<
+  const moduleMetas: (HandlerMeta<Ctx, true> | HandlerMeta<Ctx, false>)[] = [];
+
+  const schemasCache = new Map<
     TSchema,
     ReturnType<typeof TypeCompiler.Compile>
-  > = new Map();
+  >();
 
-  function defineSocketHandler<
-    Schema extends TSchema,
-    ExpectCb extends boolean = false,
-  >(meta: SocketHandlerMeta<Ctx, Schema, ExpectCb>) {
+  function defineSocketHandler<ExpectCb extends boolean = false>(
+    meta: HandlerMeta<Ctx, ExpectCb>
+  ) {
     if (meta.config?.schema && !schemasCache.has(meta.config.schema)) {
       try {
         const validator = TypeCompiler.Compile(meta.config.schema);

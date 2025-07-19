@@ -43,7 +43,7 @@ export class mediasoupConn {
       },
     });
 
-    stream.getAudioTracks().forEach((track) => (track.enabled = true));
+    stream.getAudioTracks();
 
     this.audioStream = stream;
 
@@ -156,7 +156,7 @@ export class mediasoupConn {
   }
 
   async consume(producerId: string) {
-    if (!this.device) {
+    if (!this.device || !this.device.loaded) {
       console.error("device not initialized");
       return;
     }
@@ -327,28 +327,14 @@ export class mediasoupConn {
     this.socket.emit("closeProducer", { type: "video" });
   }
 
-  muteMic() {
-    const audioProducer = this.producers.get("audio");
-
-    if (audioProducer) {
-      audioProducer.pause();
-      this.muted = true;
-      this.socket.emit("micOff");
-    } else {
-      console.log("Audio producer not created");
+  switchMic() {
+    if (this.audioStream) {
+      this.muted = !this.muted;
+      this.audioStream.getAudioTracks()[0].enabled = !this.muted;
+      this.socket.emit("switchMic", { muted: this.muted });
     }
-  }
 
-  unMuteMic() {
-    const audioProducer = this.producers.get("audio");
-
-    if (audioProducer) {
-      audioProducer.resume();
-      this.muted = false;
-      this.socket.emit("micOn");
-    } else {
-      console.log("Audio producer not created");
-    }
+    return this.muted;
   }
 
   close() {

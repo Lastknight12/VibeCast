@@ -34,8 +34,10 @@ sfuModule.defineSocketHandler({
 
     room.peers.delete(user.id);
     socket.broadcast.to(payload.roomName).emit("userDisconnect", user.id);
-    socket.broadcast.emit("userLeftRoom", payload.roomName, user.id);
-    socket.emit("userLeftRoom", payload.roomName, user.id);
+    if (room.type === "public") {
+      socket.broadcast.emit("userLeftRoom", payload.roomName, user.id);
+      socket.emit("userLeftRoom", payload.roomName, user.id);
+    }
 
     if (room.peers.size === 0) {
       rooms.delete(payload.roomName);

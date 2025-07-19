@@ -2,7 +2,7 @@ import { createWorker } from "mediasoup";
 import { Worker } from "mediasoup/node/lib/types";
 import os from "node:os";
 
-let workers: Worker[] = [];
+const workers: Worker[] = [];
 let nextMediasoupWorkerIdx = 0;
 
 export function getMediasoupWorker(): Worker {
@@ -19,10 +19,13 @@ export async function createMediasoupWorkers() {
       logLevel: "debug",
       logTags: ["info", "ice", "dtls", "rtp", "srtp", "rtcp"],
     });
-    worker.on("died", () => {
-      console.error(`Mediasoup worker #${i} died, exiting in 2 seconds...`);
+    worker.on("died", (data) => {
+      console.error(
+        `Mediasoup worker #${i} died, exiting in 2 seconds. ${data}`
+      );
       setTimeout(() => process.exit(1), 2000);
     });
+
     workers.push(worker);
   }
 }

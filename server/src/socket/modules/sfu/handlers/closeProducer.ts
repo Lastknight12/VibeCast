@@ -38,9 +38,11 @@ sfuModule.defineSocketHandler({
       return;
     }
 
-    const onConsumerClosed = (consumerId) => {
+    const onConsumerClosed = (consumerId: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       socket.broadcast.to(user.roomName!).emit("consumerClosed", consumerId);
     };
+
     switch (payload.type) {
       case "video": {
         const videoProducer = peer.producers.screenShare?.video;

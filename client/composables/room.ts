@@ -44,9 +44,6 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     socket.on("micOff", handleUserMuted);
     socket.on("micOn", handleUserUnMuted);
 
-    socket.on("addActiveSpeaker", handleAddSpeaker);
-    socket.on("removeActiveSpeaker", handleRemoveSpeaker);
-
     socket.on("leaveRoom", handleLeaveRoom);
   };
 
@@ -60,9 +57,6 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
     socket.off("micOff", handleUserMuted);
     socket.off("micOn", handleUserUnMuted);
-
-    socket.off("addActiveSpeaker", handleAddSpeaker);
-    socket.off("removeActiveSpeaker", handleRemoveSpeaker);
 
     socket.off("leaveRoom", handleLeaveRoom);
   };
@@ -78,14 +72,6 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const handleLeaveRoom = () => {
     mediaConn.close();
     disconnected.value = true;
-  };
-
-  const handleAddSpeaker = (userId: string) => {
-    activeSpeakers.value.add(userId);
-  };
-
-  const handleRemoveSpeaker = (userId: string) => {
-    activeSpeakers.value.delete(userId);
   };
 
   const handleUserJoin = (data: { user: User }) => {
@@ -176,34 +162,14 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const startAudio = async () => {
     const stream = await mediaConn.getAudioStream();
 
-    const audioContext = new AudioContext();
-    await audioContext.audioWorklet.addModule("/volume-processor.js");
-
-    const source = audioContext.createMediaStreamSource(stream);
-    const workletNode = new AudioWorkletNode(audioContext, "volume-processor");
-    source.connect(workletNode);
-
-    workletNode.port.onmessage = (event) => {
-      const { isSpeaking: speakingNow } = event.data;
-
-      if (speakingNow && !muted.value && !isSpeaking.value) {
-        isSpeaking.value = true;
-        socket.emit("activeSpeaker", { type: "add" });
-      } else if (!speakingNow && isSpeaking.value) {
-        isSpeaking.value = false;
-        socket.emit("activeSpeaker", { type: "remove" });
-      }
-    };
+    const { speaking } = useStreamVolume(stream);
+    watch(speaking, (currSpeaking) => {
+      isSpeaking.value = currSpeaking && !muted.value;
+    });
   };
 
   const switchMic = () => {
-    if (muted.value) {
-      mediaConn.unMuteMic();
-      muted.value = false;
-    } else {
-      mediaConn.muteMic();
-      muted.value = true;
-    }
+    muted.value = mediaConn.switchMic();
   };
 
   const handlePeers = async (
@@ -243,6 +209,17 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
         voiceMuted: peer.voiceMuted,
         userData: peer.user,
       });
+
+      if (audioStream) {
+        const { speaking } = useStreamVolume(audioStream);
+        watch(speaking, (currSpeaking) => {
+          if (currSpeaking) {
+            activeSpeakers.value.add(peer.user.id);
+          } else {
+            activeSpeakers.value.delete(peer.user.id);
+          }
+        });
+      }
     }
   };
 
@@ -282,7 +259,6 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
             await mediaConn.createTransport("send");
             await mediaConn.createTransport("recv");
             await mediaConn.produce("audio");
-
             socket.emit("getRoomPeers", handlePeers);
 
             resolve(null);

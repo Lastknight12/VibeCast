@@ -2,7 +2,7 @@ import { Consumer, Producer, Transport } from "mediasoup/node/lib/types";
 import { DataList } from "./dataList";
 import { User } from "better-auth/types";
 
-type Peer = {
+interface Peer {
   sockets: DataList<string>;
   voiceMuted: boolean;
   producers: {
@@ -18,11 +18,12 @@ type Peer = {
     recv?: Transport;
   };
   user: User;
-};
+}
 
 export class PeersMap<K extends string = string> extends Map<K, Peer> {
   private cleanupPeerConnection(peer: Peer) {
     Object.values(peer.transports).forEach((t) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       t && t.close();
     });
   }

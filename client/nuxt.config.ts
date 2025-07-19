@@ -11,7 +11,7 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     public: {
-      backendUrl: process.env.BACKEND_URL,
+      backendUrl: process.env.NUXT_PUBLIC_BACKEND_URL,
     },
   },
   components: {

@@ -2,9 +2,8 @@ import { getMediasoupWorker } from "src/lib/worker";
 import { RtpCodecCapability } from "mediasoup/node/lib/types";
 import { PeersMap } from "src/lib/peersMap";
 import { Static, Type } from "@sinclair/typebox";
-import roomModule from "../index";
+import roomModule from "..";
 import { ErrorCb, HandlerInput } from "src/socket/core/types";
-import { TypeCompiler } from "@sinclair/typebox/build/cjs/compiler";
 
 const createRoomSchema = Type.Object({
   roomName: Type.String({ minLength: 1 }),

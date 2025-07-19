@@ -32,11 +32,11 @@ export function closeRelatedConsumers(
     return;
   }
 
-  for (const [_, peer] of room.peers) {
-    const consumerEntries = Array.from(peer.consumers.entries());
+  const producerIdsSet = new Set(producerIds);
 
-    for (const [consumerId, consumer] of consumerEntries) {
-      if (producerIds.includes(consumer.producerId)) {
+  for (const [_, peer] of room.peers) {
+    for (const [consumerId, consumer] of peer.consumers.entries()) {
+      if (producerIdsSet.has(consumer.producerId)) {
         consumer.close();
         peer.consumers.delete(consumerId);
         onConsumerClosed?.(consumerId);

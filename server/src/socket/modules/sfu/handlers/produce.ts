@@ -1,7 +1,8 @@
 import { Static, Type } from "@sinclair/typebox";
 import sfuModule from "..";
-import { HandlerInput } from "src/socket/core/types";
+import { ErrorCb, HandlerInput } from "src/socket/core/types";
 import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
+import { ProducerType } from "mediasoup/node/lib/ProducerTypes";
 
 const rtpCodecParametersSchema = Type.Object({
   mimeType: Type.String(),
@@ -68,7 +69,7 @@ const produceSchema = Type.Object({
 
 type Data = HandlerInput<{
   payload: Static<typeof produceSchema>;
-  cb: (data: any) => void;
+  cb: (data: { id: string } | Parameters<ErrorCb>[0]) => void;
 }>;
 
 sfuModule.defineSocketHandler({
@@ -82,6 +83,7 @@ sfuModule.defineSocketHandler({
     const { payload, cb } = params;
 
     const { user } = socket.data;
+
     if (!user.roomName) {
       console.log("User not joined room");
       return;
@@ -109,8 +111,10 @@ sfuModule.defineSocketHandler({
         break;
       }
       case "video_audio": {
-        peer.producers.screenShare &&
-          (peer.producers.screenShare.audio = producer);
+        // TODO: throw error if no screenshare producer provided
+        if (peer.producers.screenShare) {
+          peer.producers.screenShare.audio = producer;
+        }
         break;
       }
     }
@@ -123,7 +127,7 @@ sfuModule.defineSocketHandler({
         "newProducer",
         producer.id,
         user.id,
-        payload.parameters.appData.type
+        payload.parameters.appData.type as ProducerType
       );
   },
 });

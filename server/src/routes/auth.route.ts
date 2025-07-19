@@ -1,5 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { auth } from "../lib/auth";
+import { env } from "src/config";
 
 export default async function authRouter(fastify: FastifyInstance) {
   if (!fastify.hasDecorator("userSession")) {
@@ -33,7 +34,7 @@ export default async function authRouter(fastify: FastifyInstance) {
         response.headers.forEach((value, key) => reply.header(key, value));
 
         if (url.toString().includes("/api/auth/callback")) {
-          reply.redirect(process.env.FRONTEND_URL!);
+          reply.redirect(env.FRONTEND_URL);
         } else {
           reply.send(response.body ? await response.text() : null);
         }

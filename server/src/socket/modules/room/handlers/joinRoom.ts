@@ -31,8 +31,9 @@ roomModule.defineSocketHandler({
       return;
     }
 
-    const previousPeer = room.peers.get(socket.data.user.id);
+    const previousPeer = room.peers.get(user.id);
     if (previousPeer) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const socketId = previousPeer.sockets.pop()!;
       const socket = io.sockets.sockets.get(socketId);
 
@@ -43,6 +44,7 @@ roomModule.defineSocketHandler({
     socket.join(roomName);
     socket.data.user.roomName = roomName;
 
+    // SUGGESTION: refactor that. Maybe dont create new datalist, instead add update / replace method for peer instance
     room.peers.set(user.id, {
       sockets: new DataList([socket.id]),
       transports: {},
@@ -57,7 +59,7 @@ roomModule.defineSocketHandler({
       socket.broadcast.emit("userJoinRoom", roomName, {
         id: user.id,
         name: user.name,
-        image: user.image!,
+        image: user.image ?? "",
       });
     }
 

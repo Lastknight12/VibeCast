@@ -80,7 +80,7 @@ async function leave() {
     <p class="text-2xl">
       {{
         room.refs.disconnected.value
-          ? "You joined on another device"
+          ? "You have joined on another device."
           : room.refs.joinRoomErrorMessage.value
       }}
     </p>
