@@ -11,6 +11,7 @@ const envSchema = Type.Object({
 
   GOOGLE_CLIENT_ID: Type.String({ minLength: 1 }),
   GOOGLE_CLIENT_SECRET: Type.String({ minLength: 1 }),
+  GOOGLE_REDIRECT_URL: Type.String({ minLength: 1 }),
 
   CLOUDINARY_CLOUD_NAME: Type.String({ minLength: 1 }),
   CLOUDINARY_API_KEY: Type.String({ minLength: 1 }),

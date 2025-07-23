@@ -14,6 +14,7 @@ export const auth = betterAuth({
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
+      redirectURI: env.GOOGLE_REDIRECT_URL,
       async mapProfileToUser(profile) {
         try {
           const res = await axios.get(profile.picture, {
@@ -38,7 +39,9 @@ export const auth = betterAuth({
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       if (ctx.path.startsWith("/callback/:id")) {
-        ctx.redirect(env.FRONTEND_URL);
+        if (ctx.context.newSession) {
+          ctx.redirect(env.FRONTEND_URL);
+        }
       }
     }),
   },
