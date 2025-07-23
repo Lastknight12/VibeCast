@@ -17,7 +17,6 @@ const socket = useSocket();
 const authClient = useAuthClient();
 
 const session = await authClient.useSession(useCustomFetch);
-console.log(session.data.value);
 
 const rooms = ref<
   Map<string, { peers: Map<string, Pick<User, "id" | "name" | "image">> }>

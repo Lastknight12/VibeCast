@@ -15,10 +15,10 @@ export const auth = betterAuth({
     cookies: {
       session_token: {
         name: "token",
-        options: {
+        attributes: {
           httpOnly: true,
           secure: true,
-          sameSite: "none",
+          sameSite: "None",
           path: "/",
         },
       },
