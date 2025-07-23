@@ -1,6 +1,6 @@
 import { Static, Type } from "@sinclair/typebox";
 import sfuModule from "..";
-import { ErrorCb, HandlerInput } from "src/socket/core/types";
+import { ErrorCb, HandlerInput } from "src/socket/core";
 import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
 import { ProducerType } from "mediasoup/node/lib/ProducerTypes";
 

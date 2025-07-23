@@ -1,4 +1,4 @@
-import { ErrorCb, HandlerInput } from "src/socket/core/types";
+import { ErrorCb, HandlerInput } from "src/socket/core";
 import roomModule from "..";
 import { RoomPeer } from "../types";
 

@@ -1,4 +1,4 @@
-import { HandlerInput } from "src/socket/core/types";
+import { HandlerInput } from "src/socket/core";
 import sfuModule from "..";
 import { Static, Type } from "@sinclair/typebox";
 

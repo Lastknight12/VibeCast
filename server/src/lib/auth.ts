@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "./db";
 import { cloudinary } from "./cloudinary";
@@ -33,6 +34,13 @@ export const auth = betterAuth({
         }
       },
     },
+  },
+  hooks: {
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path.startsWith("/callback/:id")) {
+        ctx.redirect(env.FRONTEND_URL);
+      }
+    }),
   },
   trustedOrigins: [env.FRONTEND_URL],
 });

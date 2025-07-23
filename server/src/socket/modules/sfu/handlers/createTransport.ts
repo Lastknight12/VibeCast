@@ -1,7 +1,7 @@
 import { Static, Type } from "@sinclair/typebox";
 import sfuModule from "..";
 import { createWebRtcTransport } from "../sfu.utils";
-import { ErrorCb, HandlerInput } from "src/socket/core/types";
+import { ErrorCb, HandlerInput } from "src/socket/core";
 import {
   DtlsParameters,
   IceCandidate,

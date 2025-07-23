@@ -2,6 +2,17 @@
 import CreateRoomDialog from "~/components/CreateRoomDialog.vue";
 import type { User } from "better-auth/types";
 
+useHead({
+  title: "VibeCast homepage",
+  meta: [
+    {
+      name: "description",
+      content:
+        "VibeCast is a video conferencing app where you can create a room and invite your friends to speak together!",
+    },
+  ],
+});
+
 const socket = useSocket();
 const authClient = useAuthClient();
 

@@ -1,6 +1,5 @@
 import { FastifyInstance } from "fastify";
 import { auth } from "../lib/auth";
-import { env } from "src/config";
 
 export default async function authRouter(fastify: FastifyInstance) {
   if (!fastify.hasDecorator("userSession")) {
@@ -14,7 +13,7 @@ export default async function authRouter(fastify: FastifyInstance) {
       try {
         const url = new URL(
           request.url,
-          `${request.protocol}://${request.headers.host}`
+          `${request.protocol}://${request.host}`
         );
 
         const headers = new Headers();
@@ -32,12 +31,7 @@ export default async function authRouter(fastify: FastifyInstance) {
 
         reply.status(response.status);
         response.headers.forEach((value, key) => reply.header(key, value));
-
-        if (url.toString().includes("/api/auth/callback")) {
-          reply.redirect(env.FRONTEND_URL);
-        } else {
-          reply.send(response.body ? await response.text() : null);
-        }
+        reply.send(response.body ? await response.text() : null);
       } catch (error) {
         fastify.log.error("Authentication Error:", error);
         reply.status(500).send({

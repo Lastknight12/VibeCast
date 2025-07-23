@@ -1,4 +1,4 @@
-import { ErrorCb, HandlerInput } from "src/socket/core/types";
+import { ErrorCb, HandlerInput } from "src/socket/core";
 import sfuModule from "..";
 import { getRoomRouter } from "../sfu.utils";
 import { RtpCapabilities } from "mediasoup/node/lib/rtpParametersTypes";

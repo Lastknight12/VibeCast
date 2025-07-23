@@ -2,11 +2,14 @@ import { FastifyInstance } from "fastify";
 import { Server } from "socket.io";
 
 import { env } from "src/config";
-import { HandlerMeta } from "src/socket/core/types";
-import { createGlobalContext } from "src/socket/core/globalContext";
+import { HandlerMeta } from "src/socket/core";
+import {
+  createGlobalContext,
+  enhanceSocket,
+  preloadModules,
+  type CustomOnConfig,
+} from "src/socket/core";
 import { socketGuard } from "src/guards/socket";
-import { enhanceSocket, preloadModules } from "src/socket/core";
-import { CustomOnConfig } from "src/socket/core/enhanceSocket";
 import { logger } from "src/lib/logger";
 
 let preloadedModules: Awaited<ReturnType<typeof preloadModules>> = {};

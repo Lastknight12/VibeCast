@@ -19,7 +19,7 @@
     "clsx": "^2.1.1",
     "lucide-vue-next": "^0.511.0",
     "mediasoup-client": "^3.11.0",
-    "nuxt": "^3.17.3",
+    "nuxt": "^4.0.1",
     "reka-ui": "^2.3.0",
     "shadcn-nuxt": "^2.1.0",
     "socket.io-client": "^4.8.1",

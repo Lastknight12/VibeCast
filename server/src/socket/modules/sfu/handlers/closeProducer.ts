@@ -1,6 +1,6 @@
 import { Static, Type } from "@sinclair/typebox";
 import sfuModule from "..";
-import { HandlerInput } from "src/socket/core/types";
+import { HandlerInput } from "src/socket/core";
 import { closeRelatedConsumers } from "../sfu.utils";
 
 const closeProducerSchema = Type.Object({

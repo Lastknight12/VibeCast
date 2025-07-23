@@ -1,6 +1,6 @@
 import { Static, Type } from "@sinclair/typebox";
 import sfuModule from "..";
-import { HandlerInput } from "src/socket/core/defineModuleFactory";
+import { HandlerInput } from "src/socket/core";
 
 const switchMicSchema = Type.Object({
   muted: Type.Boolean(),

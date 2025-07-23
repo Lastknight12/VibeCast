@@ -1,8 +1,7 @@
 import { TSchema } from "@sinclair/typebox";
-import { GlobalContext } from "./globalContext";
+import { GlobalContext, DefaultHandlerCb } from "src/socket/core";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { logger } from "src/lib/logger";
-import { DefaultHandlerCb } from "./types";
 
 export type HandlerInput<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -2,7 +2,7 @@ import { DataList } from "src/lib/dataList";
 
 import { Type } from "@sinclair/typebox";
 import roomModule from "..";
-import { ErrorCb, HandlerInput } from "src/socket/core/types";
+import { ErrorCb, HandlerInput } from "src/socket/core";
 
 const joinRoomSchema = Type.Object({
   roomName: Type.String({ minLength: 1 }),

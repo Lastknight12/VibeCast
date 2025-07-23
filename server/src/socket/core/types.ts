@@ -1,6 +1,4 @@
 import { ProducerType } from "mediasoup/node/lib/types";
-import { HandlerInput, HandlerMeta } from "./defineModuleFactory";
-import { GlobalContext } from "./globalContext";
 import { User } from "better-auth/types";
 
 export interface EventError {
@@ -17,9 +15,9 @@ export interface EventError {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DefaultHandlerCb = (...args: any[]) => void;
 
-type ErrorCb = (data: { error?: string }) => void;
+export type ErrorCb = (data: { error?: string }) => void;
 
-interface ServerToClientEvents {
+export interface ServerToClientEvents {
   error: (payload: EventError) => void;
   newProducer: (producerId: string, userId: string, type: ProducerType) => void;
   consumerClosed: (consumerId: string) => void;
@@ -47,11 +45,3 @@ interface ServerToClientEvents {
   ) => void;
   leaveRoom: () => void;
 }
-
-export {
-  HandlerInput,
-  HandlerMeta,
-  ErrorCb,
-  GlobalContext,
-  ServerToClientEvents,
-};

@@ -2,7 +2,11 @@ import { TSchema } from "@sinclair/typebox";
 import { Socket } from "socket.io";
 import { DefaultEventsMap, EventsMap } from "socket.io/dist/typed-events";
 import { CustomSocket, SocketData } from "src/types/socket";
-import { DefaultHandlerCb, EventError, ServerToClientEvents } from "./types";
+import {
+  DefaultHandlerCb,
+  EventError,
+  ServerToClientEvents,
+} from "src/socket/core";
 import {
   TypeCheck,
   TypeCompiler,

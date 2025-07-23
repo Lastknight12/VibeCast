@@ -1,6 +1,6 @@
 import { User } from "better-auth/types";
 import roomModule from "..";
-import { ErrorCb, HandlerInput } from "src/socket/core/types";
+import { ErrorCb, HandlerInput } from "src/socket/core";
 
 export type Data = HandlerInput<{
   cb: (

@@ -1,6 +1,20 @@
 <script setup lang="ts">
 import { useRoom } from "~/composables/room";
 
+const route = useRoute();
+const roomName = route.params.roomName as string;
+
+useHead({
+  title: `Room: "${route.params.roomName}"`,
+  meta: [
+    {
+      name: "description",
+      content:
+        "VibeCast is a video conferencing app where you can create a room and invite your friends to speak together!",
+    },
+  ],
+});
+
 const loading = ref(true);
 const showContent = ref(false);
 const hasJoinRoomError = computed(() => !!room.refs.joinRoomErrorMessage.value);
@@ -18,11 +32,16 @@ const canShowContent = computed(
 const authClient = useAuthClient();
 const { data: session } = await authClient.getSession();
 
-const route = useRoute();
-const roomName = route.params.roomName as string;
-
 const mediaConn = new mediasoupConn(roomName);
 const room = useRoom(roomName, mediaConn);
+
+watchEffect(() => {
+  useHead({
+    title: `Room: "${route.params.roomName}" | ${
+      room.refs.peers.value.size + 1
+    } peers`,
+  });
+});
 
 onMounted(async () => {
   if (!session) {

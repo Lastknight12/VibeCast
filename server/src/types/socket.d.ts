@@ -1,6 +1,5 @@
 import { DefaultEventsMap, type Socket } from "socket.io";
-import { ServerToClientEvents } from "src/socket/core/types";
-import { CustomOn } from "src/socket/core/enhanceSocket";
+import { ServerToClientEvents, CustomOn } from "src/socket/core";
 import { User } from "better-auth/*";
 
 export interface SocketData {

@@ -23,5 +23,5 @@ export default defineConfig(
       ],
     },
   },
-  globalIgnores(["node_modules/", "dist/", "ci/", "test/"])
+  globalIgnores(["node_modules", "dist", "ci", "test"])
 );
