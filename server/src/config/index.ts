@@ -2,9 +2,10 @@ import { Type, Static } from "@sinclair/typebox";
 
 import dotenv from "dotenv";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
-import { logger } from "src/lib/logger";
 
 const envSchema = Type.Object({
+  LOGGER_INFO: Type.Optional(Type.String({ minLength: 1 })),
+
   DATABASE_URL: Type.String({ minLength: 1 }),
   ANNOUNCED_IP: Type.String({ minLength: 1 }),
 
@@ -17,8 +18,8 @@ const envSchema = Type.Object({
 
   FRONTEND_URL: Type.String({ minLength: 1 }),
 
-  API_HOST: Type.Optional(Type.String()),
-  API_PORT: Type.Optional(Type.String()),
+  HOST: Type.Optional(Type.String()),
+  PORT: Type.Optional(Type.String()),
 });
 
 export const env: Static<typeof envSchema> = {} as Static<typeof envSchema>;
@@ -39,9 +40,9 @@ export const env: Static<typeof envSchema> = {} as Static<typeof envSchema>;
 
   if (!valid) {
     const error = validator.Errors(process.env).First();
-    logger.error("Error validation env config");
-    logger.error(`${error?.path} - ${error?.message}`);
-    process.exit(1);
+    throw new Error(
+      `Error loading env variable: ${error?.path} - ${error?.message}`
+    );
   }
 
   for (const key of Object.keys(envSchema.properties ?? {})) {

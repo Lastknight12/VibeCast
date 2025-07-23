@@ -5,11 +5,13 @@ import { initializeSocketServer } from "./setup/socket";
 import { createMediasoupWorkers } from "./lib/worker";
 
 async function startServer() {
-  const port = Number(env.API_PORT) || 5001;
-  const host = env.API_HOST || "localhost";
+  const port = Number(env.PORT) || 5001;
+  const host = env.HOST || "localhost";
 
   const server = fastify({
-    logger: false,
+    logger: {
+      level: env.LOGGER_INFO,
+    },
   });
 
   await createMediasoupWorkers();

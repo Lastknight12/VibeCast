@@ -10,7 +10,6 @@ import {
   type CustomOnConfig,
 } from "src/socket/core";
 import { socketGuard } from "src/guards/socket";
-import { logger } from "src/lib/logger";
 
 let preloadedModules: Awaited<ReturnType<typeof preloadModules>> = {};
 
@@ -75,6 +74,4 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
       }
     }
   });
-
-  logger.info(`Socket server started`);
 }
