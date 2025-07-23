@@ -5,5 +5,8 @@ export function useAuthClient() {
 
   return createAuthClient({
     baseURL: config.public.backendUrl,
+    fetchOptions: {
+      credentials: "include",
+    },
   });
 }

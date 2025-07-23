@@ -6,6 +6,8 @@ import { TypeCompiler } from "@sinclair/typebox/compiler";
 const envSchema = Type.Object({
   LOGGER_INFO: Type.Optional(Type.String({ minLength: 1 })),
 
+  AUTH_SECRET: Type.String({ minLength: 1 }),
+
   DATABASE_URL: Type.String({ minLength: 1 }),
   ANNOUNCED_IP: Type.String({ minLength: 1 }),
 

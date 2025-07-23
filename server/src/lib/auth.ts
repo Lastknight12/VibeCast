@@ -10,6 +10,20 @@ export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
   }),
+  secret: env.AUTH_SECRET,
+  advanced: {
+    cookies: {
+      session_token: {
+        name: "token",
+        options: {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          path: "/",
+        },
+      },
+    },
+  },
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
@@ -39,9 +53,7 @@ export const auth = betterAuth({
   hooks: {
     after: createAuthMiddleware(async (ctx) => {
       if (ctx.path.startsWith("/callback/:id")) {
-        if (ctx.context.newSession) {
-          ctx.redirect(env.FRONTEND_URL);
-        }
+        ctx.redirect(env.FRONTEND_URL);
       }
     }),
   },
