@@ -1,4 +1,3 @@
-import path from "path";
 import { Type, Static } from "@sinclair/typebox";
 
 import dotenv from "dotenv";
@@ -25,13 +24,11 @@ const envSchema = Type.Object({
 export const env: Static<typeof envSchema> = {} as Static<typeof envSchema>;
 
 (function () {
-  const envPath = path.join(__dirname, "..", "..", ".env");
-
-  const result = dotenv.config({ path: envPath });
+  const result = dotenv.config();
 
   if (result.error) {
     throw new Error(
-      `Failed to load .env file from path ${envPath}: ${result.error.message}`
+      `Failed to load .env file from path: ${result.error.message}`
     );
   }
 
