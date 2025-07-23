@@ -9,7 +9,7 @@ const envSchema = Type.Object({
   AUTH_SECRET: Type.String({ minLength: 1 }),
 
   DATABASE_URL: Type.String({ minLength: 1 }),
-  ANNOUNCED_IP: Type.String({ minLength: 1 }),
+  ANNOUNCED_IPS: Type.String({ minLength: 1 }),
 
   GOOGLE_CLIENT_ID: Type.String({ minLength: 1 }),
   GOOGLE_CLIENT_SECRET: Type.String({ minLength: 1 }),

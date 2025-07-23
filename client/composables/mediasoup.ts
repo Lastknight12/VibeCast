@@ -329,8 +329,10 @@ export class mediasoupConn {
 
   switchMic() {
     if (this.audioStream) {
+      if (!this.audioStream.getAudioTracks()[0]) return;
+
       this.muted = !this.muted;
-      this.audioStream.getAudioTracks()[0].enabled = !this.muted;
+      this.audioStream.getAudioTracks()[0]!.enabled = !this.muted;
       this.socket.emit("switchMic", { muted: this.muted });
     }
 

@@ -3,8 +3,14 @@ import { rooms } from "src/lib/roomState";
 import { env } from "src/config";
 
 export async function createWebRtcTransport(router: Router) {
+  const ips = env.ANNOUNCED_IPS.split(",");
   const transport = await router.createWebRtcTransport({
-    listenIps: [{ ip: "0.0.0.0", announcedIp: env.ANNOUNCED_IP }],
+    listenIps: ips.map((ip) => {
+      return {
+        ip: "0.0.0.0",
+        announcedIp: ip,
+      };
+    }),
     enableUdp: true,
     enableTcp: true,
     preferUdp: true,
