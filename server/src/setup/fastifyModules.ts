@@ -5,6 +5,7 @@ import helmet from "@fastify/helmet";
 import fastifyCookie from "@fastify/cookie";
 import authRouter from "../routes/auth.route";
 import { env } from "../config";
+import pingRouter from "src/routes/ping.route";
 
 export function setupModules(server: FastifyInstance) {
   server.register(fastifyCookie, {
@@ -22,6 +23,7 @@ export function setupModules(server: FastifyInstance) {
   });
 
   server.register(authRouter);
+  server.register(pingRouter);
 
   server.setErrorHandler((error, _request, reply) => {
     server.log.error(error);
