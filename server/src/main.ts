@@ -4,10 +4,10 @@ import { setupModules } from "./setup/fastifyModules";
 import { initializeSocketServer } from "./setup/socket";
 import { createMediasoupWorkers } from "./lib/worker";
 
-const port = Number(env.API_PORT) || 5001;
-const host = env.API_HOST || "localhost";
+async function startServer() {
+  const port = Number(env.API_PORT) || 5001;
+  const host = env.API_HOST || "localhost";
 
-const startServer = async () => {
   const server = fastify({
     logger: false,
   });
@@ -41,7 +41,7 @@ const startServer = async () => {
     server.log.error(err);
     process.exit(1);
   }
-};
+}
 
 process.on("unhandledRejection", (err) => {
   console.error("Unhandled Rejection:", err);
