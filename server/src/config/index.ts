@@ -24,12 +24,14 @@ const envSchema = Type.Object({
 export const env: Static<typeof envSchema> = {} as Static<typeof envSchema>;
 
 (function () {
-  const result = dotenv.config();
+  if (process.env.NODE_ENV !== "production") {
+    const result = dotenv.config();
 
-  if (result.error) {
-    throw new Error(
-      `Failed to load .env file from path: ${result.error.message}`
-    );
+    if (result.error) {
+      throw new Error(
+        `Failed to load .env file from path: ${result.error.message}`
+      );
+    }
   }
 
   const validator = TypeCompiler.Compile(envSchema);
