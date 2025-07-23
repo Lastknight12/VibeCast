@@ -16,8 +16,7 @@ useHead({
 const socket = useSocket();
 const authClient = useAuthClient();
 
-const session = await authClient.useSession(useCustomFetch);
-console.log(session.data.value);
+const session = await authClient.getSession();
 
 const rooms = ref<
   Map<string, { peers: Map<string, Pick<User, "id" | "name" | "image">> }>
@@ -105,7 +104,7 @@ onUnmounted(() => {
     >
       <h1 class="text-secondary text-xl">VibeCast</h1>
 
-      <CreateRoomDialog v-if="session.data.value?.user" />
+      <CreateRoomDialog v-if="session.data?.user" />
       <UiButton variant="secondary" size="sm" v-else @click="googleLogin">
         Sign in with Google
       </UiButton>

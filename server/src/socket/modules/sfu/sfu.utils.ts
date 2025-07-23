@@ -1,16 +1,21 @@
 import { Router } from "mediasoup/node/lib/RouterTypes";
 import { rooms } from "src/lib/roomState";
 import { env } from "src/config";
+import { logger } from "src/lib/logger";
 
 export async function createWebRtcTransport(router: Router) {
   const ips = env.ANNOUNCED_IPS.split(",");
+  const listenIps = ips.map((ip) => {
+    return {
+      ip: "0.0.0.0",
+      announcedIp: ip,
+    };
+  });
+
+  logger.info(`Announced IPs: ${JSON.stringify(listenIps)}`);
+
   const transport = await router.createWebRtcTransport({
-    listenIps: ips.map((ip) => {
-      return {
-        ip: "0.0.0.0",
-        announcedIp: ip,
-      };
-    }),
+    listenIps,
     enableUdp: true,
     enableTcp: true,
     preferUdp: true,
