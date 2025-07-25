@@ -16,7 +16,7 @@ let preloadedModules: Awaited<ReturnType<typeof preloadModules>> = {};
 
 (async () => {
   preloadedModules = await preloadModules({
-    modulesDir: path.resolve(__dirname, "..", "socket", "modules"),
+    modulesDir: path.resolve(__dirname, "../socket/modules"),
     logHandlers: false,
   });
 })();

@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { auth } from "../lib/auth";
 
-export default async function authRouter(fastify: FastifyInstance) {
+export default async function (fastify: FastifyInstance) {
   if (!fastify.hasDecorator("userSession")) {
     fastify.decorate("userSession", null);
   }

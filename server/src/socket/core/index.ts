@@ -10,12 +10,7 @@ import {
   type CustomOn,
 } from "./enhanceSocket";
 import { preloadModules } from "./preloadModules";
-import type {
-  ErrorCb,
-  DefaultHandlerCb,
-  ServerToClientEvents,
-  EventError,
-} from "./types";
+import type { ErrorCb, DefaultHandlerCb, EventError } from "./types";
 
 export {
   defineModuleFactory,
@@ -28,7 +23,6 @@ export {
   CustomOnConfig,
   ErrorCb,
   DefaultHandlerCb,
-  ServerToClientEvents,
   EventError,
   CustomOn,
 };

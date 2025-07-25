@@ -10,6 +10,8 @@ interface Opts {
 }
 
 export async function preloadModules(opts: Opts) {
+  const start = performance.now();
+
   const modulesDir = opts.modulesDir;
   const modules = await fg("*/index.{ts,js}", {
     cwd: modulesDir,
@@ -23,11 +25,19 @@ export async function preloadModules(opts: Opts) {
     const moduleName = path.basename(path.dirname(moduleEntry));
 
     try {
-      const mod: { default: ReturnType<typeof defineModuleFactory> } =
+      const module: { default: ReturnType<typeof defineModuleFactory> } =
         await import(moduleEntry);
 
-      if (!mod?.default) {
+      if (!module?.default) {
         logger.error(`Module '${moduleName}' has no default export`);
+        continue;
+      }
+
+      const moduleExports = module.default;
+      if (!moduleExports.moduleMetas) {
+        logger.error(
+          `Module '${moduleName}' default export is missing required properties`
+        );
         continue;
       }
 
@@ -43,24 +53,16 @@ export async function preloadModules(opts: Opts) {
         await import(handler);
       }
 
-      const moduleObj = mod.default;
-      if (!moduleObj.moduleMetas) {
-        logger.error(
-          `Module '${moduleName}' default export is missing required properties`
-        );
-        continue;
-      }
-
       if (opts.logHandlers) {
         logger.info(`Loading module: ${moduleName}`);
-        for (const meta of moduleObj.moduleMetas) {
+        for (const meta of moduleExports.moduleMetas) {
           logger.info(`    ${meta.event}`);
         }
       }
 
       logger.info(`Loaded module: ${moduleName}`);
 
-      res[moduleName] = moduleObj;
+      res[moduleName] = moduleExports;
     } catch (err) {
       logger.error(
         `Error loading module '${moduleName}': ${
@@ -69,6 +71,11 @@ export async function preloadModules(opts: Opts) {
       );
     }
   }
+
+  const end = performance.now();
+  const duration = (end - start).toFixed(2);
+
+  logger.info(`Preload complete in ${duration} ms`);
 
   return res;
 }

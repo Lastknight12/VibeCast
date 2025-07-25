@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 
-export default async function pingRouter(fastify: FastifyInstance) {
+export default async function (fastify: FastifyInstance) {
   fastify.route({
     method: ["GET", "POST"],
     url: "/ping",

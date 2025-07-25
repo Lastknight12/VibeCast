@@ -1,6 +1,6 @@
 import fastify from "fastify";
 import { env } from "./config";
-import { setupModules } from "./setup/fastifyModules";
+import { setupFastifyModules } from "./setup/fastifyModules";
 import { initializeSocketServer } from "./setup/socket";
 import { createMediasoupWorkers } from "./lib/worker";
 
@@ -16,7 +16,7 @@ async function startServer() {
 
   await createMediasoupWorkers();
 
-  setupModules(server);
+  setupFastifyModules(server);
   initializeSocketServer(server);
 
   const signals: NodeJS.Signals[] = ["SIGINT", "SIGTERM"];

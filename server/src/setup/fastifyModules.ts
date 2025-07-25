@@ -1,29 +1,15 @@
 import { FastifyInstance } from "fastify";
-import formbody from "@fastify/formbody";
-import cors from "@fastify/cors";
-import helmet from "@fastify/helmet";
-import fastifyCookie from "@fastify/cookie";
-import authRouter from "../routes/auth.route";
-import { env } from "../config";
-import pingRouter from "src/routes/ping.route";
+import fastifyAutoload from "@fastify/autoload";
+import path from "path";
 
-export function setupModules(server: FastifyInstance) {
-  server.register(fastifyCookie, {
-    secret: "secret",
-    hook: "onRequest",
-  });
-  server.register(formbody);
-  server.register(helmet);
-  server.register(cors, {
-    origin: env.FRONTEND_URL || "http://localhost:3000",
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-    maxAge: 86400,
+export function setupFastifyModules(server: FastifyInstance) {
+  server.register(fastifyAutoload, {
+    dir: path.join(__dirname, "../plugins/external"),
   });
 
-  server.register(authRouter);
-  server.register(pingRouter);
+  server.register(fastifyAutoload, {
+    dir: path.join(__dirname, "../routes"),
+  });
 
   server.setErrorHandler((error, _request, reply) => {
     server.log.error(error);
