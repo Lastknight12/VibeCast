@@ -4,7 +4,17 @@ import dotenv from "dotenv";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 
 const envSchema = Type.Object({
-  LOGGER_INFO: Type.Optional(Type.String({ minLength: 1 })),
+  LOGGER_INFO: Type.Optional(
+    Type.Union([
+      Type.Literal("debug"),
+      Type.Literal("info"),
+      Type.Literal("warn"),
+      Type.Literal("error"),
+      Type.Literal("fatal"),
+      Type.Literal("silent"),
+      Type.Literal("trace"),
+    ])
+  ),
 
   DATABASE_URL: Type.String({ minLength: 1 }),
   ANNOUNCED_IP: Type.String({ minLength: 1 }),
