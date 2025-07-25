@@ -44,7 +44,6 @@ roomModule.defineSocketHandler({
     socket.join(roomName);
     socket.data.user.roomName = roomName;
 
-    // SUGGESTION: refactor that. Maybe dont create new datalist, instead add update / replace method for peer instance
     room.peers.set(user.id, {
       sockets: new DataList([socket.id]),
       transports: {},

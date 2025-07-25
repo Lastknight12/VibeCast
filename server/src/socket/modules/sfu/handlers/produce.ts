@@ -111,7 +111,6 @@ sfuModule.defineSocketHandler({
         break;
       }
       case "video_audio": {
-        // TODO: throw error if no screenshare producer provided
         if (peer.producers.screenShare) {
           peer.producers.screenShare.audio = producer;
         }

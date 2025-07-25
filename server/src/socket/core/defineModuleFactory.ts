@@ -1,5 +1,9 @@
 import { TSchema } from "@sinclair/typebox";
-import { GlobalContext, DefaultHandlerCb } from "src/socket/core";
+import {
+  GlobalContext,
+  DefaultHandlerCb,
+  CustomOnConfig,
+} from "src/socket/core";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { logger } from "src/lib/logger";
 
@@ -14,10 +18,10 @@ export type HandlerInput<
     ? { cb: Data["cb"] }
     : never;
 
-export interface SocketConfig<ExpectCb extends boolean> {
-  schema?: TSchema;
-  expectCb?: ExpectCb;
-}
+export type SocketConfig<ExpectCb extends boolean> = Omit<
+  CustomOnConfig<ExpectCb>,
+  "schema"
+> & { schema?: TSchema };
 
 export type HandlerMeta<
   Ctx extends object,

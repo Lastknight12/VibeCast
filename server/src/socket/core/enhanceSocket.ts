@@ -52,7 +52,6 @@ function isExpectCb(x: CustomOnParams<boolean>): x is CustomOnParams<true> {
 function enhanceSocket(
   _socket: Socket<EventsMap, ServerToClientEvents, DefaultEventsMap, SocketData>
 ): CustomSocket {
-  // TODO: add emitWithAck support
   function customOn(
     params: CustomOnParams<true> | CustomOnParams<false>
   ): void {
