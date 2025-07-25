@@ -36,7 +36,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function extractPayloadAndCb(args: unknown[]): {
-  payload?: object | null;
+  payload?: object;
   cb?: DefaultHandlerCb;
 } {
   const cb: DefaultHandlerCb | undefined =
@@ -55,6 +55,7 @@ function isExpectCb(x: CustomOnParams<boolean>): x is CustomOnParams<true> {
 function enhanceSocket(
   _socket: Socket<EventsMap, ServerToClientEvents, DefaultEventsMap, SocketData>
 ): CustomSocket {
+  // TODO: add emitWithAck support
   function customOn(
     params: CustomOnParams<true> | CustomOnParams<false>
   ): void {

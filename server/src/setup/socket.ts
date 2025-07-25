@@ -10,11 +10,15 @@ import {
   type CustomOnConfig,
 } from "src/socket/core";
 import { socketGuard } from "src/guards/socket";
+import path from "path";
 
 let preloadedModules: Awaited<ReturnType<typeof preloadModules>> = {};
 
 (async () => {
-  preloadedModules = await preloadModules();
+  preloadedModules = await preloadModules({
+    modulesDir: path.resolve(__dirname, "..", "socket", "modules"),
+    logHandlers: false,
+  });
 })();
 
 function isExpectCb<Ctx extends object>(

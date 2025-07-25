@@ -3,9 +3,15 @@ import { defineModuleFactory } from "src/socket/core";
 import { logger } from "src/lib/logger";
 import fg from "fast-glob";
 
-export async function preloadModules() {
-  const modulesDir = path.resolve(__dirname, "..", "modules");
-  const modules = await fg("**/*/index.{ts,js}", {
+interface Opts {
+  modulesDir: string;
+  handlersDir?: string;
+  logHandlers?: boolean;
+}
+
+export async function preloadModules(opts: Opts) {
+  const modulesDir = opts.modulesDir;
+  const modules = await fg("*/index.{ts,js}", {
     cwd: modulesDir,
     onlyFiles: true,
     absolute: true,
@@ -21,27 +27,35 @@ export async function preloadModules() {
         await import(moduleEntry);
 
       if (!mod?.default) {
-        logger.error(`Module ${moduleName} has no default export`);
+        logger.error(`Module '${moduleName}' has no default export`);
         continue;
       }
 
-      const handlersPath = path.join(path.dirname(moduleEntry), "handlers");
-
-      const handlerFiles = await fg("*.+(ts|js)", {
-        cwd: handlersPath,
+      const handlersDir =
+        opts.handlersDir ?? path.join(path.dirname(moduleEntry), "handlers");
+      const moduleHandlers = await fg("*.+(ts|js)", {
+        cwd: handlersDir,
         onlyFiles: true,
+        absolute: true,
       });
 
-      for (const file of handlerFiles) {
-        await import(path.join(handlersPath, file));
+      for (const handler of moduleHandlers) {
+        await import(handler);
       }
 
       const moduleObj = mod.default;
       if (!moduleObj.moduleMetas) {
         logger.error(
-          `Module ${moduleName} default export is missing required properties`
+          `Module '${moduleName}' default export is missing required properties`
         );
         continue;
+      }
+
+      if (opts.logHandlers) {
+        logger.info(`Loading module: ${moduleName}`);
+        for (const meta of moduleObj.moduleMetas) {
+          logger.info(`    ${meta.event}`);
+        }
       }
 
       logger.info(`Loaded module: ${moduleName}`);
@@ -49,7 +63,7 @@ export async function preloadModules() {
       res[moduleName] = moduleObj;
     } catch (err) {
       logger.error(
-        `Error loading module ${moduleName}: ${
+        `Error loading module '${moduleName}': ${
           err instanceof Error ? err.message : String(err)
         }`
       );
