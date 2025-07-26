@@ -15,6 +15,7 @@ roomModule.defineSocketHandler({
   config: {
     schema: joinRoomSchema,
     expectCb: true,
+    protected: true,
   },
   handler: async (ctx, data: Data) => {
     const { socket, io, rooms } = ctx;

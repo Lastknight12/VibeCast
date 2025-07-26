@@ -15,6 +15,7 @@ sfuModule.defineSocketHandler({
   event: "closeProducer",
   config: {
     schema: closeProducerSchema,
+    protected: true,
   },
   handler(ctx, params: Data) {
     const { socket, rooms } = ctx;

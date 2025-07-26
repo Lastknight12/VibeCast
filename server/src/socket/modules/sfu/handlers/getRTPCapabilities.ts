@@ -11,6 +11,7 @@ sfuModule.defineSocketHandler({
   event: "getRTPCapabilities",
   config: {
     expectCb: true,
+    protected: true,
   },
   handler(ctx, params: Data) {
     const { socket } = ctx;

@@ -14,6 +14,7 @@ sfuModule.defineSocketHandler({
   event: "leave",
   config: {
     schema: leaveSchema,
+    protected: true,
   },
   handler: (ctx, params: Data) => {
     const { socket, rooms } = ctx;

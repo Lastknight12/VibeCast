@@ -67,8 +67,9 @@ type Data = HandlerInput<{
 sfuModule.defineSocketHandler({
   event: "consume",
   config: {
-    expectCb: true,
     schema: consumeSchema,
+    expectCb: true,
+    protected: true,
   },
   handler: async (ctx, params: Data) => {
     const { socket, rooms } = ctx;

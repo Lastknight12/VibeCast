@@ -26,6 +26,7 @@ sfuModule.defineSocketHandler({
   config: {
     schema: connectTransportSchema,
     expectCb: true,
+    protected: true,
   },
   handler: async (ctx, params: Data) => {
     const { rooms, socket } = ctx;

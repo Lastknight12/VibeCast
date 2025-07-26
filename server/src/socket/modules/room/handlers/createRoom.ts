@@ -30,6 +30,7 @@ roomModule.defineSocketHandler({
   config: {
     schema: createRoomSchema,
     expectCb: true,
+    protected: true,
   },
   handler: async (ctx, data: Data) => {
     const { socket, rooms } = ctx;

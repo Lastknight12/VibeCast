@@ -23,11 +23,7 @@ export async function socketGuard(
       headers,
     });
 
-    if (!session || !session.user) {
-      return next(new Error("Unauthorized"));
-    }
-
-    socket.data.user = { ...session.user, roomName: undefined };
+    socket.data.user = { ...session?.user, roomName: undefined };
     next();
   } catch (_) {
     next(new Error("Authentication error"));

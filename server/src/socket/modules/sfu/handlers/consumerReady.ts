@@ -14,6 +14,7 @@ sfuModule.defineSocketHandler({
   event: "consumerReady",
   config: {
     schema: consumerReadySchema,
+    protected: true,
   },
   handler: (ctx, params: Data) => {
     const { socket, rooms } = ctx;

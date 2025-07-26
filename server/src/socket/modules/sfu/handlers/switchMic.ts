@@ -12,6 +12,7 @@ sfuModule.defineSocketHandler({
   event: "switchMic",
   config: {
     schema: switchMicSchema,
+    protected: true,
   },
   handler: (ctx, data: Data) => {
     const { socket, rooms } = ctx;

@@ -1,18 +1,14 @@
-import { TSchema } from "@sinclair/typebox";
 import { Socket } from "socket.io";
 import { DefaultEventsMap, EventsMap } from "socket.io/dist/typed-events";
 import { CustomSocket, SocketData } from "src/types/socket";
 import { DefaultHandlerCb, EventError } from "src/socket/core";
 import { ServerToClientEvents } from "src/types/socket";
-import {
-  TypeCheck,
-  TypeCompiler,
-  ValueErrorType,
-} from "@sinclair/typebox/compiler";
+import { TypeCompiler, ValueErrorType } from "@sinclair/typebox/compiler";
 
 export interface CustomOnConfig<ExpectCb extends boolean> {
   schema?: ReturnType<typeof TypeCompiler.Compile>;
   expectCb?: ExpectCb;
+  protected?: boolean;
 }
 
 export interface CustomOnParams<ExpectCb extends boolean = false> {
@@ -57,9 +53,13 @@ function enhanceSocket(
   ): void {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const listener = async (...args: any[]) => {
+      if (params.config?.protected && !_socket.data.user) {
+        return;
+      }
+
       if (params.config?.schema) {
         const userData = args[0];
-        const validator = params.config.schema as TypeCheck<TSchema>;
+        const validator = params.config.schema;
         const isValid = validator.Check(userData);
 
         const formatedDetails: EventError["details"] = [];

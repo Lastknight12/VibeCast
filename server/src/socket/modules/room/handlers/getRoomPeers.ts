@@ -10,6 +10,7 @@ roomModule.defineSocketHandler({
   event: "getRoomPeers",
   config: {
     expectCb: true,
+    protected: true,
   },
   handler: (ctx, data: Data) => {
     const { socket, rooms } = ctx;

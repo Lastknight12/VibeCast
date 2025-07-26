@@ -77,6 +77,7 @@ sfuModule.defineSocketHandler({
   config: {
     schema: produceSchema,
     expectCb: true,
+    protected: true,
   },
   handler: async (ctx, params: Data) => {
     const { socket, rooms } = ctx;
