@@ -5,8 +5,8 @@ import { initializeSocketServer } from "./setup/socket";
 import { createMediasoupWorkers } from "./lib/worker";
 
 async function startServer() {
-  const port = Number(env.PORT) || 5001;
-  const host = env.HOST || "localhost";
+  const port = env.PORT;
+  const host = env.HOST;
 
   const server = fastify({
     logger: {
