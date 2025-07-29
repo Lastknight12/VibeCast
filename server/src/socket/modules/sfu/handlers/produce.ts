@@ -1,133 +1,129 @@
-import { Static, Type } from "@sinclair/typebox";
-import sfuModule from "..";
-import { ErrorCb, HandlerInput } from "src/socket/core";
+import { Type } from "@sinclair/typebox";
 import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
 import { ProducerType } from "mediasoup/node/lib/ProducerTypes";
+import { CustomSocket } from "src/types/socket";
+import { rooms } from "src/lib/roomState";
+import { SocketError } from "src/socket/core";
+import { errors } from "../../shared/errors";
 
-const rtpCodecParametersSchema = Type.Object({
+const rtcpFeedbackSchema = Type.Object({
+  type: Type.String(),
+  parameter: Type.String(),
+});
+
+const codecSchema = Type.Object({
   mimeType: Type.String(),
   payloadType: Type.Number(),
   clockRate: Type.Number(),
   channels: Type.Optional(Type.Number()),
-  parameters: Type.Optional(Type.Record(Type.String(), Type.Any())),
-  rtcpFeedback: Type.Optional(
-    Type.Array(
-      Type.Object({
-        type: Type.String(),
-        parameter: Type.Optional(Type.String()),
-      })
-    )
+  parameters: Type.Record(
+    Type.String(),
+    Type.Union([Type.String(), Type.Number()])
   ),
+  rtcpFeedback: Type.Array(rtcpFeedbackSchema),
 });
 
-const rtpEncodingParametersSchema = Type.Object({
-  ssrc: Type.Optional(Type.Number()),
-  rid: Type.Optional(Type.String()),
-  scalabilityMode: Type.Optional(Type.String()),
-  dtx: Type.Optional(Type.Boolean()),
-  active: Type.Optional(Type.Boolean()),
-  maxBitrate: Type.Optional(Type.Number()),
-  maxFramerate: Type.Optional(Type.Number()),
-  scaleResolutionDownBy: Type.Optional(Type.Number()),
-});
-
-const rtpHeaderExtensionParametersSchema = Type.Object({
+const headerExtensionSchema = Type.Object({
   uri: Type.String(),
   id: Type.Number(),
-  encrypt: Type.Optional(Type.Boolean()),
-  parameters: Type.Optional(Type.Record(Type.String(), Type.Any())),
+  encrypt: Type.Boolean(),
+  parameters: Type.Record(Type.String(), Type.Any()),
 });
 
-const rtcpParametersSchema = Type.Object({
-  cname: Type.Optional(Type.String()),
-  reducedSize: Type.Optional(Type.Boolean()),
+const encodingSchema = Type.Object({
+  ssrc: Type.Optional(Type.Number()), // present in audio encodings
+  dtx: Type.Optional(Type.Boolean()),
+  active: Type.Optional(Type.Boolean()), // present in video encodings
+  scaleResolutionDownBy: Type.Optional(Type.Number()),
+  maxBitrate: Type.Optional(Type.Number()),
+  rid: Type.Optional(Type.String()),
+  scalabilityMode: Type.Optional(Type.String()),
+});
+
+const rtcpSchema = Type.Object({
+  cname: Type.String(),
+  reducedSize: Type.Boolean(),
 });
 
 const rtpParametersSchema = Type.Object({
-  codecs: Type.Array(rtpCodecParametersSchema),
-  encodings: Type.Array(rtpEncodingParametersSchema),
-  headerExtensions: Type.Optional(
-    Type.Array(rtpHeaderExtensionParametersSchema)
-  ),
-  rtcp: Type.Optional(rtcpParametersSchema),
-  mid: Type.Optional(Type.String()),
+  mid: Type.String(),
+  codecs: Type.Array(codecSchema),
+  headerExtensions: Type.Array(headerExtensionSchema),
+  encodings: Type.Array(encodingSchema),
+  rtcp: rtcpSchema,
 });
 
-const produceSchema = Type.Object({
-  parameters: Type.Object({
-    kind: Type.Union([Type.Literal("audio"), Type.Literal("video")]),
-    rtpParameters: rtpParametersSchema,
-    appData: Type.Object({
-      type: Type.Union([
-        Type.Literal("audio"),
-        Type.Literal("video"),
-        Type.Literal("video_audio"),
-      ]),
-    }),
+export const produceSchema = Type.Object({
+  kind: Type.Union([Type.Literal("audio"), Type.Literal("video")]),
+  rtpParameters: rtpParametersSchema,
+  appData: Type.Object({
+    type: Type.Union([
+      Type.Literal("audio"),
+      Type.Literal("video"),
+      Type.Literal("video_audio"),
+    ]),
   }),
 });
 
-type Data = HandlerInput<{
-  payload: Static<typeof produceSchema>;
-  cb: (data: { id: string } | Parameters<ErrorCb>[0]) => void;
-}>;
+interface Result {
+  id: string;
+}
 
-sfuModule.defineSocketHandler({
-  event: "produce",
-  config: {
-    schema: produceSchema,
-    expectCb: true,
-    protected: true,
-  },
-  handler: async (ctx, params: Data) => {
-    const { socket, rooms } = ctx;
-    const { payload, cb } = params;
+export default function (socket: CustomSocket) {
+  socket.customOn({
+    event: "produce",
+    config: {
+      schema: produceSchema,
+      protected: true,
+    },
+    handler: async (input): Promise<Result> => {
+      const { user } = socket.data;
 
-    const { user } = socket.data;
-
-    if (!user.roomName) {
-      console.log("User not joined room");
-      return;
-    }
-
-    const room = rooms.get(user.roomName);
-    if (!room) return cb({ error: "Room not found" });
-
-    const peer = room.peers.get(user.id);
-    if (!peer) return cb({ error: "Peer not found" });
-    if (!peer.transports.send) return cb({ error: "Transport not found" });
-
-    const producer = await peer.transports.send.produce({
-      kind: payload.parameters.kind,
-      rtpParameters: payload.parameters.rtpParameters as RtpParameters,
-    });
-
-    switch (payload.parameters.appData.type) {
-      case "audio": {
-        peer.producers.audio = producer;
-        break;
+      if (!user.roomName) {
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
-      case "video": {
-        peer.producers.screenShare = { video: producer };
-        break;
-      }
-      case "video_audio": {
-        if (peer.producers.screenShare) {
-          peer.producers.screenShare.audio = producer;
+
+      const room = rooms.get(user.roomName);
+      if (!room) throw new SocketError(errors.room.NOT_FOUND);
+
+      const peer = room.peers.get(user.id);
+      if (!peer) throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      if (!peer.transports.send)
+        throw new SocketError(
+          errors.mediasoup.transport.SEND_TRANSPORT_NOT_FOUND
+        );
+
+      const producer = await peer.transports.send.produce({
+        kind: input.kind,
+        rtpParameters: input.rtpParameters as unknown as RtpParameters,
+      });
+
+      switch (input.appData.type) {
+        case "audio": {
+          peer.producers.audio = producer;
+          break;
         }
-        break;
+        case "video": {
+          peer.producers.screenShare = { video: producer };
+          break;
+        }
+        case "video_audio": {
+          if (peer.producers.screenShare) {
+            peer.producers.screenShare.audio = producer;
+          }
+          break;
+        }
       }
-    }
 
-    cb({ id: producer.id });
-
-    socket.broadcast
-      .to(user.roomName)
-      .emit(
-        "newProducer",
-        producer.id,
-        user.id,
-        payload.parameters.appData.type as ProducerType
-      );
-  },
-});
+      socket.broadcast
+        .to(user.roomName)
+        .emit(
+          "newProducer",
+          producer.id,
+          user.id,
+          input.appData.type as ProducerType
+        );
+      return { id: producer.id };
+    },
+  });
+}

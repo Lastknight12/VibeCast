@@ -19,12 +19,12 @@ function createRoom() {
       roomName: roomName.value.toString(),
       roomType: isPrivate.value === true ? "private" : "public",
     },
-    (response: { error?: string }) => {
-      if (!response.error) {
+    (response: { errors?: any[] }) => {
+      if (!response.errors) {
         navigateTo(`/rooms/${roomName.value}`);
         roomName.value = "";
       } else {
-        errorMessage.value = response.error;
+        errorMessage.value = response.errors[0];
       }
     }
   );

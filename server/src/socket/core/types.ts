@@ -1,5 +1,19 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type DefaultHandlerCb = (...args: any[]) => void;
+export interface HandlerError {
+  code: string;
+  message: string;
+}
+
+export type HandlerCallback<Data> = (
+  result:
+    | {
+        data: Data;
+        errors?: undefined;
+      }
+    | {
+        data?: undefined;
+        errors: HandlerError[];
+      }
+) => void;
 
 export type ErrorCb = (data: { error?: string }) => void;
 

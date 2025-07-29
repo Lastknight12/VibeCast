@@ -1,79 +1,76 @@
-import { Static, Type } from "@sinclair/typebox";
-import sfuModule from "..";
+import { Type } from "@sinclair/typebox";
 import { createWebRtcTransport } from "../sfu.utils";
-import { ErrorCb, HandlerInput } from "src/socket/core";
 import {
   DtlsParameters,
   IceCandidate,
   IceParameters,
 } from "mediasoup/node/lib/types";
 import { SctpParameters } from "mediasoup/node/lib/types";
+import { CustomSocket } from "src/types/socket";
+import { rooms } from "src/lib/roomState";
+import { SocketError } from "src/socket/core";
+import { errors } from "../../shared/errors";
+import { logger } from "src/lib/logger";
+
+interface Result {
+  id: string;
+  iceParameters: IceParameters;
+  iceCandidates: IceCandidate[];
+  dtlsParameters: DtlsParameters;
+  sctpParameters: SctpParameters | undefined;
+}
 
 const createTransportSchema = Type.Object({
   type: Type.Union([Type.Literal("send"), Type.Literal("recv")]),
 });
+export default function (socket: CustomSocket) {
+  socket.customOn({
+    event: "createTransport",
+    config: {
+      schema: createTransportSchema,
 
-type Data = HandlerInput<{
-  payload: Static<typeof createTransportSchema>;
-  cb: (
-    result:
-      | {
-          id: string;
-          iceParameters: IceParameters;
-          iceCandidates: IceCandidate[];
-          dtlsParameters: DtlsParameters;
-          sctpParameters: SctpParameters | undefined;
-        }
-      | Parameters<ErrorCb>[0]
-  ) => void;
-}>;
-
-sfuModule.defineSocketHandler({
-  event: "createTransport",
-  config: {
-    schema: createTransportSchema,
-    expectCb: true,
-    protected: true,
-  },
-  handler: async (ctx, params: Data) => {
-    const { socket, rooms } = ctx;
-    const { cb, payload } = params;
-
-    const { user } = socket.data;
-    if (!user.roomName) {
-      console.log("User not joined room");
-      return;
-    }
-
-    const room = rooms.get(user.roomName);
-    if (!room) {
-      return cb({ error: "Room not found" });
-    }
-
-    const peer = room.peers.get(user.id);
-    if (!peer) {
-      console.log(`Peer not found in room ${user.roomName}`);
-      return;
-    }
-
-    try {
-      const transport = await createWebRtcTransport(room.router);
-      if (payload.type === "send") {
-        peer.transports.send = transport;
-      } else {
-        peer.transports.recv = transport;
+      protected: true,
+    },
+    handler: async (input): Promise<Result> => {
+      const { user } = socket.data;
+      if (!user.roomName) {
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
 
-      cb({
-        id: transport.id,
-        iceParameters: transport.iceParameters,
-        iceCandidates: transport.iceCandidates,
-        dtlsParameters: transport.dtlsParameters,
-        sctpParameters: transport.sctpParameters,
-      });
-    } catch (error) {
-      console.log(`Error creating transport: ${error}`);
-      cb({ error: "Error creating transport" });
-    }
-  },
-});
+      const room = rooms.get(user.roomName);
+      if (!room) {
+        throw new SocketError(errors.room.NOT_FOUND);
+      }
+
+      const peer = room.peers.get(user.id);
+      if (!peer) {
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      }
+
+      try {
+        const transport = await createWebRtcTransport(room.router);
+        if (input.type === "send") {
+          peer.transports.send = transport;
+        } else {
+          peer.transports.recv = transport;
+        }
+
+        return {
+          id: transport.id,
+          iceParameters: transport.iceParameters,
+          iceCandidates: transport.iceCandidates,
+          dtlsParameters: transport.dtlsParameters,
+          sctpParameters: transport.sctpParameters,
+        };
+      } catch (error) {
+        logger.error(`Error creating transport: ${error}`);
+        // TODO: add unknown error in enum or smth like that
+
+        throw new SocketError({
+          code: "UNKNOWN_ERROR",
+          message: "Error creating transport",
+        });
+      }
+    },
+  });
+}

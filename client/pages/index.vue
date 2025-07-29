@@ -28,12 +28,15 @@ const googleLogin = () => {
   });
 };
 
-const handleRooms = (data: Record<string, { peers: Record<string, User> }>) => {
+const handleRooms = ({
+  data,
+}: CallbackData<Record<string, { peers: Record<string, User> }>>) => {
   if (data) {
     const map = new Map<
       string,
       { peers: Map<string, Pick<User, "id" | "name" | "image">> }
     >();
+
     for (const [roomId, room] of Object.entries(data)) {
       map.set(roomId, {
         ...room,
@@ -76,7 +79,7 @@ const handleRoomDeleted = (roomName: string) => {
 };
 
 onMounted(() => {
-  socket.emit("getAllRooms", handleRooms);
+  socket.customEmit("getAllRooms", undefined, handleRooms);
   socket.on("userJoinRoom", handleUserJoin);
   socket.on("userLeftRoom", handleUserLeft);
   socket.on("roomCreated", handleRoomCreated);

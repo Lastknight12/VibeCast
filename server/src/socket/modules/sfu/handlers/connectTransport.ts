@@ -1,6 +1,8 @@
-import { Static, Type } from "@sinclair/typebox";
-import sfuModule from "..";
-import { ErrorCb, HandlerInput } from "src/socket/core";
+import { Type } from "@sinclair/typebox";
+import { rooms } from "src/lib/roomState";
+import { SocketError } from "src/socket/core";
+import { CustomSocket } from "src/types/socket";
+import { errors } from "../../shared/errors";
 
 const connectTransportSchema = Type.Object({
   dtlsParameters: Type.Object({
@@ -16,60 +18,53 @@ const connectTransportSchema = Type.Object({
   type: Type.String({ minLength: 1 }),
 });
 
-type Data = HandlerInput<{
-  payload: Static<typeof connectTransportSchema>;
-  cb: (data: { connected: boolean } | Parameters<ErrorCb>[0]) => void;
-}>;
+export default function (socket: CustomSocket) {
+  socket.customOn({
+    event: "connectTransport",
+    config: {
+      schema: connectTransportSchema,
+      protected: true,
+    },
+    handler: async (input) => {
+      const { user } = socket.data;
+      if (!user.roomName) {
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      }
+      const room = rooms.get(user.roomName);
+      if (!room) throw new SocketError(errors.room.NOT_FOUND);
 
-sfuModule.defineSocketHandler({
-  event: "connectTransport",
-  config: {
-    schema: connectTransportSchema,
-    expectCb: true,
-    protected: true,
-  },
-  handler: async (ctx, params: Data) => {
-    const { rooms, socket } = ctx;
-    const { payload, cb } = params;
+      const peer = room.peers.get(user.id);
+      if (!peer) {
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      }
 
-    const { user } = socket.data;
-    if (!user.roomName) {
-      cb({ error: "User not joined room" });
-      return;
-    }
-    const room = rooms.get(user.roomName);
-    if (!room) return cb({ error: "Room not found" });
+      switch (input.type) {
+        case "send": {
+          if (!peer.transports.send) {
+            throw new SocketError(errors.mediasoup.transport.NOT_FOUND);
+          }
 
-    const peer = room.peers.get(user.id);
-    if (!peer) return cb({ error: "Peer not found" });
+          await peer.transports.send.connect({
+            dtlsParameters: input.dtlsParameters,
+          });
 
-    switch (payload.type) {
-      case "send": {
-        if (!peer.transports.send) {
-          cb({ error: "Transport not found" });
+          // TODO: refactor both callback calls? maybe dont call it?
+          // cb({ connected: true });
           return;
         }
+        case "recv": {
+          if (!peer.transports.recv) {
+            throw new SocketError(errors.mediasoup.transport.NOT_FOUND);
+          }
 
-        await peer.transports.send.connect({
-          dtlsParameters: payload.dtlsParameters,
-        });
+          await peer.transports.recv.connect({
+            dtlsParameters: input.dtlsParameters,
+          });
 
-        cb({ connected: true });
-        return;
-      }
-      case "recv": {
-        if (!peer.transports.recv) {
-          cb({ error: "Transport not found" });
+          // cb({ connected: true });
           return;
         }
-
-        await peer.transports.recv.connect({
-          dtlsParameters: payload.dtlsParameters,
-        });
-
-        cb({ connected: true });
-        return;
       }
-    }
-  },
-});
+    },
+  });
+}

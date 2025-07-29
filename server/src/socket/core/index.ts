@@ -1,28 +1,19 @@
 import {
-  defineModuleFactory,
-  type HandlerInput,
-  type HandlerMeta,
-} from "./defineModuleFactory";
-import { createGlobalContext, type GlobalContext } from "./globalContext";
-import {
   enhanceSocket,
+  SocketError,
   type CustomOnConfig,
   type CustomOn,
 } from "./enhanceSocket";
 import { preloadModules } from "./preloadModules";
-import type { ErrorCb, DefaultHandlerCb, EventError } from "./types";
+import type { HandlerCallback, HandlerError, EventError } from "./types";
 
 export {
-  defineModuleFactory,
-  createGlobalContext,
   enhanceSocket,
   preloadModules,
-  HandlerInput,
-  HandlerMeta,
-  GlobalContext,
+  SocketError,
   CustomOnConfig,
-  ErrorCb,
-  DefaultHandlerCb,
-  EventError,
+  HandlerCallback,
   CustomOn,
+  HandlerError,
+  EventError,
 };

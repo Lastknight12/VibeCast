@@ -1,19 +1,16 @@
 import { getMediasoupWorker } from "src/lib/worker";
 import { RtpCodecCapability } from "mediasoup/node/lib/types";
 import { PeersMap } from "src/lib/peersMap";
-import { Static, Type } from "@sinclair/typebox";
-import roomModule from "..";
-import { ErrorCb, HandlerInput } from "src/socket/core";
+import { Type } from "@sinclair/typebox";
+import { CustomSocket } from "src/types/socket";
+import { rooms } from "src/lib/roomState";
+import { SocketError } from "src/socket/core";
+import { errors } from "../../shared/errors";
 
 const createRoomSchema = Type.Object({
   roomName: Type.String({ minLength: 1 }),
   roomType: Type.Union([Type.Literal("public"), Type.Literal("private")]),
 });
-
-type Data = HandlerInput<{
-  payload: Static<typeof createRoomSchema>;
-  cb: ErrorCb;
-}>;
 
 const mediaCodecs: RtpCodecCapability[] = [
   {
@@ -25,41 +22,33 @@ const mediaCodecs: RtpCodecCapability[] = [
   { kind: "video", mimeType: "video/VP8", clockRate: 90000 },
 ];
 
-roomModule.defineSocketHandler({
-  event: "createRoom",
-  config: {
-    schema: createRoomSchema,
-    expectCb: true,
-    protected: true,
-  },
-  handler: async (ctx, data: Data) => {
-    const { socket, rooms } = ctx;
-    const { payload, cb } = data;
+export default function (socket: CustomSocket) {
+  socket.customOn({
+    event: "createRoom",
+    config: {
+      schema: createRoomSchema,
+      protected: true,
+    },
+    handler: async (input) => {
+      if (rooms.has(input.roomName)) {
+        throw new SocketError(errors.room.ALREADY_EXISTS);
+      }
 
-    if (rooms.has(payload.roomName)) {
-      return cb({
-        error: "Room already exists",
+      const worker = getMediasoupWorker();
+      const router = await worker.createRouter({
+        mediaCodecs,
       });
-    }
 
-    const worker = getMediasoupWorker();
-    const router = await worker.createRouter({
-      mediaCodecs,
-    });
+      rooms.set(input.roomName, {
+        router,
+        peers: new PeersMap(),
+        type: input.roomType,
+      });
 
-    rooms.set(payload.roomName, {
-      router,
-      peers: new PeersMap(),
-      type: payload.roomType,
-    });
-
-    if (payload.roomType === "public") {
-      socket.broadcast.emit("roomCreated", payload.roomName);
-      socket.emit("roomCreated", payload.roomName);
-    }
-
-    cb({
-      error: undefined,
-    });
-  },
-});
+      if (input.roomType === "public") {
+        socket.broadcast.emit("roomCreated", input.roomName);
+        socket.emit("roomCreated", input.roomName);
+      }
+    },
+  });
+}

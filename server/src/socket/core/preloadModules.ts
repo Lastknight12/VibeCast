@@ -1,68 +1,48 @@
-import path from "node:path";
-import { defineModuleFactory } from "src/socket/core";
+import path from "path";
 import { logger } from "src/lib/logger";
 import fg from "fast-glob";
+import { CustomSocket } from "src/types/socket";
+import { Server } from "socket.io";
 
 interface Opts {
   modulesDir: string;
   handlersDir?: string;
   logHandlers?: boolean;
+  handlerRegexp?: string;
 }
 
 export async function preloadModules(opts: Opts) {
   const start = performance.now();
 
   const modulesDir = opts.modulesDir;
-  const modules = await fg("*/index.{ts,js}", {
+  const modules = await fg("*", {
     cwd: modulesDir,
-    onlyFiles: true,
+    onlyDirectories: true,
     absolute: true,
   });
+  const handlers: ((socket: CustomSocket, io: Server) => void)[] = [];
 
-  const res: Record<string, ReturnType<typeof defineModuleFactory>> = {};
-
-  for (const moduleEntry of modules) {
-    const moduleName = path.basename(path.dirname(moduleEntry));
-
+  for (const modulePath of modules) {
+    const moduleName = path.basename(modulePath);
     try {
-      const module: { default: ReturnType<typeof defineModuleFactory> } =
-        await import(moduleEntry);
-
-      if (!module?.default) {
-        logger.error(`Module '${moduleName}' has no default export`);
-        continue;
-      }
-
-      const moduleExports = module.default;
-      if (!moduleExports.moduleMetas) {
-        logger.error(
-          `Module '${moduleName}' default export is missing required properties`
-        );
-        continue;
-      }
-
-      const handlersDir =
-        opts.handlersDir ?? path.join(path.dirname(moduleEntry), "handlers");
-      const moduleHandlers = await fg("*.+(ts|js)", {
+      const handlersDir = opts.handlersDir ?? path.join(modulePath, "handlers");
+      const handlerRegexp = opts.handlerRegexp ?? "*.+(ts|js)";
+      const moduleHandlers = await fg(handlerRegexp, {
         cwd: handlersDir,
         onlyFiles: true,
         absolute: true,
       });
 
-      for (const handler of moduleHandlers) {
-        await import(handler);
-      }
+      logger.info(`Loading ${moduleName} module...`);
 
-      if (opts.logHandlers) {
-        logger.info(`Loading module: ${moduleName}`);
-        for (const meta of moduleExports.moduleMetas) {
-          logger.info(`    ${meta.event}`);
+      for (const handler of moduleHandlers) {
+        const fileName = path.parse(handler).name;
+        const data = await import(handler);
+        handlers.push(data.default);
+        if (opts.logHandlers) {
+          logger.info(`    ${fileName}`);
         }
       }
-
-      logger.info(`Loaded module: ${moduleName}`);
-
-      res[moduleName] = moduleExports;
     } catch (err) {
       logger.error(
         `Error loading module '${moduleName}': ${
@@ -76,6 +56,5 @@ export async function preloadModules(opts: Opts) {
   const duration = (end - start).toFixed(2);
 
   logger.info(`Preload complete in ${duration} ms`);
-
-  return res;
+  return handlers;
 }

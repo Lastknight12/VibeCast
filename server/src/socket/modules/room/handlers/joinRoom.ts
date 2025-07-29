@@ -1,68 +1,60 @@
 import { DataList } from "src/lib/dataList";
-
 import { Type } from "@sinclair/typebox";
-import roomModule from "..";
-import { ErrorCb, HandlerInput } from "src/socket/core";
+import { CustomSocket } from "src/types/socket";
+import { Server } from "socket.io";
+import { rooms } from "src/lib/roomState";
+import { SocketError } from "src/socket/core";
+import { errors } from "../../shared/errors";
 
 const joinRoomSchema = Type.Object({
   roomName: Type.String({ minLength: 1 }),
 });
 
-type Data = HandlerInput<{ payload: { roomName: string }; cb: ErrorCb }>;
+export default function (socket: CustomSocket, io: Server) {
+  socket.customOn({
+    event: "joinRoom",
+    config: {
+      schema: joinRoomSchema,
+      protected: true,
+    },
+    handler: async (input) => {
+      const { user } = socket.data;
 
-roomModule.defineSocketHandler({
-  event: "joinRoom",
-  config: {
-    schema: joinRoomSchema,
-    expectCb: true,
-    protected: true,
-  },
-  handler: async (ctx, data: Data) => {
-    const { socket, io, rooms } = ctx;
-    const {
-      payload: { roomName },
-      cb,
-    } = data;
+      const room = rooms.get(input.roomName);
+      if (!room) {
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      }
 
-    const { user } = socket.data;
+      const previousPeer = room.peers.get(user.id);
+      if (previousPeer) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const socketId = previousPeer.sockets.pop()!;
+        const socket = io.sockets.sockets.get(socketId);
 
-    const room = rooms.get(roomName);
-    if (!room) {
-      cb({ error: `no room with name '${roomName}' exist` });
-      return;
-    }
+        await socket?.leave(input.roomName);
+        socket?.emit("leaveRoom");
+      }
 
-    const previousPeer = room.peers.get(user.id);
-    if (previousPeer) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const socketId = previousPeer.sockets.pop()!;
-      const socket = io.sockets.sockets.get(socketId);
+      socket.join(input.roomName);
+      socket.data.user.roomName = input.roomName;
 
-      await socket?.leave(roomName);
-      socket?.emit("leaveRoom");
-    }
-
-    socket.join(roomName);
-    socket.data.user.roomName = roomName;
-
-    room.peers.set(user.id, {
-      sockets: new DataList([socket.id]),
-      transports: {},
-      producers: {},
-      consumers: new Map(),
-      user,
-      voiceMuted: true,
-    });
-
-    socket.broadcast.to(roomName).emit("userJoined", { user });
-    if (room.type === "public") {
-      socket.broadcast.emit("userJoinRoom", roomName, {
-        id: user.id,
-        name: user.name,
-        image: user.image ?? "",
+      room.peers.set(user.id, {
+        sockets: new DataList([socket.id]),
+        transports: {},
+        producers: {},
+        consumers: new Map(),
+        user,
+        voiceMuted: true,
       });
-    }
 
-    cb({ error: undefined });
-  },
-});
+      socket.broadcast.to(input.roomName).emit("userJoined", { user });
+      if (room.type === "public") {
+        socket.broadcast.emit("userJoinRoom", input.roomName, {
+          id: user.id,
+          name: user.name,
+          image: user.image ?? "",
+        });
+      }
+    },
+  });
+}

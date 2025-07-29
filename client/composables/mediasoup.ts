@@ -10,7 +10,7 @@ import type { Socket } from "socket.io-client";
 import * as mediasoup from "mediasoup-client";
 
 export class mediasoupConn {
-  private socket: Socket = useSocket();
+  private socket = useSocket();
 
   localStream: MediaStream | null = null;
   audioStream: MediaStream | null = null;
@@ -66,11 +66,12 @@ export class mediasoupConn {
   }
 
   async createDevice() {
-    const rtpCapabilities = await new Promise((resolve, reject) => {
-      this.socket.emit(
+    const rtpCapabilities = await new Promise((resolve, _reject) => {
+      this.socket.customEmit(
         "getRTPCapabilities",
-        async (capabilities: RtpCapabilities) => {
-          resolve(capabilities);
+        async ({ data }: CallbackData<RtpCapabilities>) => {
+          console.log(data);
+          resolve(data);
         }
       );
     });
@@ -78,7 +79,7 @@ export class mediasoupConn {
     this.device = new mediasoup.Device();
 
     await toRaw(this.device).load({
-      routerRtpCapabilities: toRaw(rtpCapabilities)!,
+      routerRtpCapabilities: rtpCapabilities!,
     });
 
     console.log("Device created with RTP capabilities:", rtpCapabilities);
@@ -96,62 +97,73 @@ export class mediasoupConn {
         return;
       }
 
-      this.socket.emit("createTransport", { type }, (transport: any) => {
-        switch (type) {
-          case "send": {
-            this.transports.send = this.device!.createSendTransport(transport);
-            resolve(null);
-
-            this.transports.send.on("connectionstatechange", (state) => {
-              console.log(`${type}ProducerTransport state:`, state);
-            });
-
-            this.transports.send.on(
-              "connect",
-              ({ dtlsParameters }, callback) => {
-                this.socket.emit(
-                  "connectTransport",
-                  { dtlsParameters, type },
-                  callback
-                );
-              }
-            );
-
-            this.transports.send.on("produce", async (parameters, callback) => {
-              this.socket.emit(
-                "produce",
-                { parameters },
-                (data: { id: string }) => {
-                  callback(data);
-                }
-              );
-            });
-            return;
-          }
-          case "recv":
-            {
-              this.transports.recv =
-                this.device!.createRecvTransport(transport);
+      // TODO: declare transport type
+      this.socket.customEmit(
+        "createTransport",
+        { type },
+        ({ data: transport }: CallbackData<any>) => {
+          switch (type) {
+            case "send": {
+              this.transports.send =
+                this.device!.createSendTransport(transport);
               resolve(null);
 
-              this.transports.recv.on("connectionstatechange", (state) => {
-                console.log(`${type}ConsumerTransport state:`, state);
+              this.transports.send.on("connectionstatechange", (state) => {
+                console.log(`${type}ProducerTransport state:`, state);
               });
 
-              this.transports.recv.on(
+              this.transports.send.on(
                 "connect",
                 ({ dtlsParameters }, callback) => {
-                  this.socket.emit(
+                  this.socket.customEmit(
                     "connectTransport",
                     { dtlsParameters, type },
                     callback
                   );
                 }
               );
+
+              this.transports.send.on(
+                "produce",
+                async (parameters, callback) => {
+                  this.socket.customEmit(
+                    "produce",
+                    parameters,
+                    ({ data, errors }: CallbackData<{ id: string }>) => {
+                      if (!errors) {
+                        callback({ id: data?.id });
+                      }
+                    }
+                  );
+                }
+              );
+              return;
             }
-            return;
+            case "recv":
+              {
+                this.transports.recv =
+                  this.device!.createRecvTransport(transport);
+                resolve(null);
+
+                this.transports.recv.on("connectionstatechange", (state) => {
+                  console.log(`${type}ConsumerTransport state:`, state);
+                });
+
+                this.transports.recv.on(
+                  "connect",
+                  ({ dtlsParameters }, callback) => {
+                    this.socket.customEmit(
+                      "connectTransport",
+                      { dtlsParameters, type },
+                      callback
+                    );
+                  }
+                );
+              }
+              return;
+          }
         }
-      });
+      );
     });
   }
 
@@ -172,31 +184,38 @@ export class mediasoupConn {
 
     let stream: MediaStream = new MediaStream();
 
-    await new Promise((resolve, _) => {
-      this.socket.emit(
+    await new Promise((resolve, reject) => {
+      this.socket.customEmit(
         "consume",
         {
           producerId,
           rtpCapabilities: this.device!.rtpCapabilities,
         },
-        async (params: {
+        async ({
+          data,
+          errors,
+        }: CallbackData<{
           id: string;
           producerId: string;
           kind: MediaKind;
           rtpParameters: RtpParameters;
-        }) => {
-          const consumer = await this.transports.recv!.consume({
-            id: params.id,
-            producerId: params.producerId,
-            kind: params.kind,
-            rtpParameters: params.rtpParameters,
-          });
+        }>) => {
+          if (!errors) {
+            const consumer = await this.transports.recv!.consume({
+              id: data.id,
+              producerId: data.producerId,
+              kind: data.kind,
+              rtpParameters: data.rtpParameters,
+            });
 
-          this.consumers.set(consumer.id, consumer);
-          stream.addTrack(consumer.track);
-          this.socket.emit("consumerReady", { id: consumer.id });
+            this.consumers.set(consumer.id, consumer);
+            stream.addTrack(consumer.track);
+            this.socket.customEmit("consumerReady", { id: consumer.id });
 
-          resolve(null);
+            resolve(null);
+          } else {
+            reject(errors[0]!.message);
+          }
         }
       );
     });
@@ -324,14 +343,14 @@ export class mediasoupConn {
 
     this.localStream = null;
 
-    this.socket.emit("closeProducer", { type: "video" });
+    this.socket.customEmit("closeProducer", { type: "video" });
   }
 
   switchMic() {
     if (this.audioStream && this.audioStream.getAudioTracks().length > 0) {
       this.muted = !this.muted;
       this.audioStream.getAudioTracks()[0]!.enabled = !this.muted;
-      this.socket.emit("switchMic", { muted: this.muted });
+      this.socket.customEmit("switchMic", { muted: this.muted });
     }
 
     return this.muted;

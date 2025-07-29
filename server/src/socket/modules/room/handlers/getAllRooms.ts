@@ -1,47 +1,35 @@
 import { User } from "better-auth/types";
-import roomModule from "..";
-import { ErrorCb, HandlerInput } from "src/socket/core";
+import { rooms } from "src/lib/roomState";
+import { CustomSocket } from "src/types/socket";
 
-export type Data = HandlerInput<{
-  cb: (
-    result:
-      | Parameters<ErrorCb>[0]
-      | Record<
-          string,
-          {
-            peers: Pick<User, "id" | "image" | "name">;
-          }
-        >
-  ) => void;
-}>;
+type Result = Record<string, { peers: Record<string, User> }>;
 
-roomModule.defineSocketHandler({
-  event: "getAllRooms",
-  config: { expectCb: true },
-  handler: (ctx, data: Data) => {
-    const { rooms } = ctx;
-    const { cb } = data;
-    const roomList: Record<string, { peers: Record<string, User> }> = {};
+export default function (socket: CustomSocket) {
+  socket.customOn({
+    event: "getAllRooms",
+    handler: (): Result => {
+      const roomList: Result = {};
 
-    rooms.forEach((room, id) => {
-      if (room.type === "private") {
-        return;
-      }
+      rooms.forEach((room, id) => {
+        if (room.type === "private") {
+          return;
+        }
 
-      const peers = {};
-      room.peers.forEach((peer, id) => {
-        peers[id] = {
-          id,
-          image: peer.user.image,
-          name: peer.user.name,
+        const peers = {};
+        room.peers.forEach((peer, id) => {
+          peers[id] = {
+            id,
+            image: peer.user.image,
+            name: peer.user.name,
+          };
+        });
+
+        roomList[id] = {
+          peers,
         };
       });
 
-      roomList[id] = {
-        peers,
-      };
-    });
-
-    cb(roomList);
-  },
-});
+      return roomList;
+    },
+  });
+}

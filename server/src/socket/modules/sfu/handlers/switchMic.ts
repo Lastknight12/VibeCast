@@ -1,43 +1,39 @@
-import { Static, Type } from "@sinclair/typebox";
-import sfuModule from "..";
-import { HandlerInput } from "src/socket/core";
+import { Type } from "@sinclair/typebox";
+import { rooms } from "src/lib/roomState";
+import { SocketError } from "src/socket/core";
+import { CustomSocket } from "src/types/socket";
+import { errors } from "../../shared/errors";
 
 const switchMicSchema = Type.Object({
   muted: Type.Boolean(),
 });
 
-type Data = HandlerInput<{ payload: Static<typeof switchMicSchema> }>;
+export default function (socket: CustomSocket) {
+  socket.customOn({
+    event: "switchMic",
+    config: {
+      schema: switchMicSchema,
+      protected: true,
+    },
+    handler: (input) => {
+      const { user } = socket.data;
+      if (!user.roomName) {
+        throw new SocketError(errors.room.NOT_FOUND);
+      }
 
-sfuModule.defineSocketHandler({
-  event: "switchMic",
-  config: {
-    schema: switchMicSchema,
-    protected: true,
-  },
-  handler: (ctx, data: Data) => {
-    const { socket, rooms } = ctx;
-    const { payload } = data;
+      const room = rooms.get(user.roomName);
+      if (!room) {
+        throw new SocketError(errors.room.NOT_FOUND);
+      }
 
-    const { user } = socket.data;
-    if (!user.roomName) {
-      console.log("User not joined room");
-      return;
-    }
+      const peer = room.peers.get(user.id);
+      if (!peer) {
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      }
 
-    const room = rooms.get(user.roomName);
-    if (!room) {
-      console.log("no room exist");
-      return;
-    }
-
-    const peer = room.peers.get(user.id);
-    if (!peer) {
-      console.log("no peer founded in room");
-      return;
-    }
-
-    peer.voiceMuted = payload.muted;
-    const event = payload.muted ? "micOff" : "micOn";
-    socket.broadcast.to(user.roomName).emit(event, user.id);
-  },
-});
+      peer.voiceMuted = input.muted;
+      const event = input.muted ? "micOff" : "micOn";
+      socket.broadcast.to(user.roomName).emit(event, user.id);
+    },
+  });
+}

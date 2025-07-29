@@ -2,30 +2,17 @@ import { FastifyInstance } from "fastify";
 import { Server } from "socket.io";
 
 import { env } from "src/config";
-import { HandlerMeta } from "src/socket/core";
-import {
-  createGlobalContext,
-  enhanceSocket,
-  preloadModules,
-  type CustomOnConfig,
-} from "src/socket/core";
 import { socketGuard } from "src/guards/socket";
 import path from "path";
+import { enhanceSocket, preloadModules } from "src/socket/core";
 
-let preloadedModules: Awaited<ReturnType<typeof preloadModules>> = {};
+let handlers: Awaited<ReturnType<typeof preloadModules>>;
 
 (async () => {
-  preloadedModules = await preloadModules({
+  handlers = await preloadModules({
     modulesDir: path.resolve(__dirname, "../socket/modules"),
-    logHandlers: false,
   });
 })();
-
-function isExpectCb<Ctx extends object>(
-  meta: HandlerMeta<Ctx, boolean>
-): meta is HandlerMeta<Ctx, true> {
-  return meta.config?.expectCb === true;
-}
 
 export function initializeSocketServer(fastifyServer: FastifyInstance) {
   const io = new Server(fastifyServer.server, {
@@ -40,42 +27,7 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
 
   io.on("connection", async (_socket) => {
     const socket = enhanceSocket(_socket);
-    const globalCtx = createGlobalContext({ socket, io });
 
-    for (const module of Object.values(preloadedModules)) {
-      const moduleCtx = module.createModuleContext
-        ? module.createModuleContext({ ...globalCtx, socket })
-        : { ...globalCtx };
-
-      for (const eventMeta of module.moduleMetas) {
-        const handlerConfig: CustomOnConfig<boolean> = {
-          ...eventMeta.config,
-          schema: eventMeta.config?.schema
-            ? module.schemasCache.get(eventMeta.config.schema)
-            : undefined,
-        };
-
-        if (isExpectCb(eventMeta)) {
-          socket.customOn({
-            event: eventMeta.event,
-            config: handlerConfig as CustomOnConfig<true>,
-            handler: (data, cb) => {
-              return eventMeta.handler(moduleCtx, {
-                payload: data,
-                cb,
-              });
-            },
-          });
-        } else {
-          socket.customOn({
-            event: eventMeta.event,
-            config: handlerConfig as CustomOnConfig<false>,
-            handler: (data) => {
-              return eventMeta.handler(moduleCtx, { payload: data });
-            },
-          });
-        }
-      }
-    }
+    handlers.forEach((handler) => handler(socket, io));
   });
 }

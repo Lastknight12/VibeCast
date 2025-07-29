@@ -1,33 +1,27 @@
-import { ErrorCb, HandlerInput } from "src/socket/core";
-import sfuModule from "..";
+import { CustomSocket } from "src/types/socket";
 import { getRoomRouter } from "../sfu.utils";
 import { RtpCapabilities } from "mediasoup/node/lib/rtpParametersTypes";
+import { SocketError } from "src/socket/core";
+import { errors } from "../../shared/errors";
 
-type Data = HandlerInput<{
-  cb: (data: RtpCapabilities | Parameters<ErrorCb>[0]) => void;
-}>;
+export default function (socket: CustomSocket) {
+  socket.customOn({
+    event: "getRTPCapabilities",
+    config: {
+      protected: true,
+    },
+    handler: (_input): RtpCapabilities => {
+      const { user } = socket.data;
+      if (!user.roomName) {
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      }
 
-sfuModule.defineSocketHandler({
-  event: "getRTPCapabilities",
-  config: {
-    expectCb: true,
-    protected: true,
-  },
-  handler(ctx, params: Data) {
-    const { socket } = ctx;
-    const { cb } = params;
+      const router = getRoomRouter(user.roomName);
+      if (!router) {
+        throw new SocketError(errors.room.ROUTER_NOT_FOUND);
+      }
 
-    const { user } = socket.data;
-    if (!user.roomName) {
-      console.log("User not joined room");
-      return;
-    }
-
-    const router = getRoomRouter(user.roomName);
-    if (!router) {
-      return cb({ error: "Room not found" });
-    }
-
-    cb(router.rtpCapabilities);
-  },
-});
+      return router.rtpCapabilities;
+    },
+  });
+}

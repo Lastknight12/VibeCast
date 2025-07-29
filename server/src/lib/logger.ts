@@ -2,7 +2,7 @@ import pino from "pino";
 import { env } from "src/config";
 
 export const logger = pino({
-  level: env.LOGGER_INFO,
+  level: env.LOGGER_LEVEL,
   transport: {
     target: "pino-pretty",
     options: {

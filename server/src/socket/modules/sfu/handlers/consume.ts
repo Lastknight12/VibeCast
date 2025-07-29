@@ -1,16 +1,18 @@
-import { Static, Type } from "@sinclair/typebox";
-import sfuModule from "..";
-import { ErrorCb, HandlerInput } from "src/socket/core";
 import {
   MediaKind,
   RtpCapabilities,
   RtpParameters,
 } from "mediasoup/node/lib/types";
+import { CustomSocket } from "src/types/socket";
+import { rooms } from "src/lib/roomState";
+import { Type } from "@sinclair/typebox";
+import { SocketError } from "src/socket/core";
+import { errors } from "../../shared/errors";
 
 const rtpCodecCapabilitySchema = Type.Object({
   kind: Type.Union([Type.Literal("audio"), Type.Literal("video")]),
   mimeType: Type.String(),
-  preferredPayloadType: Type.Optional(Type.Number()),
+  preferredinputType: Type.Optional(Type.Number()),
   clockRate: Type.Number(),
   channels: Type.Optional(Type.Number()),
   parameters: Type.Optional(Type.Record(Type.String(), Type.Any())),
@@ -50,64 +52,55 @@ const consumeSchema = Type.Object({
   rtpCapabilities: rtpCapabilitiesSchema,
 });
 
-type Data = HandlerInput<{
-  payload: Static<typeof consumeSchema>;
-  cb: (
-    data:
-      | {
-          id: string;
-          producerId: string;
-          kind: MediaKind;
-          rtpParameters: RtpParameters;
-        }
-      | Parameters<ErrorCb>[0]
-  ) => void;
-}>;
+interface Result {
+  id: string;
+  producerId: string;
+  kind: MediaKind;
+  rtpParameters: RtpParameters;
+}
 
-sfuModule.defineSocketHandler({
-  event: "consume",
-  config: {
-    schema: consumeSchema,
-    expectCb: true,
-    protected: true,
-  },
-  handler: async (ctx, params: Data) => {
-    const { socket, rooms } = ctx;
-    const { payload, cb } = params;
+export default function (socket: CustomSocket) {
+  socket.customOn({
+    event: "consume",
+    config: {
+      schema: consumeSchema,
+      protected: true,
+    },
+    handler: async (input): Promise<Result> => {
+      const { user } = socket.data;
+      if (!user.roomName) {
+        throw new SocketError(errors.room.NOT_FOUND);
+      }
 
-    const { user } = socket.data;
-    if (!user.roomName) {
-      console.log("User not joined room");
-      return;
-    }
+      const room = rooms.get(user.roomName);
+      if (!room) throw new SocketError(errors.room.NOT_FOUND);
+      if (
+        !room.router.canConsume({
+          producerId: input.producerId,
+          rtpCapabilities: input.rtpCapabilities as RtpCapabilities,
+        })
+      ) {
+        throw new SocketError(errors.mediasoup.router.CANNOT_CONSUME_PRODUCER);
+      }
 
-    const room = rooms.get(user.roomName);
-    if (!room) return cb({ error: "Room not found" });
-    if (
-      !room.router.canConsume({
-        producerId: payload.producerId,
-        rtpCapabilities: payload.rtpCapabilities as RtpCapabilities,
-      })
-    ) {
-      return cb({ error: "Can't consume" });
-    }
+      const peer = room.peers.get(user.id);
+      if (!peer) throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      if (!peer.transports.recv)
+        throw new SocketError(errors.mediasoup.transport.NOT_FOUND);
 
-    const peer = room.peers.get(user.id);
-    if (!peer) return cb({ error: "Peer not found" });
-    if (!peer.transports.recv) return cb({ error: "Transport not found" });
+      const consumer = await peer.transports.recv.consume({
+        producerId: input.producerId,
+        rtpCapabilities: input.rtpCapabilities as RtpCapabilities,
+        paused: true,
+      });
+      peer.consumers.set(consumer.id, consumer);
 
-    const consumer = await peer.transports.recv.consume({
-      producerId: payload.producerId,
-      rtpCapabilities: payload.rtpCapabilities as RtpCapabilities,
-      paused: true,
-    });
-    peer.consumers.set(consumer.id, consumer);
-
-    cb({
-      id: consumer.id,
-      producerId: payload.producerId,
-      kind: consumer.kind,
-      rtpParameters: consumer.rtpParameters,
-    });
-  },
-});
+      return {
+        id: consumer.id,
+        producerId: input.producerId,
+        kind: consumer.kind,
+        rtpParameters: consumer.rtpParameters,
+      };
+    },
+  });
+}

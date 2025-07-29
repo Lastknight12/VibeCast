@@ -3,19 +3,22 @@ import { Type, Static } from "@sinclair/typebox";
 import dotenv from "dotenv";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 
+const pinoLoggerLevelSchema = Type.Union(
+  [
+    Type.Literal("debug"),
+    Type.Literal("fatal"),
+    Type.Literal("error"),
+    Type.Literal("warn"),
+    Type.Literal("info"),
+    Type.Literal("trace"),
+    Type.Literal("silent"),
+  ],
+  { default: "silent" }
+);
+
 const envSchema = Type.Object({
-  LOGGER_INFO: Type.Union(
-    [
-      Type.Literal("debug"),
-      Type.Literal("fatal"),
-      Type.Literal("error"),
-      Type.Literal("warn"),
-      Type.Literal("info"),
-      Type.Literal("trace"),
-      Type.Literal("silent"),
-    ],
-    { default: "silent" }
-  ),
+  LOGGER_LEVEL: pinoLoggerLevelSchema,
+  FASTIFY_LOGGER_LEVEL: pinoLoggerLevelSchema,
 
   DATABASE_URL: Type.Required(Type.String()),
   ANNOUNCED_IP: Type.Required(Type.String()),
@@ -30,8 +33,8 @@ const envSchema = Type.Object({
 
   FRONTEND_URL: Type.Required(Type.String()),
 
-  HOST: Type.Optional(Type.String({ default: "localhost" })),
-  PORT: Type.Optional(Type.Number({ default: 5001 })),
+  HOST: Type.Optional(Type.String()),
+  PORT: Type.Optional(Type.String()),
 });
 
 type EnvConfig = Static<typeof envSchema>;
@@ -39,14 +42,10 @@ type EnvConfig = Static<typeof envSchema>;
 export const env: EnvConfig = {} as EnvConfig;
 
 (function () {
-  if (process.env.NODE_ENV !== "production") {
-    const result = dotenv.config();
+  const { error } = dotenv.config();
 
-    if (result.error) {
-      throw new Error(
-        `Failed to load .env file from path: ${result.error.message}`
-      );
-    }
+  if (error) {
+    throw new Error(`Failed to load .env file from path: ${error.message}`);
   }
 
   const validator = TypeCompiler.Compile(envSchema);
