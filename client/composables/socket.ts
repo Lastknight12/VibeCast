@@ -42,18 +42,17 @@ function enhanceSocket(_socket: Socket): CustomSocket {
     maybeCallback?: (result: CallbackData<any>) => void
   ) {
     let data: any;
-    let callback: (result: CallbackData<any>) => void;
+    let callback: ((result: CallbackData<any>) => void) | undefined;
 
+    // HACK: maybe thats idea is bullshit...
     // NOTE: socket.customEmit("someEvent", () => {})
     if (typeof dataOrCallback === "function") {
       (callback = dataOrCallback), (data = undefined);
     } else {
       // NOTE: socket.customEmit("someEvent", {someData: "data"}, () => {})
       data = dataOrCallback;
-      callback = maybeCallback ?? (() => void 0);
+      callback = maybeCallback ?? (() => {});
     }
-
-    console.log(event, data, callback, dataOrCallback, maybeCallback);
 
     _socket.emit(event, data, callback);
   }
