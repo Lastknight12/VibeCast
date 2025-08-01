@@ -34,8 +34,8 @@ export function useStreamVolume(
 
     let max = -Infinity;
     for (let i = 0; i < fftBins.length; i++) {
-      if (fftBins[i] > max && fftBins[i] < 0) {
-        max = fftBins[i];
+      if (fftBins[i]! > max && fftBins[i]! < 0) {
+        max = fftBins[i]!;
       }
     }
 

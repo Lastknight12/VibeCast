@@ -18,7 +18,7 @@ export default function (socket: CustomSocket) {
     handler: (input) => {
       const { user } = socket.data;
       if (!user.roomName) {
-        throw new SocketError(errors.room.NOT_FOUND);
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
 
       const room = rooms.get(user.roomName);

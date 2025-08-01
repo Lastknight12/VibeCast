@@ -11,6 +11,10 @@ export const errors = {
   },
 
   room: {
+    UNSAFE_NAME: {
+      code: "UNSAFE_NAME",
+      message: "Invalid room name",
+    },
     ALREADY_EXISTS: {
       code: "ROOM_ALREADY_EXISTS",
       message: "Room with the provided name already exists",

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { useRoom } from "~/composables/room";
+import { useRoom } from "~/composables/useRoom";
 
 const route = useRoute();
 const roomName = route.params.roomName as string;
 
 useHead({
-  title: `Room: "${route.params.roomName}"`,
+  title: `${route.params.roomName}`,
   meta: [
     {
       name: "description",
@@ -14,6 +14,8 @@ useHead({
     },
   ],
 });
+
+const toast = useToast();
 
 const loading = ref(true);
 const showContent = ref(false);
@@ -32,12 +34,12 @@ const canShowContent = computed(
 const authClient = useAuthClient();
 const { data: session } = await authClient.getSession();
 
-const mediaConn = new mediasoupConn(roomName);
+const mediaConn = new mediasoupConn(roomName, toast);
 const room = useRoom(roomName, mediaConn);
 
 watchEffect(() => {
   useHead({
-    title: `Room: "${route.params.roomName}" | ${
+    title: `"${route.params.roomName}" | ${
       room.refs.peers.value.size + 1
     } peers`,
   });
@@ -55,7 +57,7 @@ onMounted(async () => {
   );
   room.registerSocketListeners();
   try {
-    await room.userActions.joinRoom();
+    room.userActions.joinRoom();
   } catch (_) {
   } finally {
     loading.value = false;

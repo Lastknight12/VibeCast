@@ -22,6 +22,8 @@ const mediaCodecs: RtpCodecCapability[] = [
   { kind: "video", mimeType: "video/VP8", clockRate: 90000 },
 ];
 
+const safeRoomRegexp = /^(?!.*\.\.)[a-zA-Z0-9/_\-.]+$/;
+
 export default function (socket: CustomSocket) {
   socket.customOn({
     event: "createRoom",
@@ -33,6 +35,10 @@ export default function (socket: CustomSocket) {
     handler: async (input, cb) => {
       if (rooms.has(input.roomName)) {
         throw new SocketError(errors.room.ALREADY_EXISTS);
+      }
+
+      if (!safeRoomRegexp.test(input.roomName)) {
+        throw new SocketError(errors.room.UNSAFE_NAME);
       }
 
       const worker = getMediasoupWorker();

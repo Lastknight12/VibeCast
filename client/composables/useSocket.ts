@@ -20,5 +20,6 @@ export function useSocket() {
     const config = useRuntimeConfig();
     socket = io(config.public.backendUrl, { withCredentials: true });
   }
+
   return socket;
 }

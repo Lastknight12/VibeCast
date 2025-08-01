@@ -1,23 +1,21 @@
-import { Type } from "@sinclair/typebox";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
 import { CustomSocket } from "src/types/socket";
 import { errors } from "../../errors";
 
-const leaveSchema = Type.Object({
-  roomName: Type.String({ minLength: 1 }),
-});
-
 export default function (socket: CustomSocket) {
   socket.customOn({
     event: "leave",
     config: {
-      schema: leaveSchema,
       protected: true,
     },
-    handler: (input) => {
+    handler: () => {
       const { user } = socket.data;
-      const room = rooms.get(input.roomName);
+      if (!user.roomName) {
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      }
+
+      const room = rooms.get(user.roomName);
       if (!room) {
         throw new SocketError(errors.room.NOT_FOUND);
       }
@@ -28,17 +26,17 @@ export default function (socket: CustomSocket) {
       }
 
       room.peers.delete(user.id);
-      socket.broadcast.to(input.roomName).emit("userDisconnect", user.id);
+      socket.broadcast.to(user.roomName).emit("userDisconnect", user.id);
       if (room.type === "public") {
-        socket.broadcast.emit("userLeftRoom", input.roomName, user.id);
-        socket.emit("userLeftRoom", input.roomName, user.id);
+        socket.broadcast.emit("userLeftRoom", user.roomName, user.id);
+        socket.emit("userLeftRoom", user.roomName, user.id);
       }
 
       if (room.peers.size === 0) {
-        rooms.delete(input.roomName);
+        rooms.delete(user.roomName);
         if (room.type === "public") {
-          socket.broadcast.emit("roomDeleted", input.roomName);
-          socket.emit("roomDeleted", input.roomName);
+          socket.broadcast.emit("roomDeleted", user.roomName);
+          socket.emit("roomDeleted", user.roomName);
         }
       }
     },

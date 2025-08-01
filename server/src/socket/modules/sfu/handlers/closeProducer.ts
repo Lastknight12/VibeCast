@@ -29,12 +29,10 @@ export default function (socket: CustomSocket) {
 
       const peer = room.peers.get(user.id);
       if (!peer) {
-        console.log("Peer not found");
-        return;
+        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
 
       const onConsumerClosed = (consumerId: string) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         socket.broadcast.to(user.roomName!).emit("consumerClosed", consumerId);
       };
 

@@ -1,8 +1,9 @@
 import type { User } from "better-auth/types";
-import type { SocketCallback, SocketCallbackArgs } from "./socket";
+import type { SocketCallback, SocketCallbackArgs } from "./useSocket";
 
 export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const socket = useSocket();
+  const toast = useToast();
 
   const localVideo = ref<HTMLVideoElement | null>(null);
   const localStream = ref<MediaStream | null>(null);
@@ -119,13 +120,13 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     const stream = await mediaConn.consume(producerId);
 
     if (!stream) {
-      console.log("no stream");
+      toast.error({ message: "no stream recieved from consumer" });
       return;
     }
 
     const peer = peers.value.get(userId);
     if (!peer) {
-      console.log("peer not founded");
+      toast.error({ message: "peer not founded" });
       return;
     }
 
@@ -201,7 +202,12 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
         };
       };
     }[]
-  > = async ({ data: peersList }) => {
+  > = async ({ data: peersList, errors }) => {
+    if (errors) {
+      toast.error({ message: errors[0]!.message });
+      return;
+    }
+
     if (peersList) {
       for (const peer of peersList) {
         const audioStream = peer.producers.audio
@@ -289,7 +295,11 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
   const handleBeforeUnload = () => {
     if (!disconnected.value && !joinRoomErrorMessage.value) {
-      socket.emit("leave", { roomName });
+      socket.emit("leave", ({ errors }: SocketCallbackArgs<unknown>) => {
+        if (errors) {
+          toast.error({ message: errors[0]!.message });
+        }
+      });
     }
   };
 

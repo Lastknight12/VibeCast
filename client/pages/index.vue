@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import CreateRoomDialog from "~/components/CreateRoomDialog.vue";
 import type { User } from "better-auth/types";
-import type { SocketCallback } from "~/composables/socket";
+import type { SocketCallback } from "~/composables/useSocket";
 
 useHead({
   title: "VibeCast homepage",
@@ -97,6 +97,8 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <Toaster />
+
   <div class="overflow-hidden relative h-full">
     <div
       ref="ballRef"
@@ -122,9 +124,11 @@ onUnmounted(() => {
         v-for="[roomId, room] of rooms"
         :key="roomId"
         class="p-6 bg-[#070707] border border-border rounded-xl"
-        @click="navigateTo(`/rooms/${roomId}`)"
+        @click="() => navigateTo(`/rooms/${roomId}`)"
       >
-        <h1 class="text-lg text-secondary">Room {{ roomId }}</h1>
+        <h1 class="text-lg text-secondary">
+          {{ decodeURIComponent(roomId) }}
+        </h1>
         <div
           class="flex flex-wrap gap-2 mt-4"
           v-for="[id, peer] of room.peers"

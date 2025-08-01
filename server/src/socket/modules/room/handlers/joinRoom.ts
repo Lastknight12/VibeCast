@@ -23,7 +23,7 @@ export default function (socket: CustomSocket, io: Server) {
 
       const room = rooms.get(input.roomName);
       if (!room) {
-        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+        throw new SocketError(errors.room.NOT_FOUND);
       }
 
       const previousPeer = room.peers.get(user.id);

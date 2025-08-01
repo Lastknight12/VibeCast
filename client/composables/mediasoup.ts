@@ -7,10 +7,11 @@ import type {
   Transport,
 } from "mediasoup-client/types";
 import * as mediasoup from "mediasoup-client";
-import type { SocketCallbackArgs } from "./socket";
+import type { SocketCallbackArgs } from "./useSocket";
 
 export class mediasoupConn {
   private socket = useSocket();
+  private toaster;
 
   localStream: MediaStream | null = null;
   audioStream: MediaStream | null = null;
@@ -27,7 +28,9 @@ export class mediasoupConn {
   producers: Map<"video" | "audio" | "video_audio", Producer | undefined>;
   consumers: Map<string, Consumer>;
 
-  constructor(roomName: string) {
+  constructor(roomName: string, toaster?: ReturnType<typeof useToast>) {
+    this.toaster = toaster;
+
     this.roomName = roomName;
     this.muted = true;
 
@@ -69,8 +72,12 @@ export class mediasoupConn {
     const rtpCapabilities = await new Promise((resolve, _reject) => {
       this.socket.emit(
         "getRTPCapabilities",
-        async ({ data }: SocketCallbackArgs<RtpCapabilities>) => {
-          console.log(data);
+        async ({ data, errors }: SocketCallbackArgs<RtpCapabilities>) => {
+          if (errors) {
+            this.toaster?.error({ message: errors[0]!.message });
+            return;
+          }
+
           resolve(data);
         }
       );
@@ -97,11 +104,14 @@ export class mediasoupConn {
         return;
       }
 
-      // TODO: declare transport type
       this.socket.emit(
         "createTransport",
         { type },
-        ({ data: transport }: SocketCallbackArgs<any>) => {
+        ({ data: transport, errors }: SocketCallbackArgs<any>) => {
+          if (errors) {
+            this.toaster?.error({ message: errors[0]!.message });
+          }
+
           switch (type) {
             case "send": {
               this.transports.send =
@@ -118,7 +128,14 @@ export class mediasoupConn {
                   this.socket.emit(
                     "connectTransport",
                     { dtlsParameters, type },
-                    callback
+                    ({ errors }: SocketCallbackArgs<unknown>) => {
+                      if (errors) {
+                        this.toaster?.error({ message: errors[0]!.message });
+                        return;
+                      }
+
+                      callback();
+                    }
                   );
                 }
               );
@@ -130,9 +147,12 @@ export class mediasoupConn {
                     "produce",
                     parameters,
                     ({ data, errors }: SocketCallbackArgs<{ id: string }>) => {
-                      if (!errors) {
-                        callback({ id: data?.id });
+                      if (errors) {
+                        this.toaster?.error({ message: errors[0]!.message });
+                        return;
                       }
+
+                      callback({ id: data?.id });
                     }
                   );
                 }
@@ -180,6 +200,7 @@ export class mediasoupConn {
 
     if (!this.transports.recv) {
       console.log("no transport created");
+      return;
     }
 
     let stream: MediaStream = new MediaStream();
@@ -210,10 +231,19 @@ export class mediasoupConn {
 
             this.consumers.set(consumer.id, consumer);
             stream.addTrack(consumer.track);
-            this.socket.emit("consumerReady", { id: consumer.id });
+            this.socket.emit(
+              "consumerReady",
+              { id: consumer.id },
+              ({ errors }: SocketCallbackArgs<unknown>) => {
+                if (errors) {
+                  this.toaster?.error({ message: errors[0]!.message });
+                }
+              }
+            );
 
             resolve(null);
           } else {
+            this.toaster?.error({ message: errors[0]!.message });
             reject(errors[0]!.message);
           }
         }
@@ -343,7 +373,15 @@ export class mediasoupConn {
 
     this.localStream = null;
 
-    this.socket.emit("closeProducer", { type: "video" });
+    this.socket.emit(
+      "closeProducer",
+      { type: "video" },
+      ({ errors }: SocketCallbackArgs<unknown>) => {
+        if (errors) {
+          this.toaster?.error({ message: errors[0]!.message });
+        }
+      }
+    );
   }
 
   switchMic() {

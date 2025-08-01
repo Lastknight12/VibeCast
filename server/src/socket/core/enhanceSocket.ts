@@ -85,7 +85,6 @@ function enhanceSocket(
     params: CustomOnParams<true, Schema> | CustomOnParams<false, Schema>
   ): void {
     if (params.config?.schema && !schemasCache.has(params.config.schema)) {
-      // TODO: rebuild??
       const schema = TypeCompiler.Compile(params.config.schema);
       schemasCache.set(params.config.schema, schema);
     }
