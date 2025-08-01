@@ -5,7 +5,7 @@ import { Type } from "@sinclair/typebox";
 import { CustomSocket } from "src/types/socket";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
-import { errors } from "../../shared/errors";
+import { errors } from "../../errors";
 
 const createRoomSchema = Type.Object({
   roomName: Type.String({ minLength: 1 }),
@@ -28,8 +28,9 @@ export default function (socket: CustomSocket) {
     config: {
       schema: createRoomSchema,
       protected: true,
+      expectCb: true,
     },
-    handler: async (input) => {
+    handler: async (input, cb) => {
       if (rooms.has(input.roomName)) {
         throw new SocketError(errors.room.ALREADY_EXISTS);
       }
@@ -49,6 +50,8 @@ export default function (socket: CustomSocket) {
         socket.broadcast.emit("roomCreated", input.roomName);
         socket.emit("roomCreated", input.roomName);
       }
+
+      cb({ data: { success: true } });
     },
   });
 }

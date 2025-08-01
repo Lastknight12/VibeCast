@@ -17,8 +17,8 @@ const pinoLoggerLevelSchema = Type.Union(
 );
 
 const envSchema = Type.Object({
-  LOGGER_LEVEL: pinoLoggerLevelSchema,
-  FASTIFY_LOGGER_LEVEL: pinoLoggerLevelSchema,
+  LOGGER_LEVEL: Type.Optional(pinoLoggerLevelSchema),
+  FASTIFY_LOGGER_LEVEL: Type.Optional(pinoLoggerLevelSchema),
 
   DATABASE_URL: Type.Required(Type.String()),
   ANNOUNCED_IP: Type.Required(Type.String()),

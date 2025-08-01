@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import CreateRoomDialog from "~/components/CreateRoomDialog.vue";
 import type { User } from "better-auth/types";
+import type { SocketCallback } from "~/composables/socket";
 
 useHead({
   title: "VibeCast homepage",
@@ -28,9 +29,9 @@ const googleLogin = () => {
   });
 };
 
-const handleRooms = ({
-  data,
-}: CallbackData<Record<string, { peers: Record<string, User> }>>) => {
+const handleRooms: SocketCallback<
+  Record<string, { peers: Record<string, User> }>
+> = ({ data }) => {
   if (data) {
     const map = new Map<
       string,
@@ -79,7 +80,7 @@ const handleRoomDeleted = (roomName: string) => {
 };
 
 onMounted(() => {
-  socket.customEmit("getAllRooms", undefined, handleRooms);
+  socket.emit("getAllRooms", handleRooms);
   socket.on("userJoinRoom", handleUserJoin);
   socket.on("userLeftRoom", handleUserLeft);
   socket.on("roomCreated", handleRoomCreated);

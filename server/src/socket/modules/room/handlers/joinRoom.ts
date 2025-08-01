@@ -4,7 +4,7 @@ import { CustomSocket } from "src/types/socket";
 import { Server } from "socket.io";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
-import { errors } from "../../shared/errors";
+import { errors } from "../../errors";
 
 const joinRoomSchema = Type.Object({
   roomName: Type.String({ minLength: 1 }),
@@ -16,8 +16,9 @@ export default function (socket: CustomSocket, io: Server) {
     config: {
       schema: joinRoomSchema,
       protected: true,
+      expectCb: true,
     },
-    handler: async (input) => {
+    handler: async (input, cb) => {
       const { user } = socket.data;
 
       const room = rooms.get(input.roomName);
@@ -55,6 +56,8 @@ export default function (socket: CustomSocket, io: Server) {
           image: user.image ?? "",
         });
       }
+
+      cb({ data: { success: true } });
     },
   });
 }

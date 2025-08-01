@@ -1,4 +1,15 @@
 export const errors = {
+  core: {
+    INVALID_CALLBACK: {
+      code: "INVALID_CALLBACK",
+      message: "Expected callback as last parameter",
+    },
+    UNEXPECTED_ERROR: {
+      code: "UNEXPECTED_ERROR",
+      message: "An unexpected error occurred. Please try again later.",
+    },
+  },
+
   room: {
     ALREADY_EXISTS: {
       code: "ROOM_ALREADY_EXISTS",

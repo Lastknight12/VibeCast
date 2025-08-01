@@ -1,31 +1,50 @@
 import { Socket } from "socket.io";
 import { DefaultEventsMap, EventsMap } from "socket.io/dist/typed-events";
 import { CustomSocket, SocketData } from "src/types/socket";
-import { EventError, HandlerCallback } from "src/socket/core";
+import { HandlerCallback } from "src/socket/core";
 import { ServerToClientEvents } from "src/types/socket";
-import { TypeCompiler, ValueErrorType } from "@sinclair/typebox/compiler";
+import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Static, TSchema } from "@sinclair/typebox";
+import { errors } from "../modules/errors";
 
-export interface CustomOnConfig<Schema extends TSchema> {
+export interface CustomOnConfig<
+  Schema extends TSchema,
+  ExpectCb extends boolean,
+> {
   schema?: Schema;
+  expectCb?: ExpectCb;
   protected?: boolean;
 }
 
-export interface CustomOnParams<Schema extends TSchema> {
+export interface CustomOnParams<
+  ExpectCb extends boolean,
+  Schema extends TSchema,
+> {
   event: string;
-  config?: CustomOnConfig<Schema>;
-  handler: (data: Static<Schema>) => unknown;
+  config?: CustomOnConfig<Schema, ExpectCb>;
+  handler: ExpectCb extends true
+    ? (
+        data: Static<Schema>,
+        cb: HandlerCallback<unknown>
+      ) => void | Promise<void>
+    : (data: Static<Schema>) => void | Promise<void>;
 }
 
-export type CustomOn = <Schema extends TSchema>(
-  params: CustomOnParams<Schema>
+export type CustomOn = <
+  Schema extends TSchema,
+  ExpectCb extends boolean = false,
+>(
+  params: CustomOnParams<ExpectCb, Schema>
 ) => void;
 
-function isPlainObject(value: unknown) {
+function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function extractPayloadAndCb(args: unknown[]) {
+function extractPayloadAndCb(args: unknown[]): {
+  payload?: object;
+  cb?: HandlerCallback<unknown>;
+} {
   const cb: HandlerCallback<unknown> | undefined =
     (args.findLast(
       (elem) => typeof elem === "function"
@@ -34,6 +53,16 @@ function extractPayloadAndCb(args: unknown[]) {
   const payload = isPlainObject(args[0]) ? args[0] : undefined;
 
   return { payload, cb };
+}
+
+function isExpectCb<Schema extends TSchema>(
+  p: CustomOnParams<boolean, Schema>
+): p is CustomOnParams<true, Schema> {
+  if (p.config?.expectCb) {
+    return p.config.expectCb === true;
+  }
+
+  return false;
 }
 
 export class SocketError extends Error {
@@ -53,7 +82,7 @@ function enhanceSocket(
   >();
 
   function customOn<Schema extends TSchema>(
-    params: CustomOnParams<Schema>
+    params: CustomOnParams<true, Schema> | CustomOnParams<false, Schema>
   ): void {
     if (params.config?.schema && !schemasCache.has(params.config.schema)) {
       // TODO: rebuild??
@@ -68,53 +97,59 @@ function enhanceSocket(
         return;
       }
 
-      if (!cb || typeof cb !== "function") {
-        _socket.emit("error", {
-          event: params.event,
-          details: [
-            {
-              path: "",
-              keyword: ValueErrorType[21], // Function
-              message: "Expected callback as last parameter",
-            },
-          ],
-        });
-        return;
-      }
-
       if (params.config?.schema) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const validator = schemasCache.get(params.config.schema)!;
         const isValid = validator.Check(payload);
-
-        const formatedDetails: EventError["details"] = [];
-
-        for (const error of validator.Errors(payload)) {
-          formatedDetails.push({
-            path: error.path,
-            keyword: ValueErrorType[error.type],
-            message: error.message,
-          });
-        }
 
         if (!isValid) {
           socket.emit("error", {
             event: params.event,
-            details: formatedDetails,
+            error: {
+              code: "INVALID_PAYLOAD",
+              message: validator.Errors(payload).First()?.message,
+            },
           });
           return;
         }
       }
 
       try {
-        const data = await params.handler(payload);
+        if (isExpectCb(params)) {
+          if (!cb || typeof cb !== "function") {
+            _socket.emit("error", {
+              event: params.event,
+              error: new SocketError(errors.core.INVALID_CALLBACK),
+            });
+            return;
+          }
 
-        cb({ data, errors: undefined });
+          await params.handler(payload, cb);
+        } else {
+          await params.handler(payload);
+        }
       } catch (error) {
         if (error instanceof SocketError) {
-          cb({
-            data: undefined,
-            errors: [{ code: error.code, message: error.message }],
+          if (params.config?.expectCb) {
+            cb?.({
+              data: undefined,
+              errors: [
+                {
+                  code: error.code,
+                  message: error.message,
+                },
+              ],
+            });
+            return;
+          }
+
+          _socket.emit("error", {
+            event: params.event,
+            error: { code: error.code, message: error.message },
+          });
+        } else {
+          _socket.emit("error", {
+            event: params.event,
+            error: new SocketError(errors.core.UNEXPECTED_ERROR),
           });
         }
       }

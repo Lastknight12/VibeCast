@@ -1,5 +1,6 @@
 import { User } from "better-auth/types";
 import { rooms } from "src/lib/roomState";
+import { HandlerCallback } from "src/socket/core";
 import { CustomSocket } from "src/types/socket";
 
 type Result = Record<string, { peers: Record<string, User> }>;
@@ -7,7 +8,10 @@ type Result = Record<string, { peers: Record<string, User> }>;
 export default function (socket: CustomSocket) {
   socket.customOn({
     event: "getAllRooms",
-    handler: (): Result => {
+    config: {
+      expectCb: true,
+    },
+    handler: (_input, cb: HandlerCallback<Result>) => {
       const roomList: Result = {};
 
       rooms.forEach((room, id) => {
@@ -29,7 +33,7 @@ export default function (socket: CustomSocket) {
         };
       });
 
-      return roomList;
+      cb({ data: roomList });
     },
   });
 }

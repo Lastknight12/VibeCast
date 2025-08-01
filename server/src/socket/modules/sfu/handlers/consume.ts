@@ -6,8 +6,8 @@ import {
 import { CustomSocket } from "src/types/socket";
 import { rooms } from "src/lib/roomState";
 import { Type } from "@sinclair/typebox";
-import { SocketError } from "src/socket/core";
-import { errors } from "../../shared/errors";
+import { HandlerCallback, SocketError } from "src/socket/core";
+import { errors } from "../../errors";
 
 const rtpCodecCapabilitySchema = Type.Object({
   kind: Type.Union([Type.Literal("audio"), Type.Literal("video")]),
@@ -65,8 +65,9 @@ export default function (socket: CustomSocket) {
     config: {
       schema: consumeSchema,
       protected: true,
+      expectCb: true,
     },
-    handler: async (input): Promise<Result> => {
+    handler: async (input, cb: HandlerCallback<Result>) => {
       const { user } = socket.data;
       if (!user.roomName) {
         throw new SocketError(errors.room.NOT_FOUND);
@@ -95,12 +96,14 @@ export default function (socket: CustomSocket) {
       });
       peer.consumers.set(consumer.id, consumer);
 
-      return {
-        id: consumer.id,
-        producerId: input.producerId,
-        kind: consumer.kind,
-        rtpParameters: consumer.rtpParameters,
-      };
+      cb({
+        data: {
+          id: consumer.id,
+          producerId: input.producerId,
+          kind: consumer.kind,
+          rtpParameters: consumer.rtpParameters,
+        },
+      });
     },
   });
 }

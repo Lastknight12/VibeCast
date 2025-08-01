@@ -2,7 +2,7 @@ import { Type } from "@sinclair/typebox";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
 import { CustomSocket } from "src/types/socket";
-import { errors } from "../../shared/errors";
+import { errors } from "../../errors";
 
 const leaveSchema = Type.Object({
   roomName: Type.String({ minLength: 1 }),

@@ -1,16 +1,22 @@
-import { SocketError } from "src/socket/core";
+import { HandlerCallback, SocketError } from "src/socket/core";
 import { RoomPeer } from "../types";
 import { CustomSocket } from "src/types/socket";
 import { rooms } from "src/lib/roomState";
-import { errors } from "../../shared/errors";
+import { errors } from "../../errors";
+import { User } from "better-auth/*";
+
+type Result = Omit<RoomPeer, "user"> & {
+  userData: Pick<User, "id" | "name" | "image">;
+};
 
 export default function (socket: CustomSocket) {
   socket.customOn({
     event: "getRoomPeers",
     config: {
       protected: true,
+      expectCb: true,
     },
-    handler: (): RoomPeer[] => {
+    handler: (_input, cb: HandlerCallback<Result[]>) => {
       const { user } = socket.data;
       if (!user.roomName) {
         throw new SocketError(errors.room.NOT_FOUND);
@@ -21,7 +27,7 @@ export default function (socket: CustomSocket) {
         throw new SocketError(errors.room.ALREADY_EXISTS);
       }
 
-      const peers = new Array<RoomPeer>();
+      const peers = new Array<Result>();
 
       for (const [id, data] of room.peers.entries()) {
         if (id === socket.data.user.id) continue;
@@ -38,7 +44,7 @@ export default function (socket: CustomSocket) {
               audio: systemAudioProducer?.id,
             },
           },
-          user: {
+          userData: {
             id: data.user.id,
             name: data.user.name,
             image: data.user.image,
@@ -47,7 +53,7 @@ export default function (socket: CustomSocket) {
         });
       }
 
-      return peers;
+      cb({ data: peers });
     },
   });
 }

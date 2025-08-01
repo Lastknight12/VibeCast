@@ -19,11 +19,8 @@ export type ErrorCb = (data: { error?: string }) => void;
 
 export interface EventError {
   event: string;
-  details:
-    | Error
-    | {
-        path: string;
-        keyword: string;
-        message: string;
-      }[];
+  error: {
+    code: string;
+    message: string;
+  };
 }

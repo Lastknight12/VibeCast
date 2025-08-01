@@ -3,8 +3,8 @@ import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
 import { ProducerType } from "mediasoup/node/lib/ProducerTypes";
 import { CustomSocket } from "src/types/socket";
 import { rooms } from "src/lib/roomState";
-import { SocketError } from "src/socket/core";
-import { errors } from "../../shared/errors";
+import { HandlerCallback, SocketError } from "src/socket/core";
+import { errors } from "../../errors";
 
 const rtcpFeedbackSchema = Type.Object({
   type: Type.String(),
@@ -75,8 +75,9 @@ export default function (socket: CustomSocket) {
     config: {
       schema: produceSchema,
       protected: true,
+      expectCb: true,
     },
-    handler: async (input): Promise<Result> => {
+    handler: async (input, cb: HandlerCallback<Result>) => {
       const { user } = socket.data;
 
       if (!user.roomName) {
@@ -123,7 +124,7 @@ export default function (socket: CustomSocket) {
           user.id,
           input.appData.type as ProducerType
         );
-      return { id: producer.id };
+      cb({ data: { id: producer.id } });
     },
   });
 }

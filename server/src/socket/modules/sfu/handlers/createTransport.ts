@@ -8,8 +8,8 @@ import {
 import { SctpParameters } from "mediasoup/node/lib/types";
 import { CustomSocket } from "src/types/socket";
 import { rooms } from "src/lib/roomState";
-import { SocketError } from "src/socket/core";
-import { errors } from "../../shared/errors";
+import { HandlerCallback, SocketError } from "src/socket/core";
+import { errors } from "../../errors";
 import { logger } from "src/lib/logger";
 
 interface Result {
@@ -28,10 +28,10 @@ export default function (socket: CustomSocket) {
     event: "createTransport",
     config: {
       schema: createTransportSchema,
-
+      expectCb: true,
       protected: true,
     },
-    handler: async (input): Promise<Result> => {
+    handler: async (input, cb: HandlerCallback<Result>) => {
       const { user } = socket.data;
       if (!user.roomName) {
         throw new SocketError(errors.room.USER_NOT_IN_ROOM);
@@ -55,21 +55,18 @@ export default function (socket: CustomSocket) {
           peer.transports.recv = transport;
         }
 
-        return {
-          id: transport.id,
-          iceParameters: transport.iceParameters,
-          iceCandidates: transport.iceCandidates,
-          dtlsParameters: transport.dtlsParameters,
-          sctpParameters: transport.sctpParameters,
-        };
+        cb({
+          data: {
+            id: transport.id,
+            iceParameters: transport.iceParameters,
+            iceCandidates: transport.iceCandidates,
+            dtlsParameters: transport.dtlsParameters,
+            sctpParameters: transport.sctpParameters,
+          },
+        });
       } catch (error) {
         logger.error(`Error creating transport: ${error}`);
-        // TODO: add unknown error in enum or smth like that
-
-        throw new SocketError({
-          code: "UNKNOWN_ERROR",
-          message: "Error creating transport",
-        });
+        throw new SocketError(errors.core.UNEXPECTED_ERROR);
       }
     },
   });

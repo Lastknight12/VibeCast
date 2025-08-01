@@ -2,7 +2,7 @@ import { Type } from "@sinclair/typebox";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
 import { CustomSocket } from "src/types/socket";
-import { errors } from "../../shared/errors";
+import { errors } from "../../errors";
 
 const connectTransportSchema = Type.Object({
   dtlsParameters: Type.Object({
@@ -24,8 +24,9 @@ export default function (socket: CustomSocket) {
     config: {
       schema: connectTransportSchema,
       protected: true,
+      expectCb: true,
     },
-    handler: async (input) => {
+    handler: async (input, cb) => {
       const { user } = socket.data;
       if (!user.roomName) {
         throw new SocketError(errors.room.USER_NOT_IN_ROOM);
@@ -48,9 +49,7 @@ export default function (socket: CustomSocket) {
             dtlsParameters: input.dtlsParameters,
           });
 
-          // TODO: refactor both callback calls? maybe dont call it?
-          // cb({ connected: true });
-          return;
+          break;
         }
         case "recv": {
           if (!peer.transports.recv) {
@@ -61,10 +60,11 @@ export default function (socket: CustomSocket) {
             dtlsParameters: input.dtlsParameters,
           });
 
-          // cb({ connected: true });
-          return;
+          break;
         }
       }
+
+      cb({ data: { connected: true } });
     },
   });
 }

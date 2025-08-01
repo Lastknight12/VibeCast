@@ -1,4 +1,5 @@
 import type { User } from "better-auth/types";
+import type { SocketCallback, SocketCallbackArgs } from "./socket";
 
 export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const socket = useSocket();
@@ -32,6 +33,16 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       }
     >
   >(new Map());
+
+  function trackVoiceActivity(
+    stream: MediaStream,
+    callback?: (isSpeaking: boolean) => void
+  ) {
+    const { speaking } = useStreamVolume(stream);
+    watch(speaking, (isSpeaking) => {
+      callback?.(isSpeaking);
+    });
+  }
 
   const registerSocketListeners = () => {
     socket.on("userJoined", handleUserJoin);
@@ -125,6 +136,13 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       }
       case "audio": {
         peer.stream.audio = stream;
+        trackVoiceActivity(stream, (isSpeaking) => {
+          if (isSpeaking) {
+            activeSpeakers.value.add(peer.userData.id);
+          } else {
+            activeSpeakers.value.delete(peer.userData.id);
+          }
+        });
         break;
       }
       case "video_audio": {
@@ -162,8 +180,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
   const startAudio = async () => {
     const stream = await mediaConn.getAudioStream();
 
-    const { speaking } = useStreamVolume(stream);
-    watch(speaking, (currSpeaking) => {
+    trackVoiceActivity(stream, (currSpeaking) => {
       isSpeaking.value = currSpeaking && !muted.value;
     });
   };
@@ -172,11 +189,9 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     muted.value = mediaConn.switchMic();
   };
 
-  const handlePeers = async ({
-    data: peersList,
-  }: CallbackData<
+  const handlePeers: SocketCallback<
     {
-      user: User;
+      userData: User;
       voiceMuted: boolean;
       producers: {
         audio?: string;
@@ -186,7 +201,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
         };
       };
     }[]
-  >) => {
+  > = async ({ data: peersList }) => {
     if (peersList) {
       for (const peer of peersList) {
         const audioStream = peer.producers.audio
@@ -201,7 +216,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
           ? await mediaConn.consume(peer.producers.screenShare.audio)
           : undefined;
 
-        peers.value.set(peer.user.id, {
+        peers.value.set(peer.userData.id, {
           stream: {
             audio: audioStream,
             screenShare: videoStream && {
@@ -210,16 +225,15 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
             },
           },
           voiceMuted: peer.voiceMuted,
-          userData: peer.user,
+          userData: peer.userData,
         });
 
         if (audioStream) {
-          const { speaking } = useStreamVolume(audioStream);
-          watch(speaking, (currSpeaking) => {
-            if (currSpeaking) {
-              activeSpeakers.value.add(peer.user.id);
+          trackVoiceActivity(audioStream, (isSpeaking) => {
+            if (isSpeaking) {
+              activeSpeakers.value.add(peer.userData.id);
             } else {
-              activeSpeakers.value.delete(peer.user.id);
+              activeSpeakers.value.delete(peer.userData.id);
             }
           });
         }
@@ -248,12 +262,12 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
   const joinRoom = async () => {
     await new Promise((resolve, reject) => {
-      socket.customEmit(
+      socket.emit(
         "joinRoom",
         {
           roomName,
         },
-        async ({ errors }: CallbackData<void>) => {
+        async ({ errors }: SocketCallbackArgs<unknown>) => {
           if (errors) {
             const errorMessage = errors[0]!.message;
             joinRoomErrorMessage.value = errorMessage;
@@ -264,7 +278,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
             await mediaConn.createTransport("send");
             await mediaConn.createTransport("recv");
             await mediaConn.produce("audio");
-            socket.customEmit("getRoomPeers", handlePeers);
+            socket.emit("getRoomPeers", handlePeers);
 
             resolve(null);
           }
@@ -275,7 +289,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
   const handleBeforeUnload = () => {
     if (!disconnected.value && !joinRoomErrorMessage.value) {
-      socket.customEmit("leave", { roomName });
+      socket.emit("leave", { roomName });
     }
   };
 

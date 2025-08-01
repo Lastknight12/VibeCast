@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { cn } from "@/lib/utils";
+import type { SocketCallbackArgs } from "~/composables/socket";
 
 const socket = useSocket();
 
@@ -13,18 +14,19 @@ function createRoom() {
     errorMessage.value = "Room name cannot be empty";
     return;
   }
+
   socket.emit(
     "createRoom",
     {
       roomName: roomName.value.toString(),
       roomType: isPrivate.value === true ? "private" : "public",
     },
-    (response: { errors?: any[] }) => {
+    (response: SocketCallbackArgs<unknown>) => {
       if (!response.errors) {
         navigateTo(`/rooms/${roomName.value}`);
         roomName.value = "";
       } else {
-        errorMessage.value = response.errors[0];
+        errorMessage.value = response.errors[0]?.message!;
       }
     }
   );

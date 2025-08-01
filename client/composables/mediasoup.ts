@@ -6,8 +6,8 @@ import type {
   RtpParameters,
   Transport,
 } from "mediasoup-client/types";
-import type { Socket } from "socket.io-client";
 import * as mediasoup from "mediasoup-client";
+import type { SocketCallbackArgs } from "./socket";
 
 export class mediasoupConn {
   private socket = useSocket();
@@ -67,9 +67,9 @@ export class mediasoupConn {
 
   async createDevice() {
     const rtpCapabilities = await new Promise((resolve, _reject) => {
-      this.socket.customEmit(
+      this.socket.emit(
         "getRTPCapabilities",
-        async ({ data }: CallbackData<RtpCapabilities>) => {
+        async ({ data }: SocketCallbackArgs<RtpCapabilities>) => {
           console.log(data);
           resolve(data);
         }
@@ -98,10 +98,10 @@ export class mediasoupConn {
       }
 
       // TODO: declare transport type
-      this.socket.customEmit(
+      this.socket.emit(
         "createTransport",
         { type },
-        ({ data: transport }: CallbackData<any>) => {
+        ({ data: transport }: SocketCallbackArgs<any>) => {
           switch (type) {
             case "send": {
               this.transports.send =
@@ -115,7 +115,7 @@ export class mediasoupConn {
               this.transports.send.on(
                 "connect",
                 ({ dtlsParameters }, callback) => {
-                  this.socket.customEmit(
+                  this.socket.emit(
                     "connectTransport",
                     { dtlsParameters, type },
                     callback
@@ -126,10 +126,10 @@ export class mediasoupConn {
               this.transports.send.on(
                 "produce",
                 async (parameters, callback) => {
-                  this.socket.customEmit(
+                  this.socket.emit(
                     "produce",
                     parameters,
-                    ({ data, errors }: CallbackData<{ id: string }>) => {
+                    ({ data, errors }: SocketCallbackArgs<{ id: string }>) => {
                       if (!errors) {
                         callback({ id: data?.id });
                       }
@@ -137,7 +137,7 @@ export class mediasoupConn {
                   );
                 }
               );
-              return;
+              break;
             }
             case "recv":
               {
@@ -152,7 +152,7 @@ export class mediasoupConn {
                 this.transports.recv.on(
                   "connect",
                   ({ dtlsParameters }, callback) => {
-                    this.socket.customEmit(
+                    this.socket.emit(
                       "connectTransport",
                       { dtlsParameters, type },
                       callback
@@ -160,7 +160,7 @@ export class mediasoupConn {
                   }
                 );
               }
-              return;
+              break;
           }
         }
       );
@@ -185,7 +185,7 @@ export class mediasoupConn {
     let stream: MediaStream = new MediaStream();
 
     await new Promise((resolve, reject) => {
-      this.socket.customEmit(
+      this.socket.emit(
         "consume",
         {
           producerId,
@@ -194,7 +194,7 @@ export class mediasoupConn {
         async ({
           data,
           errors,
-        }: CallbackData<{
+        }: SocketCallbackArgs<{
           id: string;
           producerId: string;
           kind: MediaKind;
@@ -210,7 +210,7 @@ export class mediasoupConn {
 
             this.consumers.set(consumer.id, consumer);
             stream.addTrack(consumer.track);
-            this.socket.customEmit("consumerReady", { id: consumer.id });
+            this.socket.emit("consumerReady", { id: consumer.id });
 
             resolve(null);
           } else {
@@ -343,14 +343,14 @@ export class mediasoupConn {
 
     this.localStream = null;
 
-    this.socket.customEmit("closeProducer", { type: "video" });
+    this.socket.emit("closeProducer", { type: "video" });
   }
 
   switchMic() {
     if (this.audioStream && this.audioStream.getAudioTracks().length > 0) {
       this.muted = !this.muted;
       this.audioStream.getAudioTracks()[0]!.enabled = !this.muted;
-      this.socket.customEmit("switchMic", { muted: this.muted });
+      this.socket.emit("switchMic", { muted: this.muted });
     }
 
     return this.muted;

@@ -3,7 +3,7 @@ import { closeRelatedConsumers } from "../sfu.utils";
 import { CustomSocket } from "src/types/socket";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
-import { errors } from "../../shared/errors";
+import { errors } from "../../errors";
 
 const closeProducerSchema = Type.Object({
   type: Type.Union([Type.Literal("audio"), Type.Literal("video")]),
