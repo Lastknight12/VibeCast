@@ -6,6 +6,7 @@ export type RoomType = "private" | "public";
 export const rooms = new Map<
   string,
   {
+    name: string;
     type: RoomType;
     router: Router;
     peers: PeersMap;

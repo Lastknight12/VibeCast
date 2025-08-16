@@ -3,7 +3,7 @@ import { rooms } from "src/lib/roomState";
 import { HandlerCallback } from "src/socket/core";
 import { CustomSocket } from "src/types/socket";
 
-type Result = Record<string, { peers: Record<string, User> }>;
+type Result = Record<string, { name: string; peers: Record<string, User> }>;
 
 export default function (socket: CustomSocket) {
   socket.customOn({
@@ -29,6 +29,7 @@ export default function (socket: CustomSocket) {
         });
 
         roomList[id] = {
+          name: room.name,
           peers,
         };
       });

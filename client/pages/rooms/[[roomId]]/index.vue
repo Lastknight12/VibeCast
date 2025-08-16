@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { useRoom } from "~/composables/useRoom";
-
 const route = useRoute();
-const roomName = route.params.roomName as string;
+const roomId = route.params.roomId as string;
 
 useHead({
-  title: `${route.params.roomName}`,
+  title: `${route.params.roomId}`,
   meta: [
     {
       name: "description",
@@ -34,8 +32,9 @@ const canShowContent = computed(
 const authClient = useAuthClient();
 const { data: session } = await authClient.getSession();
 
-const mediaConn = new mediasoupConn(roomName, toast);
-const room = useRoom(roomName, mediaConn);
+// SUGGESTION: dont accept toast?
+const mediaConn = new mediasoupConn(toast);
+const room = useRoom(roomId, mediaConn);
 
 watchEffect(() => {
   useHead({
@@ -112,9 +111,9 @@ async function leave() {
     <div class="overflow-auto w-full">
       <div class="w-full flex justify-center">
         <video
-          v-if="room.refs.localPinnedStream.value"
-          :srcObject="room.refs.localPinnedStream.value.stream"
-          @click="() => (room.refs.localPinnedStream.value = null)"
+          v-if="room.refs.localPinnedStreams.value?.stream"
+          :srcObject="room.refs.localPinnedStreams.value.stream"
+          @click="() => (room.refs.localPinnedStreams.value = null)"
           autoplay
           playsinline
           class="w-full h-full object-cover rounded-lg shadow max-w-[780px]"
@@ -160,11 +159,11 @@ async function leave() {
         </div>
 
         <div
-          v-for="[id, data] in room.refs.peers.value"
-          :key="id"
+          v-for="[peerId, data] in room.refs.peers.value"
+          :key="peerId"
           :class="[
             'bg-[#0f0f0f] transition-all relative rounded-lg flex items-center justify-center min-h-[180px] min-w-[240px]',
-            room.refs.activeSpeakers.value.has(id)
+            room.refs.activeSpeakers.value.has(peerId)
               ? 'ring-4 ring-green-400'
               : '',
           ]"
@@ -182,17 +181,44 @@ async function leave() {
             <p>{{ data.userData.name }}</p>
           </div>
 
-          <video
+          <div
             v-if="
-              data.stream?.screenShare &&
-              room.refs.localPinnedStream.value?.peerId !== id
+              data.streams?.screenShare.video.producerId &&
+              !data.streams.screenShare.active
             "
-            @click="() => room.userActions.switchLocalPinStream(id, data.stream.screenShare!.video)"
+            class="w-full h-full flex items-center justify-center"
+          >
+            <UiButton
+              variant="secondary"
+              @click="room.userActions.watchStream(peerId)"
+              >Watch stream</UiButton
+            >
+          </div>
+
+          <video
+            v-else-if="
+              data.streams.screenShare?.active &&
+              data.streams.screenShare.video.stream &&
+              room.refs.localPinnedStreams.value?.peerId !== peerId
+            "
+            class="w-full h-full rounded-lg"
+            @click="() => room.userActions.pinStream(peerId)"
+            autoplay
+            playsinline
+            :srcObject="data.streams.screenShare.video.stream"
+          ></video>
+
+          <!-- <video
+            v-if="
+            data.stream?.screenShare &&
+            room.refs.localPinnedStream.value?.peerId !== id
+            "
+            @click="() => room.userActions.pinStream(id, data.stream.screenShare!.video)"
             :srcObject="data.stream.screenShare.video"
             autoplay
             playsinline
             class="w-full h-full rounded-lg"
-          />
+            /> -->
 
           <img
             v-else
@@ -203,17 +229,22 @@ async function leave() {
           />
           <!-- user mic audio -->
           <audio
-            v-if="data.stream?.audio"
-            :srcObject="data.stream.audio"
+            v-if="data.streams?.audio.stream"
+            :srcObject="data.streams.audio.stream"
             autoplay
           />
 
           <!-- stream audio -->
           <audio
-            v-if="data.stream?.screenShare?.audio"
-            :srcObject="data.stream.screenShare.audio"
+            v-if="data.streams?.screenShare?.audio?.stream"
+            :srcObject="data.streams.screenShare.audio.stream"
             autoplay
           />
+          <!-- <audio
+          v-if="data.stream?.screenShare?.audio"
+          :srcObject="data.stream.screenShare.audio"
+          autoplay
+          /> -->
         </div>
       </div>
     </div>
@@ -252,6 +283,16 @@ async function leave() {
         @click="leave"
       >
         <Icon name="material-symbols-light:call-end" size="20" />
+      </UiButton>
+
+      <UiButton
+        v-if="room.refs.localPinnedStreams.value"
+        variant="destructive"
+        size="icon"
+        class="text-red-200"
+        @click="() => room.userActions.stopWatchingStream(room.refs.localPinnedStreams.value!.peerId)"
+      >
+        <Icon name="material-symbols:mimo-disconnect-outline" size="20" />
       </UiButton>
     </div>
   </div>

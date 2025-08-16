@@ -1,15 +1,34 @@
 import type { User } from "better-auth/types";
 import type { SocketCallback, SocketCallbackArgs } from "./useSocket";
 
-export function useRoom(roomName: string, mediaConn: mediasoupConn) {
+interface PeerStream {
+  stream?: MediaStream;
+  consumerId?: string;
+  producerId?: string;
+}
+
+interface Peer {
+  streams: {
+    audio: PeerStream;
+    screenShare: {
+      active: boolean;
+      video: PeerStream;
+      audio: PeerStream;
+    };
+  };
+  voiceMuted: boolean;
+  userData: User;
+}
+
+export function useRoom(roomId: string, mediaConn: mediasoupConn) {
   const socket = useSocket();
   const toast = useToast();
 
-  const localVideo = ref<HTMLVideoElement | null>(null);
   const localStream = ref<MediaStream | null>(null);
-  const localPinnedStream = ref<{ stream: MediaStream; peerId: string } | null>(
-    null
-  );
+  const localPinnedStreams = ref<{
+    stream: MediaStream;
+    peerId: string;
+  } | null>(null);
   const isSpeaking = ref<boolean>(false);
   const activeSpeakers = ref<Set<string>>(new Set());
   const muted = ref(mediaConn.muted);
@@ -18,32 +37,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
   const disconnected = ref<boolean>(false);
 
-  const peers = ref<
-    Map<
-      string,
-      {
-        stream: {
-          audio?: MediaStream | null;
-          screenShare?: {
-            video: MediaStream;
-            audio?: MediaStream | null;
-          };
-        };
-        voiceMuted: boolean;
-        userData: User;
-      }
-    >
-  >(new Map());
-
-  function trackVoiceActivity(
-    stream: MediaStream,
-    callback?: (isSpeaking: boolean) => void
-  ) {
-    const { speaking } = useStreamVolume(stream);
-    watch(speaking, (isSpeaking) => {
-      callback?.(isSpeaking);
-    });
-  }
+  const peers = ref<Map<string, Peer>>(new Map());
 
   const registerSocketListeners = () => {
     socket.on("userJoined", handleUserJoin);
@@ -73,11 +67,23 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     socket.off("leaveRoom", handleLeaveRoom);
   };
 
-  const switchLocalPinStream = (peerId: string, stream: MediaStream) => {
-    if (!localPinnedStream.value) {
-      localPinnedStream.value = { stream, peerId };
+  const pinStream = (peerId: string) => {
+    const peer = peers.value.get(peerId);
+    if (!peer) {
+      console.log("no peer founded");
+      return;
+    }
+
+    const stream = peer.streams.screenShare?.video?.stream;
+    if (!stream) {
+      console.log("no stream founded");
+      return;
+    }
+
+    if (!localPinnedStreams.value) {
+      localPinnedStreams.value = { stream, peerId };
     } else {
-      localPinnedStream.value = null;
+      localPinnedStreams.value = null;
     }
   };
 
@@ -88,7 +94,14 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
   const handleUserJoin = (data: { user: User }) => {
     peers.value.set(data.user.id, {
-      stream: {},
+      streams: {
+        audio: {},
+        screenShare: {
+          active: false,
+          video: {},
+          audio: {},
+        },
+      },
       voiceMuted: true,
       userData: data.user,
     });
@@ -117,13 +130,6 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     userId: string,
     type: "video" | "audio" | "video_audio"
   ) => {
-    const stream = await mediaConn.consume(producerId);
-
-    if (!stream) {
-      toast.error({ message: "no stream recieved from consumer" });
-      return;
-    }
-
     const peer = peers.value.get(userId);
     if (!peer) {
       toast.error({ message: "peer not founded" });
@@ -132,11 +138,24 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
     switch (type) {
       case "video": {
-        peer.stream.screenShare = { video: stream };
+        peer.streams.screenShare.video = {
+          producerId,
+        };
         break;
       }
       case "audio": {
-        peer.stream.audio = stream;
+        const consumer = await mediaConn.consume(producerId);
+
+        if (!consumer) {
+          console.log("no consumer created");
+          return;
+        }
+        const stream = new MediaStream([consumer.track]);
+
+        peer.streams.audio = {
+          stream,
+          producerId,
+        };
         trackVoiceActivity(stream, (isSpeaking) => {
           if (isSpeaking) {
             activeSpeakers.value.add(peer.userData.id);
@@ -147,7 +166,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
         break;
       }
       case "video_audio": {
-        peer.stream.screenShare!.audio = stream;
+        peer.streams.screenShare.audio = { producerId };
         break;
       }
     }
@@ -190,6 +209,89 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
     muted.value = mediaConn.switchMic();
   };
 
+  const watchStream = async (peerId: string) => {
+    const peer = peers.value.get(peerId);
+    if (!peer) {
+      console.log("No peers founded");
+      return;
+    }
+
+    const videoProducerId = peer.streams.screenShare.video.producerId;
+    const audioProducerId = peer.streams.screenShare.audio.producerId;
+    if (!videoProducerId) {
+      console.log("no producerId founded");
+      return;
+    }
+
+    const videoConsumer = await mediaConn.consume(videoProducerId);
+    if (!videoConsumer) {
+      console.log("Enexcepted error while creating consumer");
+      return;
+    }
+    const audioConsumer = audioProducerId
+      ? await mediaConn.consume(audioProducerId)
+      : undefined;
+
+    const videoStream = new MediaStream([videoConsumer.track]);
+    const audioStream = audioConsumer && new MediaStream([audioConsumer.track]);
+
+    peer.streams.screenShare = {
+      active: true,
+      video: {
+        stream: videoStream,
+        producerId: videoConsumer.producerId,
+        consumerId: videoConsumer.id,
+      },
+      audio: {
+        stream: audioStream,
+        consumerId: audioConsumer?.id,
+        producerId: audioConsumer?.producerId,
+      },
+    };
+  };
+
+  const stopWatchingStream = async (streamerPeerId: string) => {
+    const peer = peers.value.get(streamerPeerId);
+    if (!peer) {
+      console.log("No peer founded");
+      return;
+    }
+    if (!peer.streams.screenShare.video.consumerId) {
+      console.log("no consumerId founded");
+      return;
+    }
+
+    const videoConsumer = mediaConn.consumers.get(
+      peer.streams.screenShare.video.consumerId
+    );
+    if (!videoConsumer) {
+      console.log("consumer with provided id don't exist");
+      return;
+    }
+
+    const audioConsumer =
+      peer.streams.screenShare.audio.stream &&
+      mediaConn.consumers.get(peer.streams.screenShare.audio.consumerId!);
+
+    await mediaConn.closeConsumer(videoConsumer.id);
+    audioConsumer && (await mediaConn.closeConsumer(audioConsumer.id));
+    if (localPinnedStreams.value?.peerId === streamerPeerId) {
+      localPinnedStreams.value = null;
+    }
+
+    peer.streams.screenShare = {
+      active: false,
+      video: {
+        stream: undefined,
+        producerId: videoConsumer.producerId,
+      },
+      audio: {
+        stream: undefined,
+        producerId: audioConsumer?.producerId,
+      },
+    };
+  };
+
   const handlePeers: SocketCallback<
     {
       userData: User;
@@ -210,24 +312,26 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
     if (peersList) {
       for (const peer of peersList) {
-        const audioStream = peer.producers.audio
+        const audioConsumer = peer.producers.audio
           ? await mediaConn.consume(peer.producers.audio)
           : undefined;
-
-        const videoStream = peer.producers.screenShare
-          ? await mediaConn.consume(peer.producers.screenShare.video)
-          : undefined;
-
-        const videoStreamAudio = peer.producers.screenShare?.audio
-          ? await mediaConn.consume(peer.producers.screenShare.audio)
-          : undefined;
+        const audioStream =
+          audioConsumer && new MediaStream([audioConsumer.track]);
 
         peers.value.set(peer.userData.id, {
-          stream: {
-            audio: audioStream,
-            screenShare: videoStream && {
-              video: videoStream,
-              audio: videoStreamAudio,
+          streams: {
+            audio: {
+              stream: audioStream,
+              producerId: audioConsumer?.producerId,
+            },
+            screenShare: {
+              active: false,
+              video: {
+                producerId: peer.producers.screenShare?.video,
+              },
+              audio: {
+                producerId: peer.producers.screenShare?.audio,
+              },
             },
           },
           voiceMuted: peer.voiceMuted,
@@ -255,13 +359,18 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
     switch (data.type) {
       case "screenShare":
-        peer?.stream.screenShare && (peer.stream.screenShare = undefined);
-        if (localPinnedStream.value) {
-          localPinnedStream.value = null;
+        peer?.streams.screenShare &&
+          (peer.streams.screenShare = {
+            active: false,
+            video: {},
+            audio: {},
+          });
+        if (localPinnedStreams.value?.peerId === data.peerId) {
+          localPinnedStreams.value = null;
         }
         break;
       case "audio":
-        peer?.stream.audio && (peer.stream.audio = undefined);
+        peer?.streams.audio && (peer.streams.audio = {});
         break;
     }
   };
@@ -271,7 +380,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       socket.emit(
         "joinRoom",
         {
-          roomName,
+          roomId,
         },
         async ({ errors }: SocketCallbackArgs<unknown>) => {
           if (errors) {
@@ -305,7 +414,6 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
 
   return {
     refs: {
-      localVideo,
       localStream,
       mediaConn,
       muted,
@@ -313,7 +421,7 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       isSpeaking,
       joinRoomErrorMessage,
       peers,
-      localPinnedStream,
+      localPinnedStreams,
       disconnected,
     },
     registerSocketListeners,
@@ -323,7 +431,9 @@ export function useRoom(roomName: string, mediaConn: mediasoupConn) {
       switchMic,
       switchScreenShare,
       joinRoom,
-      switchLocalPinStream,
+      pinStream,
+      watchStream,
+      stopWatchingStream,
     },
     clearFunctions: {
       handleBeforeUnload,

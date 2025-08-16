@@ -57,5 +57,6 @@ export function useStreamVolume(
 
   return {
     speaking,
+    trackVoiceActivity,
   };
 }

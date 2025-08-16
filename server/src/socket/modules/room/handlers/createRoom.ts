@@ -1,7 +1,7 @@
 import { getMediasoupWorker } from "src/lib/worker";
-import { RtpCodecCapability } from "mediasoup/node/lib/types";
+import { Router, RtpCodecCapability } from "mediasoup/node/lib/types";
 import { PeersMap } from "src/lib/peersMap";
-import { Type } from "@sinclair/typebox";
+import { Static, Type } from "@sinclair/typebox";
 import { CustomSocket } from "src/types/socket";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
@@ -11,6 +11,28 @@ const createRoomSchema = Type.Object({
   roomName: Type.String({ minLength: 1 }),
   roomType: Type.Union([Type.Literal("public"), Type.Literal("private")]),
 });
+
+function createRoom(
+  router: Router,
+  roomType: Static<typeof createRoomSchema.properties.roomType>,
+  name: string
+) {
+  const uuid = crypto.randomUUID();
+
+  if (rooms.has(uuid)) {
+    const uuid = createRoom(router, roomType, name);
+    return uuid;
+  }
+
+  rooms.set(uuid, {
+    name,
+    router,
+    peers: new PeersMap(),
+    type: roomType,
+  });
+
+  return uuid;
+}
 
 const mediaCodecs: RtpCodecCapability[] = [
   {
@@ -46,18 +68,17 @@ export default function (socket: CustomSocket) {
         mediaCodecs,
       });
 
-      rooms.set(input.roomName, {
-        router,
-        peers: new PeersMap(),
-        type: input.roomType,
-      });
+      const roomId = createRoom(router, input.roomType, input.roomName);
 
       if (input.roomType === "public") {
-        socket.broadcast.emit("roomCreated", input.roomName);
-        socket.emit("roomCreated", input.roomName);
+        socket.broadcast.emit("roomCreated", {
+          name: input.roomName,
+          id: roomId,
+        });
+        socket.emit("roomCreated", { name: input.roomName, id: roomId });
       }
 
-      cb({ data: { success: true } });
+      cb({ data: { id: roomId } });
     },
   });
 }

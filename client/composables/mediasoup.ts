@@ -7,7 +7,7 @@ import type {
   Transport,
 } from "mediasoup-client/types";
 import * as mediasoup from "mediasoup-client";
-import type { SocketCallbackArgs } from "./useSocket";
+import type { SocketCallback, SocketCallbackArgs } from "./useSocket";
 
 export class mediasoupConn {
   private socket = useSocket();
@@ -16,7 +16,6 @@ export class mediasoupConn {
   localStream: MediaStream | null = null;
   audioStream: MediaStream | null = null;
 
-  roomName: string;
   muted: boolean;
   activeSpeakers?: Ref<Set<string>>;
 
@@ -28,10 +27,8 @@ export class mediasoupConn {
   producers: Map<"video" | "audio" | "video_audio", Producer | undefined>;
   consumers: Map<string, Consumer>;
 
-  constructor(roomName: string, toaster?: ReturnType<typeof useToast>) {
+  constructor(toaster?: ReturnType<typeof useToast>) {
     this.toaster = toaster;
-
-    this.roomName = roomName;
     this.muted = true;
 
     this.transports = {};
@@ -203,7 +200,7 @@ export class mediasoupConn {
       return;
     }
 
-    let stream: MediaStream = new MediaStream();
+    let createdConsumer: Consumer | undefined;
 
     await new Promise((resolve, reject) => {
       this.socket.emit(
@@ -230,7 +227,7 @@ export class mediasoupConn {
             });
 
             this.consumers.set(consumer.id, consumer);
-            stream.addTrack(consumer.track);
+            createdConsumer = consumer;
             this.socket.emit(
               "consumerReady",
               { id: consumer.id },
@@ -250,19 +247,31 @@ export class mediasoupConn {
       );
     });
 
-    return stream;
+    return createdConsumer;
   }
 
-  async closeConsumer(consumerId: string) {
-    const consumer = this.consumers.get(consumerId);
+  async closeConsumer(id: string) {
+    const consumer = this.consumers.get(id);
 
     if (!consumer) {
-      console.log("no consumer with this id exist" + consumerId);
+      console.log("no consumer with this id exist " + id);
       return;
     }
 
     consumer.close();
-    this.consumers.delete(consumerId);
+    this.consumers.delete(id);
+    this.socket.emit(
+      "closeConsumer",
+      { id },
+      (data: SocketCallbackArgs<unknown>) => {
+        if (
+          data.errors &&
+          data.errors[0]?.code === "MEDIASOUP_CONSUMER_NOT_FOUND"
+        ) {
+          console.log("invalid consumer id");
+        }
+      }
+    );
   }
 
   async produce(type: "video" | "audio" | "video_audio") {
@@ -395,7 +404,6 @@ export class mediasoupConn {
   }
 
   close() {
-    this.roomName = "";
     this.localStream = null;
     this.audioStream = null;
     this.muted = true;

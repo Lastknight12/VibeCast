@@ -27,9 +27,9 @@ function createRoom() {
       roomName: roomName.value.toString(),
       roomType: isPrivate.value === true ? "private" : "public",
     },
-    (response: SocketCallbackArgs<unknown>) => {
+    (response: SocketCallbackArgs<{ id: string }>) => {
       if (!response.errors) {
-        navigateTo(`/rooms/${roomName.value}`);
+        navigateTo(`/rooms/${response.data.id}`);
         roomName.value = "";
       } else {
         errorMessage.value = response.errors[0]?.message!;

@@ -20,7 +20,10 @@ const authClient = useAuthClient();
 const session = await authClient.useSession(useCustomFetch);
 
 const rooms = ref<
-  Map<string, { peers: Map<string, Pick<User, "id" | "name" | "image">> }>
+  Map<
+    string,
+    { name: string; peers: Map<string, Pick<User, "id" | "name" | "image">> }
+  >
 >(new Map());
 
 const googleLogin = () => {
@@ -29,14 +32,13 @@ const googleLogin = () => {
   });
 };
 
-const handleRooms: SocketCallback<
-  Record<string, { peers: Record<string, User> }>
-> = ({ data }) => {
+interface RoomInfo {
+  name: string;
+  peers: Map<string, User>;
+}
+const handleRooms: SocketCallback<Record<string, RoomInfo>> = ({ data }) => {
   if (data) {
-    const map = new Map<
-      string,
-      { peers: Map<string, Pick<User, "id" | "name" | "image">> }
-    >();
+    const map = new Map<string, RoomInfo>();
 
     for (const [roomId, room] of Object.entries(data)) {
       map.set(roomId, {
@@ -71,8 +73,8 @@ const handleUserLeft = (roomName: string, peerId: string) => {
   room?.peers.delete(peerId);
 };
 
-const handleRoomCreated = (roomName: string) => {
-  rooms.value.set(roomName, { peers: new Map() });
+const handleRoomCreated = (data: { name: string; roomId: string }) => {
+  rooms.value.set(data.roomId, { name: data.name, peers: new Map() });
 };
 
 const handleRoomDeleted = (roomName: string) => {
@@ -127,7 +129,7 @@ onUnmounted(() => {
         @click="() => navigateTo(`/rooms/${roomId}`)"
       >
         <h1 class="text-lg text-secondary">
-          {{ decodeURIComponent(roomId) }}
+          {{ room.name }}
         </h1>
         <div
           class="flex flex-wrap gap-2 mt-4"

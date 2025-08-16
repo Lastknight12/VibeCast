@@ -72,7 +72,7 @@ export default function (socket: CustomSocket) {
 
           socket.broadcast.to(user.roomName).emit("peerClosedProducer", {
             peerId: user.id,
-            type: "screenShare",
+            type: "audio",
           });
 
           closeRelatedConsumers(

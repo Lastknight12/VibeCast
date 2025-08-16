@@ -58,7 +58,7 @@ export const env: EnvConfig = {} as EnvConfig;
     );
   }
 
-  for (const key of Object.keys(envSchema.properties ?? {})) {
-    env[key] = process.env[key];
+  for (const [key, val] of Object.entries(envSchema.properties ?? {})) {
+    env[key] = process.env[key] ?? val.default;
   }
 })();
