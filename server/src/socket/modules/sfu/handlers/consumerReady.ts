@@ -14,6 +14,7 @@ export default function (socket: CustomSocket) {
     config: {
       schema: consumerReadySchema,
       protected: true,
+      expectCb: true,
     },
     handler: (input) => {
       const { user } = socket.data;
