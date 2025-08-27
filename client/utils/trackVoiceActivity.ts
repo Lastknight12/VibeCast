@@ -1,5 +1,5 @@
 import { watch } from "vue";
-import { useStreamVolume } from "@/composables/useStreamVolume";
+import { useStreamVolume } from "~/composables/useStreamVolume";
 
 export function trackVoiceActivity(
   stream: MediaStream,

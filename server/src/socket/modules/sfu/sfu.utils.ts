@@ -12,8 +12,8 @@ export async function createWebRtcTransport(router: Router) {
   return transport;
 }
 
-export function getRoomRouter(roomName: string): Router | null {
-  const room = rooms.get(roomName);
+export function getRoomRouter(roomId: string): Router | null {
+  const room = rooms.get(roomId);
   if (!room) {
     return null;
   }
@@ -23,10 +23,10 @@ export function getRoomRouter(roomName: string): Router | null {
 
 export function closeRelatedConsumers(
   producerIds: string[],
-  roomName: string,
+  roomId: string,
   onConsumerClosed?: (consumerId: string) => void
 ) {
-  const room = rooms.get(roomName);
+  const room = rooms.get(roomId);
   if (!room) {
     console.log("Room not found");
     return;

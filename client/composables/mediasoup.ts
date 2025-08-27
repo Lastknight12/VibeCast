@@ -393,7 +393,7 @@ export class mediasoupConn {
     );
   }
 
-  switchMic() {
+  toggleMic() {
     if (this.audioStream && this.audioStream.getAudioTracks().length > 0) {
       this.muted = !this.muted;
       this.audioStream.getAudioTracks()[0]!.enabled = !this.muted;

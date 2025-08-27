@@ -23,7 +23,6 @@ interface Peer {
 export class PeersMap<K extends string = string> extends Map<K, Peer> {
   private cleanupPeerConnection(peer: Peer) {
     Object.values(peer.transports).forEach((t) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       t && t.close();
     });
   }

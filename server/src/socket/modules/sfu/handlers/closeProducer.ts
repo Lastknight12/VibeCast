@@ -1,9 +1,10 @@
 import { Type } from "@sinclair/typebox";
 import { closeRelatedConsumers } from "../sfu.utils";
-import { CustomSocket } from "src/types/socket";
+import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
 import { errors } from "../../errors";
+import { cloudinary } from "src/lib/cloudinary";
 
 const closeProducerSchema = Type.Object({
   type: Type.Union([Type.Literal("audio"), Type.Literal("video")]),
@@ -16,13 +17,13 @@ export default function (socket: CustomSocket) {
       schema: closeProducerSchema,
       protected: true,
     },
-    handler(input) {
+    async handler(input) {
       const { user } = socket.data;
-      if (!user.roomName) {
+      if (!user.roomId) {
         throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
 
-      const room = rooms.get(user.roomName);
+      const room = rooms.get(user.roomId);
       if (!room) {
         throw new SocketError(errors.room.NOT_FOUND);
       }
@@ -33,7 +34,7 @@ export default function (socket: CustomSocket) {
       }
 
       const onConsumerClosed = (consumerId: string) => {
-        socket.broadcast.to(user.roomName!).emit("consumerClosed", consumerId);
+        socket.broadcast.to(user.roomId!).emit("consumerClosed", consumerId);
       };
 
       switch (input.type) {
@@ -46,8 +47,9 @@ export default function (socket: CustomSocket) {
           }
           videoProducer.close();
           systemAudioProducer?.close();
+          peer.producers.screenShare = undefined;
 
-          socket.broadcast.to(user.roomName).emit("peerClosedProducer", {
+          socket.broadcast.to(user.roomId).emit("peerClosedProducer", {
             peerId: user.id,
             type: "screenShare",
           });
@@ -56,10 +58,13 @@ export default function (socket: CustomSocket) {
             [videoProducer.id, systemAudioProducer?.id].filter(
               Boolean
             ) as string[],
-            user.roomName,
+            user.roomId,
             onConsumerClosed
           );
-          peer.producers.screenShare = undefined;
+
+          await await cloudinary.api.delete_resources_by_prefix(
+            `thumbnails/${user.roomId}/${user.id}`
+          );
           break;
         }
         case "audio": {
@@ -70,14 +75,14 @@ export default function (socket: CustomSocket) {
           }
           audioProducer.close();
 
-          socket.broadcast.to(user.roomName).emit("peerClosedProducer", {
+          socket.broadcast.to(user.roomId).emit("peerClosedProducer", {
             peerId: user.id,
             type: "audio",
           });
 
           closeRelatedConsumers(
             [audioProducer.id],
-            user.roomName,
+            user.roomId,
             onConsumerClosed
           );
 

@@ -4,6 +4,7 @@ import { User } from "better-auth/*";
 
 import { ProducerType } from "mediasoup/node/lib/types";
 import { User } from "better-auth/types";
+import { EventsMap } from "socket.io/dist/typed-events";
 
 export interface ServerToClientEvents {
   error: (payload: EventError) => void;
@@ -17,14 +18,14 @@ export interface ServerToClientEvents {
   removeActiveSpeaker: (userId: string) => void;
   micOff: (userId: string) => void;
   micOn: (userId: string) => void;
-  roomDeleted: (roomName: string) => void;
+  roomDeleted: (roomId: string) => void;
   userDisconnect: (userId: string) => void;
-  userLeftRoom: (roomName: string, userId: string) => void;
+  userLeftRoom: (roomId: string, userId: string) => void;
 
-  roomCreated: (roomName: string) => void;
+  roomCreated: (data: { name: string; id: string }) => void;
   userJoined: (data: { user: User }) => void;
   userJoinRoom: (
-    roomName: string,
+    roomId: string,
     data: {
       id: string;
       name: string;
@@ -32,11 +33,12 @@ export interface ServerToClientEvents {
     }
   ) => void;
   leaveRoom: () => void;
+  "new-thumbnail": (url: string, peerId: string) => void;
 }
 
 export interface SocketData {
   user: User & {
-    roomName?: string;
+    roomId?: string;
   };
 }
 
@@ -44,8 +46,3 @@ export interface SocketWrapper<CTS extends EventsMap, STC extends EventsMap>
   extends Socket<CTS, STC, DefaultEventsMap, SocketData> {
   customOn: CustomOn;
 }
-
-export type CustomSocket<
-  CTS extends EventsMap = DefaultEventsMap,
-  STC extends EventsMap = ServerToClientEvents,
-> = SocketWrapper<CTS, STC>;

@@ -1,6 +1,6 @@
 import { DataList } from "src/lib/dataList";
 import { Type } from "@sinclair/typebox";
-import { CustomSocket } from "src/types/socket";
+import { CustomSocket } from "src/socket/core";
 import { Server } from "socket.io";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
@@ -36,7 +36,7 @@ export default function (socket: CustomSocket, io: Server) {
       }
 
       socket.join(input.roomId);
-      socket.data.user.roomName = input.roomId;
+      socket.data.user.roomId = input.roomId;
 
       room.peers.set(user.id, {
         sockets: new DataList([socket.id]),

@@ -1,16 +1,17 @@
 import type { User } from "better-auth/types";
-import type { SocketCallback, SocketCallbackArgs } from "./useSocket";
+import type { SocketCallbackArgs } from "./useSocket";
 
-interface PeerStream {
+type PeerStream = {
   stream?: MediaStream;
   consumerId?: string;
   producerId?: string;
-}
+};
 
-interface Peer {
+export interface Peer {
   streams: {
     audio: PeerStream;
     screenShare: {
+      thumbnail?: string;
       active: boolean;
       video: PeerStream;
       audio: PeerStream;
@@ -20,24 +21,29 @@ interface Peer {
   userData: User;
 }
 
-export function useRoom(roomId: string, mediaConn: mediasoupConn) {
+export type pinnedStream =
+  | {
+      stream: MediaStream;
+      peerId: string;
+    }
+  | {
+      stream: null;
+      peerId: null;
+    };
+
+export function useRoom(roomId: string) {
+  const pinnedStream = ref<pinnedStream | null>(null);
+  const peers = ref<Map<string, Peer>>(new Map());
+
   const socket = useSocket();
   const toast = useToast();
+  const mediaConn = useMediasoup();
+  const { startMic } = useMedia(mediaConn);
 
-  const localStream = ref<MediaStream | null>(null);
-  const localPinnedStreams = ref<{
-    stream: MediaStream;
-    peerId: string;
-  } | null>(null);
-  const isSpeaking = ref<boolean>(false);
+  const videoElem = ref<HTMLVideoElement | null>(null);
   const activeSpeakers = ref<Set<string>>(new Set());
-  const muted = ref(mediaConn.muted);
-
   const joinRoomErrorMessage = ref<string | null>(null);
-
   const disconnected = ref<boolean>(false);
-
-  const peers = ref<Map<string, Peer>>(new Map());
 
   const registerSocketListeners = () => {
     socket.on("userJoined", handleUserJoin);
@@ -67,149 +73,7 @@ export function useRoom(roomId: string, mediaConn: mediasoupConn) {
     socket.off("leaveRoom", handleLeaveRoom);
   };
 
-  const pinStream = (peerId: string) => {
-    const peer = peers.value.get(peerId);
-    if (!peer) {
-      console.log("no peer founded");
-      return;
-    }
-
-    const stream = peer.streams.screenShare?.video?.stream;
-    if (!stream) {
-      console.log("no stream founded");
-      return;
-    }
-
-    if (!localPinnedStreams.value) {
-      localPinnedStreams.value = { stream, peerId };
-    } else {
-      localPinnedStreams.value = null;
-    }
-  };
-
-  const handleLeaveRoom = () => {
-    mediaConn.close();
-    disconnected.value = true;
-  };
-
-  const handleUserJoin = (data: { user: User }) => {
-    peers.value.set(data.user.id, {
-      streams: {
-        audio: {},
-        screenShare: {
-          active: false,
-          video: {},
-          audio: {},
-        },
-      },
-      voiceMuted: true,
-      userData: data.user,
-    });
-  };
-
-  const handleUserMuted = (id: string) => {
-    const peer = peers.value.get(id);
-    if (peer) {
-      peer.voiceMuted = true;
-    }
-  };
-
-  const handleUserUnMuted = (id: string) => {
-    const peer = peers.value.get(id);
-    if (peer) {
-      peer.voiceMuted = false;
-    }
-  };
-
-  const handleUserDisconnect = (userId: string) => {
-    peers.value.delete(userId);
-  };
-
-  const handleNewProducer = async (
-    producerId: string,
-    userId: string,
-    type: "video" | "audio" | "video_audio"
-  ) => {
-    const peer = peers.value.get(userId);
-    if (!peer) {
-      toast.error({ message: "peer not founded" });
-      return;
-    }
-
-    switch (type) {
-      case "video": {
-        peer.streams.screenShare.video = {
-          producerId,
-        };
-        break;
-      }
-      case "audio": {
-        const consumer = await mediaConn.consume(producerId);
-
-        if (!consumer) {
-          console.log("no consumer created");
-          return;
-        }
-        const stream = new MediaStream([consumer.track]);
-
-        peer.streams.audio = {
-          stream,
-          producerId,
-        };
-        trackVoiceActivity(stream, (isSpeaking) => {
-          if (isSpeaking) {
-            activeSpeakers.value.add(peer.userData.id);
-          } else {
-            activeSpeakers.value.delete(peer.userData.id);
-          }
-        });
-        break;
-      }
-      case "video_audio": {
-        peer.streams.screenShare.audio = { producerId };
-        break;
-      }
-    }
-  };
-
-  const handleConsumerClosed = (consumerId: string) => {
-    mediaConn.closeConsumer(consumerId);
-  };
-
-  const switchScreenShare = async () => {
-    if (!localStream.value) {
-      const stream = await mediaConn.getMediaStream();
-
-      localStream.value = new MediaStream(stream.getVideoTracks()); // only provide video stream, not audio
-
-      await mediaConn.produce("video");
-      if (stream.getAudioTracks().length > 0) {
-        await mediaConn.produce("video_audio");
-      }
-
-      localStream.value!.getVideoTracks()[0]!.onended = () => {
-        localStream.value = null;
-        mediaConn.stopStream();
-      };
-    } else {
-      mediaConn.stopStream();
-      localStream.value = null;
-    }
-  };
-
-  const startAudio = async () => {
-    const stream = await mediaConn.getAudioStream();
-
-    trackVoiceActivity(stream, (currSpeaking) => {
-      isSpeaking.value = currSpeaking && !muted.value;
-    });
-  };
-
-  const switchMic = () => {
-    muted.value = mediaConn.switchMic();
-  };
-
-  const watchStream = async (peerId: string) => {
+  async function watchStream(peerId: string) {
     const peer = peers.value.get(peerId);
     if (!peer) {
       console.log("No peers founded");
@@ -248,9 +112,9 @@ export function useRoom(roomId: string, mediaConn: mediasoupConn) {
         producerId: audioConsumer?.producerId,
       },
     };
-  };
+  }
 
-  const stopWatchingStream = async (streamerPeerId: string) => {
+  async function stopWatchingStream(streamerPeerId: string) {
     const peer = peers.value.get(streamerPeerId);
     if (!peer) {
       console.log("No peer founded");
@@ -275,8 +139,8 @@ export function useRoom(roomId: string, mediaConn: mediasoupConn) {
 
     await mediaConn.closeConsumer(videoConsumer.id);
     audioConsumer && (await mediaConn.closeConsumer(audioConsumer.id));
-    if (localPinnedStreams.value?.peerId === streamerPeerId) {
-      localPinnedStreams.value = null;
+    if (pinnedStream.value?.peerId === streamerPeerId) {
+      pinnedStream.value = null;
     }
 
     peer.streams.screenShare = {
@@ -290,21 +154,161 @@ export function useRoom(roomId: string, mediaConn: mediasoupConn) {
         producerId: audioConsumer?.producerId,
       },
     };
-  };
+  }
 
-  const handlePeers: SocketCallback<
+  function togglePinnedStream(peerId: string) {
+    const peer = peers.value.get(peerId);
+    if (!peer) {
+      console.log("no peer founded");
+      return;
+    }
+
+    const stream = peer.streams.screenShare?.video?.stream;
+    if (!stream) {
+      console.log("no stream founded");
+      return;
+    }
+
+    if (!pinnedStream.value) {
+      pinnedStream.value = { stream, peerId };
+    } else {
+      pinnedStream.value = null;
+    }
+  }
+
+  async function joinRoom() {
+    await new Promise((resolve, reject) => {
+      socket.emit(
+        "joinRoom",
+        {
+          roomId,
+        },
+        async ({ errors }: SocketCallbackArgs<unknown>) => {
+          if (errors) {
+            const errorMessage = errors[0]!.message;
+            joinRoomErrorMessage.value = errorMessage;
+            reject(errorMessage);
+          } else {
+            await mediaConn.createDevice();
+            await mediaConn.createTransport("send");
+            await mediaConn.createTransport("recv");
+            await startMic();
+            socket.emit("getRoomPeers", handlePeers);
+
+            resolve(null);
+          }
+        }
+      );
+    });
+  }
+
+  function handleLeaveRoom() {
+    mediaConn.close();
+    disconnected.value = true;
+  }
+
+  function handleUserJoin(data: { user: User }) {
+    peers.value.set(data.user.id, {
+      streams: {
+        audio: {},
+        screenShare: {
+          active: false,
+          video: {},
+          audio: {},
+        },
+      },
+      voiceMuted: true,
+      userData: data.user,
+    });
+  }
+
+  function handleUserMuted(id: string) {
+    const peer = peers.value.get(id);
+    if (peer) {
+      peer.voiceMuted = true;
+    }
+  }
+
+  function handleUserUnMuted(id: string) {
+    const peer = peers.value.get(id);
+    if (peer) {
+      peer.voiceMuted = false;
+    }
+  }
+
+  function handleUserDisconnect(userId: string) {
+    peers.value.delete(userId);
+  }
+
+  async function handleNewProducer(
+    producerId: string,
+    userId: string,
+    type: "video" | "audio" | "video_audio"
+  ) {
+    const peer = peers.value.get(userId);
+    if (!peer) {
+      toast.error({ message: "peer not founded" });
+      return;
+    }
+
+    switch (type) {
+      case "video": {
+        peer.streams.screenShare.video = {
+          producerId,
+        };
+
+        break;
+      }
+      case "audio": {
+        const consumer = await mediaConn.consume(producerId);
+
+        if (!consumer) {
+          console.log("no consumer created");
+          return;
+        }
+        const stream = new MediaStream([consumer.track]);
+
+        peer.streams.audio = {
+          stream,
+          producerId,
+        };
+        trackVoiceActivity(stream, (isSpeaking) => {
+          if (isSpeaking) {
+            activeSpeakers.value.add(peer.userData.id);
+          } else {
+            activeSpeakers.value.delete(peer.userData.id);
+          }
+        });
+        break;
+      }
+      case "video_audio": {
+        peer.streams.screenShare.audio = { producerId };
+        break;
+      }
+    }
+  }
+
+  function handleConsumerClosed(consumerId: string) {
+    mediaConn.closeConsumer(consumerId);
+  }
+
+  async function handlePeers({
+    data: peersList,
+    errors,
+  }: SocketCallbackArgs<
     {
       userData: User;
       voiceMuted: boolean;
       producers: {
         audio?: string;
         screenShare?: {
+          thumbnail?: string;
           video: string;
           audio?: string;
         };
       };
     }[]
-  > = async ({ data: peersList, errors }) => {
+  >) {
     if (errors) {
       toast.error({ message: errors[0]!.message });
       return;
@@ -325,6 +329,7 @@ export function useRoom(roomId: string, mediaConn: mediasoupConn) {
               producerId: audioConsumer?.producerId,
             },
             screenShare: {
+              thumbnail: peer.producers.screenShare?.thumbnail,
               active: false,
               video: {
                 producerId: peer.producers.screenShare?.video,
@@ -349,12 +354,12 @@ export function useRoom(roomId: string, mediaConn: mediasoupConn) {
         }
       }
     }
-  };
+  }
 
-  const handlePeerClosedProducer = async (data: {
+  async function handlePeerClosedProducer(data: {
     peerId: string;
     type: "screenShare" | "audio";
-  }) => {
+  }) {
     const peer = peers.value.get(data.peerId);
 
     switch (data.type) {
@@ -365,44 +370,17 @@ export function useRoom(roomId: string, mediaConn: mediasoupConn) {
             video: {},
             audio: {},
           });
-        if (localPinnedStreams.value?.peerId === data.peerId) {
-          localPinnedStreams.value = null;
+        if (pinnedStream.value?.peerId === data.peerId) {
+          pinnedStream.value = null;
         }
         break;
       case "audio":
         peer?.streams.audio && (peer.streams.audio = {});
         break;
     }
-  };
+  }
 
-  const joinRoom = async () => {
-    await new Promise((resolve, reject) => {
-      socket.emit(
-        "joinRoom",
-        {
-          roomId,
-        },
-        async ({ errors }: SocketCallbackArgs<unknown>) => {
-          if (errors) {
-            const errorMessage = errors[0]!.message;
-            joinRoomErrorMessage.value = errorMessage;
-            reject(errorMessage);
-          } else {
-            await startAudio();
-            await mediaConn.createDevice();
-            await mediaConn.createTransport("send");
-            await mediaConn.createTransport("recv");
-            await mediaConn.produce("audio");
-            socket.emit("getRoomPeers", handlePeers);
-
-            resolve(null);
-          }
-        }
-      );
-    });
-  };
-
-  const handleBeforeUnload = () => {
+  function handleBeforeUnload() {
     if (!disconnected.value && !joinRoomErrorMessage.value) {
       socket.emit("leave", ({ errors }: SocketCallbackArgs<unknown>) => {
         if (errors) {
@@ -410,30 +388,25 @@ export function useRoom(roomId: string, mediaConn: mediasoupConn) {
         }
       });
     }
-  };
+  }
 
   return {
     refs: {
-      localStream,
       mediaConn,
-      muted,
       activeSpeakers,
-      isSpeaking,
       joinRoomErrorMessage,
       peers,
-      localPinnedStreams,
+      pinnedStream,
       disconnected,
+      videoElem,
     },
     registerSocketListeners,
     removeSocketListeners,
     userActions: {
-      startAudio,
-      switchMic,
-      switchScreenShare,
-      joinRoom,
-      pinStream,
+      togglePinnedStream,
       watchStream,
       stopWatchingStream,
+      joinRoom,
     },
     clearFunctions: {
       handleBeforeUnload,

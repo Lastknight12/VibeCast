@@ -1,11 +1,16 @@
 import { Socket } from "socket.io";
-import { DefaultEventsMap, EventsMap } from "socket.io/dist/typed-events";
-import { CustomSocket, SocketData } from "src/types/socket";
+import { DefaultEventsMap } from "socket.io/dist/typed-events";
+import { SocketData, SocketWrapper } from "src/types/socket";
 import { HandlerCallback } from "src/socket/core";
 import { ServerToClientEvents } from "src/types/socket";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Static, TSchema } from "@sinclair/typebox";
 import { errors } from "../modules/errors";
+
+export type CustomSocket = SocketWrapper<
+  DefaultEventsMap,
+  ServerToClientEvents
+>;
 
 export interface CustomOnConfig<
   Schema extends TSchema,
@@ -74,7 +79,12 @@ export class SocketError extends Error {
 }
 
 function enhanceSocket(
-  _socket: Socket<EventsMap, ServerToClientEvents, DefaultEventsMap, SocketData>
+  _socket: Socket<
+    DefaultEventsMap,
+    ServerToClientEvents,
+    DefaultEventsMap,
+    SocketData
+  >
 ): CustomSocket {
   const schemasCache = new Map<
     TSchema,
@@ -105,7 +115,7 @@ function enhanceSocket(
             event: params.event,
             error: {
               code: "INVALID_PAYLOAD",
-              message: validator.Errors(payload).First()?.message,
+              message: validator.Errors(payload).First()!.message,
             },
           });
           return;
@@ -158,7 +168,6 @@ function enhanceSocket(
   }
 
   const socket = _socket as CustomSocket;
-
   socket.customOn = customOn as CustomOn;
 
   return socket;

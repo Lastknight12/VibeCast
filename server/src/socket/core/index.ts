@@ -3,6 +3,8 @@ import {
   SocketError,
   type CustomOnConfig,
   type CustomOn,
+  type CustomOnParams,
+  type CustomSocket,
 } from "./enhanceSocket";
 import { preloadModules } from "./preloadModules";
 import type { HandlerCallback, HandlerError, EventError } from "./types";
@@ -16,4 +18,6 @@ export {
   CustomOn,
   HandlerError,
   EventError,
+  CustomOnParams,
+  CustomSocket,
 };

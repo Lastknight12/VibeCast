@@ -1,7 +1,7 @@
 import path from "path";
 import { logger } from "src/lib/logger";
 import fg from "fast-glob";
-import { CustomSocket } from "src/types/socket";
+import { CustomSocket } from "src/socket/core";
 import { Server } from "socket.io";
 
 interface Opts {

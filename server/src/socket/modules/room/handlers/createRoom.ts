@@ -2,7 +2,7 @@ import { getMediasoupWorker } from "src/lib/worker";
 import { Router, RtpCodecCapability } from "mediasoup/node/lib/types";
 import { PeersMap } from "src/lib/peersMap";
 import { Static, Type } from "@sinclair/typebox";
-import { CustomSocket } from "src/types/socket";
+import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
 import { errors } from "../../errors";

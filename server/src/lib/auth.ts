@@ -3,8 +3,10 @@ import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "./db";
 import { cloudinary } from "./cloudinary";
+import streamifier from "streamifier";
 import axios from "axios";
 import { env } from "../config";
+import { logger } from "./logger";
 
 export const auth = betterAuth({
   database: prismaAdapter(db, {
@@ -21,17 +23,35 @@ export const auth = betterAuth({
             responseType: "arraybuffer",
           });
 
-          const base64 = `data:image/jpeg;base64,${Buffer.from(res.data).toString("base64")}`;
+          let image =
+            "https://i.pinimg.com/736x/27/5f/99/275f99923b080b18e7b474ed6155a17f.jpg";
 
-          const uploadRes = await cloudinary.uploader.upload(base64, {
-            folder: "avatars",
-          });
+          const cldUploadStream = cloudinary.uploader.upload_stream(
+            {
+              folder: "avatars",
+              public_id: profile.picture,
+            },
+            (err, response) => {
+              if (err) {
+                logger.error(err.message);
+                return;
+              }
+
+              if (response?.secure_url) {
+                image = response.secure_url;
+              }
+            }
+          );
+
+          streamifier
+            .createReadStream(Buffer.from(res.data))
+            .pipe(cldUploadStream);
 
           return {
-            image: uploadRes.secure_url,
+            image,
           };
         } catch (error) {
-          console.error("Cloudinary upload failed:", error);
+          logger.error("Cloudinary upload failed:", error);
         }
       },
     },

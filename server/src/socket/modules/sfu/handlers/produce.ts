@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
 import { ProducerType } from "mediasoup/node/lib/ProducerTypes";
-import { CustomSocket } from "src/types/socket";
+import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/lib/roomState";
 import { HandlerCallback, SocketError } from "src/socket/core";
 import { errors } from "../../errors";
@@ -80,11 +80,11 @@ export default function (socket: CustomSocket) {
     handler: async (input, cb: HandlerCallback<Result>) => {
       const { user } = socket.data;
 
-      if (!user.roomName) {
+      if (!user.roomId) {
         throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
 
-      const room = rooms.get(user.roomName);
+      const room = rooms.get(user.roomId);
       if (!room) throw new SocketError(errors.room.NOT_FOUND);
 
       const peer = room.peers.get(user.id);
@@ -117,7 +117,7 @@ export default function (socket: CustomSocket) {
       }
 
       socket.broadcast
-        .to(user.roomName)
+        .to(user.roomId)
         .emit(
           "newProducer",
           producer.id,

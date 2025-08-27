@@ -23,7 +23,7 @@ export async function socketGuard(
       headers,
     });
 
-    socket.data.user = { ...session?.user, roomName: undefined };
+    socket.data.user = { ...session?.user, roomId: undefined };
     next();
   } catch (_) {
     next(new Error("Authentication error"));

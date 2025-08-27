@@ -1,9 +1,18 @@
 import { HandlerCallback, SocketError } from "src/socket/core";
-import { RoomPeer } from "../types";
-import { CustomSocket } from "src/types/socket";
+import { User } from "better-auth/types";
+import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/lib/roomState";
 import { errors } from "../../errors";
-import { User } from "better-auth/*";
+import { thumbnails } from "./uploadThumbnail";
+
+interface RoomPeer {
+  user: Pick<User, "id" | "name" | "image">;
+  producers: {
+    audio?: string;
+    screenShare?: { thumbnail?: string; video: string; audio?: string };
+  };
+  voiceMuted: boolean;
+}
 
 type Result = Omit<RoomPeer, "user"> & {
   userData: Pick<User, "id" | "name" | "image">;
@@ -18,11 +27,11 @@ export default function (socket: CustomSocket) {
     },
     handler: (_input, cb: HandlerCallback<Result[]>) => {
       const { user } = socket.data;
-      if (!user.roomName) {
+      if (!user.roomId) {
         throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
 
-      const room = rooms.get(user.roomName);
+      const room = rooms.get(user.roomId);
       if (!room) {
         throw new SocketError(errors.room.NOT_FOUND);
       }
@@ -40,6 +49,7 @@ export default function (socket: CustomSocket) {
           producers: {
             audio: audioProducer?.id,
             screenShare: videoProducer && {
+              thumbnail: thumbnails.get(id),
               video: videoProducer.id,
               audio: systemAudioProducer?.id,
             },

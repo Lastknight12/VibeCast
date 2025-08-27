@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { CustomSocket } from "src/types/socket";
+import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
 import { errors } from "../../errors";
@@ -18,11 +18,11 @@ export default function (socket: CustomSocket) {
     },
     handler(input) {
       const { user } = socket.data;
-      if (!user.roomName) {
+      if (!user.roomId) {
         throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
 
-      const room = rooms.get(user.roomName);
+      const room = rooms.get(user.roomId);
       if (!room) {
         throw new SocketError(errors.room.NOT_FOUND);
       }

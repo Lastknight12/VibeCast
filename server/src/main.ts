@@ -8,7 +8,6 @@ async function startServer() {
   const port = env.PORT ? +env.PORT : 5001;
   const host = env.HOST ?? "localhost";
 
-  console.log(env.FASTIFY_LOGGER_LEVEL, env.LOGGER_LEVEL);
   const server = fastify({
     logger: {
       level: env.FASTIFY_LOGGER_LEVEL,

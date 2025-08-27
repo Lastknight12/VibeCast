@@ -29,7 +29,7 @@ function createRoom() {
     },
     (response: SocketCallbackArgs<{ id: string }>) => {
       if (!response.errors) {
-        navigateTo(`/rooms/${response.data.id}`);
+        navigateTo(`/rooms/${response.data.id}?name=${roomName.value}`);
         roomName.value = "";
       } else {
         errorMessage.value = response.errors[0]?.message!;

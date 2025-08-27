@@ -51,34 +51,34 @@ const handleRooms: SocketCallback<Record<string, RoomInfo>> = ({ data }) => {
 };
 
 const handleUserJoin = (
-  roomName: string,
+  roomId: string,
   peer: Pick<User, "id" | "name" | "image">
 ) => {
-  const room = rooms.value.get(roomName);
+  const room = rooms.value.get(roomId);
 
   if (!room) {
-    console.log("no room with name" + roomName + "exist");
+    console.log("no room with name" + roomId + "exist");
   }
 
   room?.peers.set(peer.id, peer);
 };
 
-const handleUserLeft = (roomName: string, peerId: string) => {
-  const room = rooms.value.get(roomName);
+const handleUserLeft = (roomId: string, peerId: string) => {
+  const room = rooms.value.get(roomId);
 
   if (!room) {
-    console.log("no room with name" + roomName + "exist");
+    console.log("no room with name" + roomId + "exist");
   }
 
   room?.peers.delete(peerId);
 };
 
-const handleRoomCreated = (data: { name: string; roomId: string }) => {
-  rooms.value.set(data.roomId, { name: data.name, peers: new Map() });
+const handleRoomCreated = (data: { name: string; id: string }) => {
+  rooms.value.set(data.id, { name: data.name, peers: new Map() });
 };
 
-const handleRoomDeleted = (roomName: string) => {
-  rooms.value.delete(roomName);
+const handleRoomDeleted = (roomId: string) => {
+  rooms.value.delete(roomId);
 };
 
 onMounted(() => {
@@ -126,7 +126,7 @@ onUnmounted(() => {
         v-for="[roomId, room] of rooms"
         :key="roomId"
         class="p-6 bg-[#070707] border border-border rounded-xl"
-        @click="() => navigateTo(`/rooms/${roomId}`)"
+        @click="() => navigateTo(`/rooms/${roomId}?name=${room.name}`)"
       >
         <h1 class="text-lg text-secondary">
           {{ room.name }}

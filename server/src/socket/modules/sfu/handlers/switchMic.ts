@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { rooms } from "src/lib/roomState";
 import { SocketError } from "src/socket/core";
-import { CustomSocket } from "src/types/socket";
+import { CustomSocket } from "src/socket/core";
 import { errors } from "../../errors";
 
 const switchMicSchema = Type.Object({
@@ -17,11 +17,11 @@ export default function (socket: CustomSocket) {
     },
     handler: (input) => {
       const { user } = socket.data;
-      if (!user.roomName) {
+      if (!user.roomId) {
         throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
 
-      const room = rooms.get(user.roomName);
+      const room = rooms.get(user.roomId);
       if (!room) {
         throw new SocketError(errors.room.NOT_FOUND);
       }
@@ -33,7 +33,7 @@ export default function (socket: CustomSocket) {
 
       peer.voiceMuted = input.muted;
       const event = input.muted ? "micOff" : "micOn";
-      socket.broadcast.to(user.roomName).emit(event, user.id);
+      socket.broadcast.to(user.roomId).emit(event, user.id);
     },
   });
 }

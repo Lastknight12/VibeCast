@@ -1,4 +1,4 @@
-import { CustomSocket } from "src/types/socket";
+import { CustomSocket } from "src/socket/core";
 import { getRoomRouter } from "../sfu.utils";
 import { RtpCapabilities } from "mediasoup/node/lib/rtpParametersTypes";
 import { HandlerCallback, SocketError } from "src/socket/core";
@@ -13,11 +13,11 @@ export default function (socket: CustomSocket) {
     },
     handler: (_input, cb: HandlerCallback<RtpCapabilities>) => {
       const { user } = socket.data;
-      if (!user.roomName) {
+      if (!user.roomId) {
         throw new SocketError(errors.room.USER_NOT_IN_ROOM);
       }
 
-      const router = getRoomRouter(user.roomName);
+      const router = getRoomRouter(user.roomId);
       if (!router) {
         throw new SocketError(errors.room.ROUTER_NOT_FOUND);
       }
