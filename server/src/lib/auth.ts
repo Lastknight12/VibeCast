@@ -51,7 +51,11 @@ export const auth = betterAuth({
             image,
           };
         } catch (error) {
-          logger.error("Cloudinary upload failed:", error);
+          if (error instanceof Error) {
+            logger.error(`Cloudinary upload failed: ${error.message}`);
+          } else {
+            logger.error(`Cloudinary upload failed with unhadled error`);
+          }
         }
       },
     },

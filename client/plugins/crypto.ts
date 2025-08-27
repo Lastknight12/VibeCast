@@ -1,9 +1,9 @@
-export default defineNuxtPlugin(() => {
-  let cryptoImpl: Window["crypto"] | Crypto;
+export default defineNuxtPlugin(async () => {
+  let cryptoImpl: Window["crypto"] | typeof import("crypto");
 
   if (import.meta.server) {
     // Node.js crypto
-    cryptoImpl = require("crypto");
+    cryptoImpl = await import("crypto");
   } else {
     // Browser Web Crypto API wrapper
     cryptoImpl = window.crypto;

@@ -1,5 +1,5 @@
 import { getMediasoupWorker } from "src/lib/worker";
-import { Router, RtpCodecCapability } from "mediasoup/node/lib/types";
+import { Router, RouterRtpCodecCapability } from "mediasoup/node/lib/types";
 import { PeersMap } from "src/lib/peersMap";
 import { Static, Type } from "@sinclair/typebox";
 import { CustomSocket } from "src/socket/core";
@@ -34,7 +34,7 @@ function createRoom(
   return uuid;
 }
 
-const mediaCodecs: RtpCodecCapability[] = [
+const mediaCodecs: RouterRtpCodecCapability[] = [
   {
     kind: "audio",
     mimeType: "audio/opus",

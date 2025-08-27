@@ -31,19 +31,18 @@ export type pinnedStream =
       peerId: null;
     };
 
-export function useRoom(roomId: string) {
-  const pinnedStream = ref<pinnedStream | null>(null);
-  const peers = ref<Map<string, Peer>>(new Map());
+const pinnedStream = ref<pinnedStream | null>(null);
+const peers = ref<Map<string, Peer>>(new Map());
+const videoElem = ref<HTMLVideoElement | null>(null);
+const activeSpeakers = ref<Set<string>>(new Set());
+const joinRoomErrorMessage = ref<string | null>(null);
+const disconnected = ref<boolean>(false);
 
+export function useRoom(roomId: string) {
   const socket = useSocket();
   const toast = useToast();
   const mediaConn = useMediasoup();
   const { startMic } = useMedia(mediaConn);
-
-  const videoElem = ref<HTMLVideoElement | null>(null);
-  const activeSpeakers = ref<Set<string>>(new Set());
-  const joinRoomErrorMessage = ref<string | null>(null);
-  const disconnected = ref<boolean>(false);
 
   const registerSocketListeners = () => {
     socket.on("userJoined", handleUserJoin);
