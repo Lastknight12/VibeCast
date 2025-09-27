@@ -1,7 +1,7 @@
-import { rooms } from "src/lib/roomState";
+import { rooms } from "src/state/roomState";
 import { SocketError } from "src/socket/core";
 import { CustomSocket } from "src/socket/core";
-import { errors } from "../../errors";
+import ApiRoomError from "../utils/errors";
 import { cloudinary } from "src/lib/cloudinary";
 
 export default function (socket: CustomSocket) {
@@ -13,17 +13,17 @@ export default function (socket: CustomSocket) {
     async handler() {
       const { user } = socket.data;
       if (!user.roomId) {
-        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       }
 
       const room = rooms.get(user.roomId);
       if (!room) {
-        throw new SocketError(errors.room.NOT_FOUND);
+        throw new SocketError(ApiRoomError.NOT_FOUND);
       }
 
       const peer = room.peers.get(user.id);
       if (!peer) {
-        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       }
 
       room.peers.delete(user.id);

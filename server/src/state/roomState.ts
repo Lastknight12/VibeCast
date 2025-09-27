@@ -1,5 +1,5 @@
 import { Router } from "mediasoup/node/lib/RouterTypes";
-import { PeersMap } from "./peersMap";
+import { PeersMap } from "src/lib/dataTypes/peersMap";
 
 export type RoomType = "private" | "public";
 

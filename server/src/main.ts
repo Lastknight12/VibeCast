@@ -3,6 +3,7 @@ import { env } from "./config";
 import { setupFastifyModules } from "./setup/fastifyModules";
 import { initializeSocketServer } from "./setup/socket";
 import { createMediasoupWorkers } from "./lib/worker";
+import { logger } from "./lib/logger";
 
 async function startServer() {
   const port = env.PORT ? +env.PORT : 5001;
@@ -43,6 +44,7 @@ async function startServer() {
       port,
       host,
     });
+    logger.info(`listening on ${host}:${port}`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);

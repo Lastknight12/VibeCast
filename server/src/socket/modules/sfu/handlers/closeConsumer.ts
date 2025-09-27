@@ -1,8 +1,9 @@
 import { Type } from "@sinclair/typebox";
 import { CustomSocket } from "src/socket/core";
-import { rooms } from "src/lib/roomState";
+import { rooms } from "src/state/roomState";
 import { SocketError } from "src/socket/core";
-import { errors } from "../../errors";
+import ApiSfuError from "../utils/errors";
+import ApiRoomError from "../../room/utils/errors";
 import { logger } from "src/lib/logger";
 
 const closeProducerSchema = Type.Object({
@@ -19,22 +20,22 @@ export default function (socket: CustomSocket) {
     handler(input) {
       const { user } = socket.data;
       if (!user.roomId) {
-        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       }
 
       const room = rooms.get(user.roomId);
       if (!room) {
-        throw new SocketError(errors.room.NOT_FOUND);
+        throw new SocketError(ApiRoomError.NOT_FOUND);
       }
 
       const peer = room.peers.get(user.id);
       if (!peer) {
-        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       }
 
       const consumer = peer.consumers.get(input.id);
       if (!consumer) {
-        throw new SocketError(errors.mediasoup.consumer.NOT_FOUND);
+        throw new SocketError(ApiSfuError.consumer.NOT_FOUND);
       }
 
       consumer.close();

@@ -1,10 +1,10 @@
-import { DataList } from "src/lib/dataList";
+import { DataList } from "src/lib/dataTypes/dataList";
 import { Type } from "@sinclair/typebox";
 import { CustomSocket } from "src/socket/core";
 import { Server } from "socket.io";
-import { rooms } from "src/lib/roomState";
+import { rooms } from "src/state/roomState";
 import { SocketError } from "src/socket/core";
-import { errors } from "../../errors";
+import ApiRoomError from "../utils/errors";
 
 const joinRoomSchema = Type.Object({
   roomId: Type.String({ minLength: 1 }),
@@ -23,11 +23,12 @@ export default function (socket: CustomSocket, io: Server) {
 
       const room = rooms.get(input.roomId);
       if (!room) {
-        throw new SocketError(errors.room.NOT_FOUND);
+        throw new SocketError(ApiRoomError.NOT_FOUND);
       }
 
       const previousPeer = room.peers.get(user.id);
       if (previousPeer) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const socketId = previousPeer.sockets.pop()!;
         const socket = io.sockets.sockets.get(socketId);
 

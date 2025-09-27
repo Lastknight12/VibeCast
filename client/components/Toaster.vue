@@ -9,7 +9,7 @@ const icons: Record<Toast["label"], { name: string; color: string }> = {
 
 <template>
   <div
-    class="fixed w-full px-2 top-3 left-1/2 -translate-x-1/2 z-90 pointer-events-none"
+    class="fixed w-full top-3 left-1/2 -translate-x-1/2 z-90 pointer-events-none"
   >
     <transition-group
       name="fade"
@@ -18,7 +18,7 @@ const icons: Record<Toast["label"], { name: string; color: string }> = {
     >
       <div
         v-for="toast in toaster.toasts.value"
-        class="bg-[#2b2b2b] px-3.5 py-2 rounded-xl shadow-2x max-w-max"
+        class="bg-[#2b2b2b] w-1/2 px-3.5 py-2 rounded-xl shadow-2x max-w-max"
         :key="toast.id"
       >
         <div class="flex items-center">

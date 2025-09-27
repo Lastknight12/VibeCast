@@ -7,7 +7,7 @@ import {
   type CustomSocket,
 } from "./enhanceSocket";
 import { preloadModules } from "./preloadModules";
-import type { HandlerCallback, HandlerError, EventError } from "./types";
+import type { HandlerCallback, HandlerError } from "./types";
 
 export {
   enhanceSocket,
@@ -17,7 +17,6 @@ export {
   HandlerCallback,
   CustomOn,
   HandlerError,
-  EventError,
   CustomOnParams,
   CustomSocket,
 };

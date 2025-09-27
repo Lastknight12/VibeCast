@@ -8,7 +8,6 @@ export default tseslint.config(
     ignores: ["dist/**", "node_modules/**"],
   },
   {
-    files: ["**/*.{ts,js}"],
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "error",

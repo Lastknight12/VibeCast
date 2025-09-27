@@ -89,7 +89,7 @@ export class mediasoupConn {
     console.log("Device created with RTP capabilities:", rtpCapabilities);
   }
 
-  async createTransport(type: "send" | "recv") {
+  async createTransport(type: "send" | "recv", errorCallback: () => void) {
     if (!this.device) {
       console.error("Device not initialized. Call createDevice first");
       return;
@@ -130,8 +130,6 @@ export class mediasoupConn {
                         this.toaster?.error({ message: errors[0]!.message });
                         return;
                       }
-
-                      callback();
                     }
                   );
                 }
@@ -172,7 +170,7 @@ export class mediasoupConn {
                     this.socket.emit(
                       "connectTransport",
                       { dtlsParameters, type },
-                      callback
+                      {}
                     );
                   }
                 );

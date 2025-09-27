@@ -1,6 +1,7 @@
 import { Consumer, Producer, Transport } from "mediasoup/node/lib/types";
-import { DataList } from "./dataList";
+
 import { User } from "better-auth/types";
+import { DataList } from "./dataList";
 
 interface Peer {
   sockets: DataList<string>;
@@ -23,7 +24,7 @@ interface Peer {
 export class PeersMap<K extends string = string> extends Map<K, Peer> {
   private cleanupPeerConnection(peer: Peer) {
     Object.values(peer.transports).forEach((t) => {
-      t && t.close();
+      if (t) t.close();
     });
   }
 

@@ -5,7 +5,7 @@ import { HandlerCallback } from "src/socket/core";
 import { ServerToClientEvents } from "src/types/socket";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Static, TSchema } from "@sinclair/typebox";
-import { errors } from "../modules/errors";
+import ApiCoreError from "./errors";
 
 export type CustomSocket = SocketWrapper<
   DefaultEventsMap,
@@ -107,6 +107,7 @@ function enhanceSocket(
       }
 
       if (params.config?.schema) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const validator = schemasCache.get(params.config.schema)!;
         const isValid = validator.Check(payload);
 
@@ -115,7 +116,7 @@ function enhanceSocket(
             event: params.event,
             error: {
               code: "INVALID_PAYLOAD",
-              message: validator.Errors(payload).First()!.message,
+              message: validator.Errors(payload).First()?.message,
             },
           });
           return;
@@ -127,7 +128,7 @@ function enhanceSocket(
           if (!cb || typeof cb !== "function") {
             _socket.emit("error", {
               event: params.event,
-              error: new SocketError(errors.core.INVALID_CALLBACK),
+              error: new SocketError(ApiCoreError.INVALID_CALLBACK),
             });
             return;
           }
@@ -158,7 +159,7 @@ function enhanceSocket(
         } else {
           _socket.emit("error", {
             event: params.event,
-            error: new SocketError(errors.core.UNEXPECTED_ERROR),
+            error: new SocketError(ApiCoreError.UNEXPECTED_ERROR),
           });
         }
       }

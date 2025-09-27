@@ -2,22 +2,29 @@
 import { cn } from "@/lib/utils";
 import type { SocketCallbackArgs } from "~/composables/useSocket";
 
-const socket = useSocket();
+interface Error {
+  type: "validation" | "api";
+  message: string;
+}
 
+const socket = useSocket();
+const toast = useToast();
+
+const open = ref(false);
 const roomName = ref<string>("");
 const isPrivate = ref<boolean>(true);
 
-const errorMessage = ref<string | null>(null);
+const error = ref<Error | null>(null);
 
 function createRoom() {
   if (roomName.value.trim() === "") {
-    errorMessage.value = "Room name cannot be empty";
+    error.value = { type: "validation", message: "Room name cannot be empty" };
     return;
   }
 
-  const safeInputRegexp = /^(?!.*\.\.)[a-zA-Z0-9/_\-.]+$/;
+  const safeInputRegexp = /^(?!.*\.\.)[a-zA-Z0-9._~-]+$/;
   if (!safeInputRegexp.test(roomName.value)) {
-    errorMessage.value = "Invalid room name";
+    error.value = { type: "validation", message: "Invalid room name" };
     return;
   }
 
@@ -32,36 +39,50 @@ function createRoom() {
         navigateTo(`/rooms/${response.data.id}?name=${roomName.value}`);
         roomName.value = "";
       } else {
-        errorMessage.value = response.errors[0]?.message!;
+        toast.error({ message: response.errors[0]?.message });
       }
     }
   );
 }
+
+function reset() {
+  setTimeout(() => {
+    roomName.value = "";
+    isPrivate.value = true;
+    error.value = null;
+  }, 150);
+}
 </script>
 
 <template>
-  <UiDialog>
+  <UiDialog
+    :open="open"
+    @update:open="
+      () => {
+        open = !open;
+        if (!open) reset();
+      }
+    "
+  >
     <UiDialogTrigger as-child>
       <UiButton variant="secondary"> Create Room </UiButton>
     </UiDialogTrigger>
-    <UiDialogContent class="sm:max-w-[425px]">
+    <UiDialogContent>
       <UiDialogHeader>
         <DialogTitle>Create Room</DialogTitle>
         <DialogDescription> Write the name of the room </DialogDescription>
       </UiDialogHeader>
-      <div class="py-4">
+      <div>
         <div class="flex flex-col gap-2 mb-4">
           <UiLabel
             for="name"
-            class="text-right"
-            :class="cn(errorMessage && 'text-red-400')"
+            :class="cn('text-right', error && 'text-red-400')"
           >
-            Name{{ errorMessage && `: ${errorMessage}` }}
+            Name: {{ error?.message }}
           </UiLabel>
           <UiInput
             v-model="roomName"
-            class="col-span-3"
-            :class="cn(errorMessage && 'border-red-400')"
+            :class="cn('col-span-3', error && 'border-red-400')"
           />
         </div>
         <div class="flex items-center space-x-2">

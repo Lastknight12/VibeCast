@@ -1,5 +1,5 @@
 import { User } from "better-auth/types";
-import { rooms } from "src/lib/roomState";
+import { rooms } from "src/state/roomState";
 import { HandlerCallback } from "src/socket/core";
 import { CustomSocket } from "src/socket/core";
 

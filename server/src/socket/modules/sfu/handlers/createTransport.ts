@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { createWebRtcTransport } from "../sfu.utils";
+import { createWebRtcTransport } from "../utils";
 import {
   DtlsParameters,
   IceCandidate,
@@ -7,9 +7,10 @@ import {
 } from "mediasoup/node/lib/types";
 import { SctpParameters } from "mediasoup/node/lib/types";
 import { CustomSocket } from "src/socket/core";
-import { rooms } from "src/lib/roomState";
+import { rooms } from "src/state/roomState";
 import { HandlerCallback, SocketError } from "src/socket/core";
-import { errors } from "../../errors";
+import ApiRoomError from "../../room/utils/errors";
+import ApiCoreError from "src/socket/core/errors";
 import { logger } from "src/lib/logger";
 
 interface Result {
@@ -34,17 +35,17 @@ export default function (socket: CustomSocket) {
     handler: async (input, cb: HandlerCallback<Result>) => {
       const { user } = socket.data;
       if (!user.roomId) {
-        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       }
 
       const room = rooms.get(user.roomId);
       if (!room) {
-        throw new SocketError(errors.room.NOT_FOUND);
+        throw new SocketError(ApiRoomError.NOT_FOUND);
       }
 
       const peer = room.peers.get(user.id);
       if (!peer) {
-        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       }
 
       try {
@@ -66,7 +67,7 @@ export default function (socket: CustomSocket) {
         });
       } catch (error) {
         logger.error(`Error creating transport: ${error}`);
-        throw new SocketError(errors.core.UNEXPECTED_ERROR);
+        throw new SocketError(ApiCoreError.UNEXPECTED_ERROR);
       }
     },
   });

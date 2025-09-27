@@ -1,0 +1,32 @@
+# --- Build stage ---
+FROM node:20-bullseye AS builder
+
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+WORKDIR /server
+
+COPY . .
+
+RUN npm ci
+
+RUN npm run build
+
+# --- Build stage ---
+FROM node:20-bullseye AS runtime
+
+WORKDIR /server
+
+COPY --from=builder /server/node_modules ./node_modules
+COPY --from=builder /server ./
+
+EXPOSE 5001
+EXPOSE 40000-40100/udp
+
+CMD ["npm", "run", "start"]

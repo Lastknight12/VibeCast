@@ -2,9 +2,10 @@ import { Type } from "@sinclair/typebox";
 import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
 import { ProducerType } from "mediasoup/node/lib/ProducerTypes";
 import { CustomSocket } from "src/socket/core";
-import { rooms } from "src/lib/roomState";
+import { rooms } from "src/state/roomState";
 import { HandlerCallback, SocketError } from "src/socket/core";
-import { errors } from "../../errors";
+import ApiRoomError from "../../room/utils/errors";
+import ApiSfuError from "../utils/errors";
 
 const rtcpFeedbackSchema = Type.Object({
   type: Type.String(),
@@ -81,18 +82,16 @@ export default function (socket: CustomSocket) {
       const { user } = socket.data;
 
       if (!user.roomId) {
-        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       }
 
       const room = rooms.get(user.roomId);
-      if (!room) throw new SocketError(errors.room.NOT_FOUND);
+      if (!room) throw new SocketError(ApiRoomError.NOT_FOUND);
 
       const peer = room.peers.get(user.id);
-      if (!peer) throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      if (!peer) throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       if (!peer.transports.send)
-        throw new SocketError(
-          errors.mediasoup.transport.SEND_TRANSPORT_NOT_FOUND
-        );
+        throw new SocketError(ApiSfuError.transport.SEND_TRANSPORT_NOT_FOUND);
 
       const producer = await peer.transports.send.produce({
         kind: input.kind,

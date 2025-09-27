@@ -14,13 +14,3 @@ export type HandlerCallback<Data> = (
         errors: HandlerError[];
       }
 ) => void;
-
-export type ErrorCb = (data: { error?: string }) => void;
-
-export interface EventError {
-  event: string;
-  error: {
-    code: string;
-    message: string;
-  };
-}

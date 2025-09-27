@@ -1,10 +1,17 @@
 import { Router } from "mediasoup/node/lib/RouterTypes";
-import { rooms } from "src/lib/roomState";
+import { rooms } from "src/state/roomState";
 import { env } from "src/config";
 
 export async function createWebRtcTransport(router: Router) {
   const transport = await router.createWebRtcTransport({
-    listenIps: [{ ip: "0.0.0.0", announcedIp: env.ANNOUNCED_IP }],
+    listenInfos: [
+      {
+        protocol: "udp",
+        ip: "0.0.0.0",
+        announcedIp: env.ANNOUNCED_IP,
+        portRange: { min: 40000, max: 40100 },
+      },
+    ],
     enableUdp: true,
     enableTcp: true,
     preferUdp: true,

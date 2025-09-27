@@ -4,10 +4,11 @@ import {
   RtpParameters,
 } from "mediasoup/node/lib/types";
 import { CustomSocket } from "src/socket/core";
-import { rooms } from "src/lib/roomState";
+import { rooms } from "src/state/roomState";
 import { Type } from "@sinclair/typebox";
 import { HandlerCallback, SocketError } from "src/socket/core";
-import { errors } from "../../errors";
+import ApiRoomError from "../../room/utils/errors";
+import ApiSfuError from "../utils/errors";
 
 const rtpCodecCapabilitySchema = Type.Object({
   kind: Type.Union([Type.Literal("audio"), Type.Literal("video")]),
@@ -70,24 +71,24 @@ export default function (socket: CustomSocket) {
     handler: async (input, cb: HandlerCallback<Result>) => {
       const { user } = socket.data;
       if (!user.roomId) {
-        throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       }
 
       const room = rooms.get(user.roomId);
-      if (!room) throw new SocketError(errors.room.NOT_FOUND);
+      if (!room) throw new SocketError(ApiRoomError.NOT_FOUND);
       if (
         !room.router.canConsume({
           producerId: input.producerId,
           rtpCapabilities: input.rtpCapabilities as RtpCapabilities,
         })
       ) {
-        throw new SocketError(errors.mediasoup.router.CANNOT_CONSUME_PRODUCER);
+        throw new SocketError(ApiSfuError.router.CANNOT_CONSUME_PRODUCER);
       }
 
       const peer = room.peers.get(user.id);
-      if (!peer) throw new SocketError(errors.room.USER_NOT_IN_ROOM);
+      if (!peer) throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       if (!peer.transports.recv)
-        throw new SocketError(errors.mediasoup.transport.NOT_FOUND);
+        throw new SocketError(ApiSfuError.transport.NOT_FOUND);
 
       const consumer = await peer.transports.recv.consume({
         producerId: input.producerId,

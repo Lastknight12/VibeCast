@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc-alias",
     "start": "node dist/main.js",
-    "dev": "chcp 65001 > NUL && ts-node-dev -r tsconfig-paths/register ./src/main.ts | pino-pretty --colorize",
+    "dev": "ts-node-dev --poll -r tsconfig-paths/register ./src/main.ts | pino-pretty --colorize",
     "postinstall": "prisma generate",
     "update:packages": "npx npm-check-updates -u",
     "db:gen": "prisma generate",
