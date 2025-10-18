@@ -7,7 +7,7 @@ import type {
   Transport,
 } from "mediasoup-client/types";
 import * as mediasoup from "mediasoup-client";
-import type { SocketCallback, SocketCallbackArgs } from "./useSocket";
+import type { SocketCallbackArgs } from "./useSocket";
 
 export class mediasoupConn {
   private socket = useSocket();
@@ -89,7 +89,7 @@ export class mediasoupConn {
     console.log("Device created with RTP capabilities:", rtpCapabilities);
   }
 
-  async createTransport(type: "send" | "recv", errorCallback: () => void) {
+  async createTransport(type: "send" | "recv") {
     if (!this.device) {
       console.error("Device not initialized. Call createDevice first");
       return;
@@ -130,6 +130,7 @@ export class mediasoupConn {
                         this.toaster?.error({ message: errors[0]!.message });
                         return;
                       }
+                      callback();
                     }
                   );
                 }
@@ -170,7 +171,13 @@ export class mediasoupConn {
                     this.socket.emit(
                       "connectTransport",
                       { dtlsParameters, type },
-                      {}
+                      ({ errors }: SocketCallbackArgs<unknown>) => {
+                        if (errors) {
+                          this.toaster?.error({ message: errors[0]!.message });
+                          return;
+                        }
+                        callback();
+                      }
                     );
                   }
                 );
