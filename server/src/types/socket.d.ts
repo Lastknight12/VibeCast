@@ -1,11 +1,10 @@
 import { DefaultEventsMap, type Socket } from "socket.io";
-import { ServerToClientEvents, CustomOn, EventError } from "src/socket/core";
+// TODO
+import { ServerToClientEvents, CustomOn } from "src/socket/core";
 import { User } from "better-auth/types";
-import { ProducerType } from "mediasoup/node/lib/types";
 import { User } from "better-auth/types";
 import { EventsMap } from "socket.io/dist/typed-events";
 
-// TODO: add errors list instead of single error
 export interface EventError {
   event: string;
   error: {
@@ -13,6 +12,8 @@ export interface EventError {
     message: string;
   };
 }
+
+type ProducerType = "audio" | "video" | "video_audio";
 
 export interface ServerToClientEvents {
   error: (payload: EventError) => void;

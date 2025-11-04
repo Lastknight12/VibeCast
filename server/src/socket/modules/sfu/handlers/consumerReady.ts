@@ -17,7 +17,7 @@ export default function (socket: CustomSocket) {
       protected: true,
       expectCb: true,
     },
-    handler: (input) => {
+    handler: (input, cb) => {
       const { user } = socket.data;
       if (!user.roomId) {
         throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
@@ -39,6 +39,7 @@ export default function (socket: CustomSocket) {
       }
 
       peerConsumer.resume();
+      cb({ data: null });
     },
   });
 }

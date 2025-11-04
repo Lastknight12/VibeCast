@@ -1,8 +1,9 @@
 import { createWorker } from "mediasoup";
 import { Worker } from "mediasoup/node/lib/types";
 import os from "node:os";
+import { logger } from "./logger";
 
-const workers: Worker[] = [];
+export const workers: Worker[] = [];
 let nextMediasoupWorkerIdx = 0;
 
 export function getMediasoupWorker(): Worker {
@@ -28,4 +29,6 @@ export async function createMediasoupWorkers() {
 
     workers.push(worker);
   }
+
+  logger.info(`${numCpus} mediasoup workers spawned`);
 }

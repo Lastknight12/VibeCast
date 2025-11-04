@@ -3,14 +3,8 @@ export interface HandlerError {
   message: string;
 }
 
-export type HandlerCallback<Data> = (
-  result:
-    | {
-        data: Data;
-        errors?: undefined;
-      }
-    | {
-        data?: undefined;
-        errors: HandlerError[];
-      }
-) => void;
+// TODO: add to commit
+export type HandlerCallback<Data> = (result: {
+  data: Data;
+  errors?: HandlerError[];
+}) => void;

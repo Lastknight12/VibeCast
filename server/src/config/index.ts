@@ -20,6 +20,11 @@ const envSchema = Type.Object({
   LOGGER_LEVEL: Type.Optional(pinoLoggerLevelSchema),
   FASTIFY_LOGGER_LEVEL: Type.Optional(pinoLoggerLevelSchema),
 
+  pushgateway: Type.String(),
+
+  CERT: Type.Optional(Type.String()),
+  KEY: Type.Optional(Type.String()),
+
   DATABASE_URL: Type.Required(Type.String()),
   ANNOUNCED_IP: Type.Required(Type.String()),
 

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import type { Socket } from "socket.io-client";
+import { user } from "~/lib/randomUser";
+
+const socket = useSocket();
 const route = useRoute();
 const roomId = route.params.roomId as string;
 const roomName = route.query.name;
@@ -14,24 +18,16 @@ useHead({
   ],
 });
 
-const authClient = useAuthClient();
-const { data: authData } = await authClient.useSession(useCustomFetch);
+// const authClient = useAuthClient();
+const { data: authData } = { data: { user } };
 
 const loading = ref(true);
+const loadingStep = ref();
 const showContent = ref(false);
-const hasJoinRoomError = computed(() => !!room.refs.joinRoomErrorMessage.value);
-const isDisconnected = computed(() => !!room.refs.disconnected.value);
-const canShowError = computed(
-  () =>
-    (hasJoinRoomError.value || isDisconnected.value) &&
-    !loading.value &&
-    showContent.value
-);
-const canShowContent = computed(
-  () => showContent.value && !hasJoinRoomError.value && !isDisconnected.value
-);
+const error = ref<string | null>(null);
 
 const mediaConn = useMediasoup();
+const toast = useToast();
 const room = useRoom(roomId);
 
 watchEffect(() => {
@@ -40,28 +36,46 @@ watchEffect(() => {
   });
 });
 
+const stats = ref<Awaited<ReturnType<typeof mediaConn.getProducerstatistic>>>();
+
+function handleBeforeUnload(socket: Socket) {
+  if (!room.refs.disconnected.value && !error.value) {
+    socket.emit("leave", ({ errors }: SocketCallbackArgs<unknown>) => {
+      if (errors) {
+        toast.error({ message: errors[0]!.message });
+      }
+    });
+  }
+}
+
 onMounted(async () => {
-  window.addEventListener(
-    "beforeunload",
-    room.clearFunctions.handleBeforeUnload
-  );
-  room.registerSocketListeners();
   try {
-    room.userActions.joinRoom();
-  } catch (_) {
+    room.registerSocketListeners();
+    await room.userActions.joinRoom();
+    await new Promise<void>((resolve, reject) => {
+      loadingStep.value = "Connecting to the media server...";
+      mediaConn.transports.send?.on("connectionstatechange", (state) => {
+        if (state === "connected") resolve();
+        if (state === "disconnected" || state === "failed")
+          reject("failed to connect to the media server");
+      });
+    });
+  } catch (errMsg) {
+    socket.disconnect();
+    error.value = errMsg as string;
   } finally {
     loading.value = false;
   }
+
+  setInterval(async () => {
+    const stat = await mediaConn.getProducerstatistic("video");
+    stats.value = stat;
+  }, 1000);
 });
 
 onUnmounted(() => {
-  room.clearFunctions.removeSocketListeners();
-  window.removeEventListener(
-    "beforeunload",
-    room.clearFunctions.handleBeforeUnload
-  );
-
-  room.clearFunctions.handleBeforeUnload();
+  room.removeSocketListeners();
+  handleBeforeUnload(socket);
   mediaConn.close();
 });
 
@@ -73,46 +87,61 @@ async function leave() {
 <template>
   <Transition @afterLeave="showContent = true">
     <LoadingIcon
+      :loading-text="loadingStep"
       v-if="loading"
       class="w-full h-full flex justify-center items-center"
     />
   </Transition>
 
-  <RoomError
-    v-if="canShowError"
-    :message="room.refs.joinRoomErrorMessage.value!"
-  />
+  <RoomError v-if="error" :message="error" />
 
-  <div class="w-full flex justify-center">
-    <video
-      v-if="room.refs.pinnedStream?.value?.stream"
-      :srcObject="room.refs.pinnedStream.value.stream"
-      autoplay
-      playsinline
-      class="rounded-lg object-cover shadow max-w-[780px]"
-      @click="
-        room.userActions.togglePinnedStream(room.refs.pinnedStream.value.peerId)
-      "
-    ></video>
-  </div>
+  <div v-else-if="!error && !loading">
+    <div class="w-full flex justify-center">
+      <video
+        v-if="room.refs.pinnedStream?.value?.stream"
+        :srcObject="room.refs.pinnedStream.value.stream"
+        autoplay
+        playsinline
+        class="rounded-lg object-cover shadow max-w-[780px]"
+        @click="
+          room.userActions.togglePinnedStream(
+            room.refs.pinnedStream.value.peerId
+          )
+        "
+      ></video>
+    </div>
 
-  <div v-if="canShowContent">
-    <RoomPeersGrid
-      :peers="room.refs.peers.value"
-      :active-speakers="room.refs.activeSpeakers.value"
-      :pinned-stream="room.refs.pinnedStream"
-      @watch-stream="room.userActions.watchStream"
-      @pin-stream="room.userActions.togglePinnedStream"
-    >
-      <template #localPeer>
-        <RoomLocalPeer
-          :userName="authData!.user.name"
-          :userImage="authData!.user.image!"
-        />
-      </template>
-    </RoomPeersGrid>
+    <div>
+      <RoomPeersGrid
+        :peers="room.refs.peers"
+        :active-speakers="room.refs.activeSpeakers.value"
+        :pinned-stream="room.refs.pinnedStream"
+        @watch-stream="room.userActions.watchStream"
+        @pin-stream="room.userActions.togglePinnedStream"
+      >
+        <template #localPeer>
+          <RoomLocalPeer
+            :userName="authData!.user.name"
+            :userImage="authData!.user.image!"
+          />
+        </template>
+      </RoomPeersGrid>
 
-    <RoomControls @leave="leave" />
+      <RoomControls @leave="leave" />
+    </div>
+
+    <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
+      <div v-for="(val, key) in stats" :key="key" class="mb-3">
+        <p class="text-red-700 font-mono mb-1">
+          <strong>{{ val[1].type }}:</strong>
+        </p>
+        <ul class="ml-4 text-red-400 font-mono list-disc">
+          <li v-for="(v, k) in val[1]" :key="k">
+            <span class="text-red-500">{{ k }}:</span> {{ v }}
+          </li>
+        </ul>
+      </div>
+    </div>
   </div>
 </template>
 

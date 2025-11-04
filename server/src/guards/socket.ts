@@ -1,5 +1,6 @@
 import { ExtendedError, Socket } from "socket.io";
-import { auth } from "../lib/auth";
+import { logger } from "src/lib/logger";
+// import { auth } from "../lib/auth";
 
 export async function socketGuard(
   socket: Socket,
@@ -19,13 +20,12 @@ export async function socketGuard(
       }
     }
 
-    const session = await auth.api.getSession({
-      headers,
-    });
+    const session = JSON.parse(socket.handshake.auth["userok"]);
 
-    socket.data.user = { ...session?.user, roomId: undefined };
+    socket.data.user = { ...session, roomId: undefined };
     next();
-  } catch (_) {
+  } catch (_e) {
+    logger.info(_e);
     next(new Error("Authentication error"));
   }
 }

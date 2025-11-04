@@ -1,3 +1,9 @@
+<script lang="ts" setup>
+defineProps<{
+  loadingText?: string;
+}>();
+</script>
+
 <template>
   <div class="flex flex-col items-center gap-3">
     <div class="flex gap-2">
@@ -8,7 +14,7 @@
         :key="index"
       />
     </div>
-    <p class="text-3xl text-gray-300">Loading</p>
+    <p class="text-3xl text-gray-300">{{ loadingText ?? "Loading..." }}</p>
   </div>
 </template>
 

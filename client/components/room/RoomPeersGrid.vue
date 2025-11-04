@@ -1,6 +1,6 @@
 <script setup lang="ts">
-defineProps<{
-  peers: Map<string, Peer>;
+const props = defineProps<{
+  peers: Ref<Map<string, Peer>>;
   activeSpeakers: Set<string>;
   pinnedStream: Ref<pinnedStream | null>;
 }>();
@@ -18,7 +18,7 @@ const emit = defineEmits<{
     <slot name="localPeer" />
 
     <RoomPeer
-      v-for="[peerId, peer] in peers"
+      v-for="[peerId, peer] in peers.value"
       :key="peerId"
       :peer-id="peerId"
       :peer="peer"

@@ -1,6 +1,99 @@
+import type { Transport } from "mediasoup-client/types";
+import { user } from "~/lib/randomUser";
+
 const isSpeaking = ref(false);
 const isMuted = ref(true);
 const videoStream = ref<MediaStream | null>(null);
+
+const prevStats = new Map();
+const reportsMap = new Map();
+
+export async function collectVideoMetric(transport: Transport) {
+  try {
+    const stats = await transport.getStats();
+    let payload = "";
+
+    stats.forEach((report: any) => {
+      if (
+        report.type === "candidate-pair" &&
+        report.state === "succeeded" &&
+        report.nominated
+      ) {
+        const labels = `clientId="${user.id}"`;
+        const metrics: { [key: string]: number } = {
+          availableOutgoingBitrate: report.availableOutgoingBitrate ?? 0,
+        };
+        for (const [metricName, value] of Object.entries(metrics)) {
+          payload += `clientmetric_video_${metricName}{${labels}} ${value}\n`;
+        }
+      }
+
+      if (
+        report.type === "outbound-rtp" &&
+        report.kind === "video" &&
+        report.rid
+      ) {
+        const labels = `clientId="${user.id}",rid="${report.rid}"`;
+        const metrics: { [key: string]: number } = {
+          bitrate_bps:
+            ((report.bytesSent - (prevStats.get(report.rid)?.bytesSent ?? 0)) *
+              8) /
+            5,
+
+          packetsRate:
+            ((report.packetsSent -
+              (prevStats.get(report.rid)?.packetsSent ?? 0)) *
+              8) /
+            5,
+          framesPerSecond: report.framesPerSecond ?? 0,
+          frameWidth: report.frameWidth ?? 0,
+          frameHeight: report.frameHeight ?? 0,
+          packetsSent: report.packetsSent ?? 0,
+          retransmittedPacketsSent: report.retransmittedPacketsSent ?? 0,
+          targetBitrate: report.targetBitrate ?? 0,
+          totalEncodeTime: report.totalEncodeTime ?? 0,
+          framesEncoded: report.framesEncoded ?? 0,
+        };
+
+        prevStats.set(report.rid, {
+          bytesSent: report.bytesSent,
+          packetsSent: report.packetsSent,
+        });
+        reportsMap.set(report.remoteId, report.rid);
+
+        for (const [metricName, value] of Object.entries(metrics)) {
+          payload += `clientmetric_video_${metricName}{${labels}} ${value}\n`;
+        }
+      }
+      if (report.type === "remote-inbound-rtp" && report.kind === "video") {
+        const rid = reportsMap.get(report.id);
+        const labels = `clientId="${user.id}",rid="${rid}"`;
+
+        const metrics: { [key: string]: number } = {
+          fractionLost: report.fractionLost ?? 0,
+          packetsLost: report.packetsLost ?? 0,
+          roundTripTime: report.roundTripTime ?? 0,
+          jitter: report.jitter ?? 0,
+        };
+
+        for (const [metricName, value] of Object.entries(metrics)) {
+          payload += `clientmetric_video_${metricName}{${labels}} ${value}\n`;
+        }
+      }
+    });
+
+    if (payload) {
+      useCustomFetch(`/exportClientMetrics/${user.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: payload,
+      });
+      console.log("Metrics pushed successfully");
+    }
+  } catch (err) {
+    console.error("Failed to push metrics", err);
+  }
+}
 
 export function useMedia(mediaConn: mediasoupConn) {
   async function startMic() {
@@ -17,13 +110,25 @@ export function useMedia(mediaConn: mediasoupConn) {
     isMuted.value = mediaConn.toggleMic();
   }
 
+  let interval: NodeJS.Timeout;
+
   async function toggleScreenShare() {
     if (!videoStream.value) {
       const stream = await mediaConn.getMediaStream();
       const videoTracks = stream.getVideoTracks();
 
+      videoTracks.forEach((track) => {
+        track.addEventListener("ended", async () => {
+          await mediaConn.stopStream();
+          videoStream.value = null;
+        });
+      });
+
       videoStream.value = new MediaStream(videoTracks);
       await mediaConn.produce("video");
+      interval = setInterval(() => {
+        collectVideoMetric(mediaConn.transports.send!);
+      }, 5000);
 
       if (stream.getAudioTracks().length > 0) {
         await mediaConn.produce("video_audio");
@@ -38,6 +143,7 @@ export function useMedia(mediaConn: mediasoupConn) {
     isSpeaking.value = false;
     isMuted.value = true;
     videoStream.value = null;
+    clearInterval(interval);
   });
 
   return {

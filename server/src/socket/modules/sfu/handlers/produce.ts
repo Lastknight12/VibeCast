@@ -1,6 +1,5 @@
 import { Type } from "@sinclair/typebox";
 import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
-import { ProducerType } from "mediasoup/node/lib/ProducerTypes";
 import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/state/roomState";
 import { HandlerCallback, SocketError } from "src/socket/core";
@@ -70,6 +69,42 @@ interface Result {
   id: string;
 }
 
+export function generateSdp({
+  ip,
+  port,
+  rtcpPort,
+  codec,
+  ssrc,
+  rtcpMux = false,
+}: {
+  ip: string;
+  port: number;
+  rtcpPort?: number;
+  codec: { mimeType: string; payloadType: number; clockRate: number };
+  ssrc: number;
+  rtcpMux?: boolean;
+}): string {
+  const mediaType = codec.mimeType.split("/")[0].toLowerCase();
+  const sdpLines = [
+    "v=0",
+    "o=- 0 0 IN IP4 127.0.0.1",
+    "s=mediasoup-record",
+    `c=IN IP4 ${ip}`,
+    "t=0 0",
+    `m=${mediaType} ${port} RTP/AVP ${codec.payloadType}`,
+    `a=rtpmap:${codec.payloadType} ${codec.mimeType.split("/")[1]}/${codec.clockRate}`,
+    `a=ssrc:${ssrc} cname:recorder`,
+  ];
+
+  if (!rtcpMux && rtcpPort) {
+    sdpLines.splice(5, 0, `a=rtcp:${rtcpPort} IN IP4 ${ip}`);
+  } else if (rtcpMux) {
+    sdpLines.push("a=rtcp-mux");
+  }
+
+  return sdpLines.join("\r\n") + "\r\n";
+}
+
 export default function (socket: CustomSocket) {
   socket.customOn({
     event: "produce",
@@ -96,6 +131,7 @@ export default function (socket: CustomSocket) {
       const producer = await peer.transports.send.produce({
         kind: input.kind,
         rtpParameters: input.rtpParameters as unknown as RtpParameters,
+        appData: { type: input.appData.type },
       });
 
       switch (input.appData.type) {
@@ -117,12 +153,7 @@ export default function (socket: CustomSocket) {
 
       socket.broadcast
         .to(user.roomId)
-        .emit(
-          "newProducer",
-          producer.id,
-          user.id,
-          input.appData.type as ProducerType
-        );
+        .emit("newProducer", producer.id, user.id, input.appData.type);
       cb({ data: { id: producer.id } });
     },
   });

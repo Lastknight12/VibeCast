@@ -3,6 +3,7 @@ import type {
   MediaKind,
   Producer,
   RtpCapabilities,
+  RtpEncodingParameters,
   RtpParameters,
   Transport,
 } from "mediasoup-client/types";
@@ -11,7 +12,6 @@ import type { SocketCallbackArgs } from "./useSocket";
 
 export class mediasoupConn {
   private socket = useSocket();
-  private toaster;
 
   localStream: MediaStream | null = null;
   audioStream: MediaStream | null = null;
@@ -28,7 +28,6 @@ export class mediasoupConn {
   consumers: Map<string, Consumer>;
 
   constructor(toaster?: ReturnType<typeof useToast>) {
-    this.toaster = toaster;
     this.muted = true;
 
     this.transports = {};
@@ -53,9 +52,7 @@ export class mediasoupConn {
   async getMediaStream() {
     const stream = await navigator.mediaDevices.getDisplayMedia({
       video: {
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        frameRate: { ideal: 60 },
+        frameRate: { ideal: 30, max: 30 },
       },
       audio: true,
     });
@@ -66,12 +63,12 @@ export class mediasoupConn {
   }
 
   async createDevice() {
-    const rtpCapabilities = await new Promise((resolve, _reject) => {
+    const rtpCapabilities = await new Promise((resolve, reject) => {
       this.socket.emit(
         "getRTPCapabilities",
         async ({ data, errors }: SocketCallbackArgs<RtpCapabilities>) => {
           if (errors) {
-            this.toaster?.error({ message: errors[0]!.message });
+            reject(errors[0]?.message);
             return;
           }
 
@@ -90,100 +87,49 @@ export class mediasoupConn {
   }
 
   async createTransport(type: "send" | "recv") {
-    if (!this.device) {
-      console.error("Device not initialized. Call createDevice first");
-      return;
-    }
-
-    await new Promise((resolve, _) => {
-      if (!this.device) {
-        console.log("no device created");
-        return;
-      }
+    return new Promise<void>((resolve, reject) => {
+      if (!this.device) return reject("no device created");
 
       this.socket.emit(
         "createTransport",
         { type },
-        ({ data: transport, errors }: SocketCallbackArgs<any>) => {
+        ({ data, errors }: SocketCallbackArgs<any>) => {
           if (errors) {
-            this.toaster?.error({ message: errors[0]!.message });
+            return reject(errors[0]!.message);
           }
 
-          switch (type) {
-            case "send": {
-              this.transports.send =
-                this.device!.createSendTransport(transport);
-              resolve(null);
+          const transport =
+            type === "send"
+              ? this.device!.createSendTransport(data)
+              : this.device!.createRecvTransport(data);
 
-              this.transports.send.on("connectionstatechange", (state) => {
-                console.log(`${type}ProducerTransport state:`, state);
-              });
-
-              this.transports.send.on(
-                "connect",
-                ({ dtlsParameters }, callback) => {
-                  this.socket.emit(
-                    "connectTransport",
-                    { dtlsParameters, type },
-                    ({ errors }: SocketCallbackArgs<unknown>) => {
-                      if (errors) {
-                        this.toaster?.error({ message: errors[0]!.message });
-                        return;
-                      }
-                      callback();
-                    }
-                  );
-                }
-              );
-
-              this.transports.send.on(
-                "produce",
-                async (parameters, callback) => {
-                  this.socket.emit(
-                    "produce",
-                    parameters,
-                    ({ data, errors }: SocketCallbackArgs<{ id: string }>) => {
-                      if (errors) {
-                        this.toaster?.error({ message: errors[0]!.message });
-                        return;
-                      }
-
-                      callback({ id: data?.id });
-                    }
-                  );
-                }
-              );
-              break;
-            }
-            case "recv":
-              {
-                this.transports.recv =
-                  this.device!.createRecvTransport(transport);
-                resolve(null);
-
-                this.transports.recv.on("connectionstatechange", (state) => {
-                  console.log(`${type}ConsumerTransport state:`, state);
-                });
-
-                this.transports.recv.on(
-                  "connect",
-                  ({ dtlsParameters }, callback) => {
-                    this.socket.emit(
-                      "connectTransport",
-                      { dtlsParameters, type },
-                      ({ errors }: SocketCallbackArgs<unknown>) => {
-                        if (errors) {
-                          this.toaster?.error({ message: errors[0]!.message });
-                          return;
-                        }
-                        callback();
-                      }
-                    );
-                  }
-                );
+          transport.on("connect", ({ dtlsParameters }, callback) => {
+            this.socket.emit(
+              "connectTransport",
+              { dtlsParameters, type },
+              ({ errors }: SocketCallbackArgs<unknown>) => {
+                if (errors) return console.log(errors[0]?.message);
+                callback();
               }
-              break;
+            );
+          });
+
+          if (type === "send") {
+            transport.on("produce", (parameters, callback) => {
+              this.socket.emit(
+                "produce",
+                parameters,
+                ({ data, errors }: SocketCallbackArgs<{ id: string }>) => {
+                  if (errors) return console.log(errors[0]?.message);
+                  callback({ id: data?.id });
+                }
+              );
+            });
           }
+
+          if (type === "send") this.transports.send = transport;
+          else this.transports.recv = transport;
+          resolve();
         }
       );
     });
@@ -237,15 +183,11 @@ export class mediasoupConn {
               "consumerReady",
               { id: consumer.id },
               ({ errors }: SocketCallbackArgs<unknown>) => {
-                if (errors) {
-                  this.toaster?.error({ message: errors[0]!.message });
-                }
+                if (errors) return reject(errors[0]!.message);
+                resolve(null);
               }
             );
-
-            resolve(null);
           } else {
-            this.toaster?.error({ message: errors[0]!.message });
             reject(errors[0]!.message);
           }
         }
@@ -323,28 +265,29 @@ export class mediasoupConn {
       }
     }
 
-    const encodings =
+    const encodings: RtpEncodingParameters[] | undefined =
       type === "video"
         ? [
             {
-              rid: "fhd", // 1080p
-              maxBitrate: 6000 * 1024,
-              scaleResolutionDownBy: 1,
-            },
-            {
-              rid: "hd", // 720p
-              maxBitrate: 4000 * 1024,
-              scaleResolutionDownBy: 1.5,
-            },
-            {
-              rid: "sd", // 480p
-              maxBitrate: 2000 * 1024,
-              scaleResolutionDownBy: 2.25,
-            },
-            {
-              rid: "ld", // 360p
-              maxBitrate: 1000 * 1024,
+              rid: "low",
               scaleResolutionDownBy: 3,
+              maxBitrate: 300_000,
+              maxFramerate: 30,
+              scalabilityMode: "L1T2",
+            },
+            {
+              rid: "mid",
+              scaleResolutionDownBy: 1.5,
+              maxBitrate: 1_000_000,
+              maxFramerate: 30,
+              scalabilityMode: "L1T2",
+            },
+            {
+              rid: "high",
+              scaleResolutionDownBy: 1,
+              maxBitrate: 2_500_000,
+              maxFramerate: 30,
+              scalabilityMode: "L1T3",
             },
           ]
         : undefined;
@@ -373,7 +316,7 @@ export class mediasoupConn {
     }
   }
 
-  stopStream() {
+  async stopStream() {
     const videoProducer = this.producers.get("video");
     const systemAudioProducer = this.producers.get("video_audio");
 
@@ -387,22 +330,25 @@ export class mediasoupConn {
 
     this.localStream = null;
 
-    this.socket.emit(
-      "closeProducer",
-      { type: "video" },
-      ({ errors }: SocketCallbackArgs<unknown>) => {
-        if (errors) {
-          this.toaster?.error({ message: errors[0]!.message });
+    await new Promise<void>((resolve, reject) => {
+      this.socket.emit(
+        "closeProducer",
+        { type: "video" },
+        ({ errors }: SocketCallbackArgs<unknown>) => {
+          if (errors) {
+            reject(errors[0]!.message);
+          }
+          resolve();
         }
-      }
-    );
+      );
+    });
   }
 
   toggleMic() {
     if (this.audioStream && this.audioStream.getAudioTracks().length > 0) {
       this.muted = !this.muted;
       this.audioStream.getAudioTracks()[0]!.enabled = !this.muted;
-      this.socket.emit("switchMic", { muted: this.muted });
+      this.socket.emit("switchMic");
     }
 
     return this.muted;
@@ -419,5 +365,14 @@ export class mediasoupConn {
       t.close();
     });
     this.transports = {};
+  }
+
+  getProducerstatistic(type: "video" | "audio" | "video_audio") {
+    const video = this.producers.get("video")?.getStats();
+    const video_audio = this.producers.get("video_audio")?.getStats();
+    const audio = this.producers.get("audio")?.getStats();
+
+    const stats = { video, audio, video_audio };
+    return stats[type];
   }
 }

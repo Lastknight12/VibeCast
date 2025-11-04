@@ -1,4 +1,5 @@
 # --- Build stage ---
+# TODO
 FROM node:20-bullseye AS builder
 
 RUN apt-get update && apt-get install -y \
@@ -12,13 +13,16 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 
 WORKDIR /server
 
-COPY . .
+COPY package.json package-lock.json ./
+COPY /prisma/schema.prisma ./
 
 RUN npm ci
 
+COPY . .
+
 RUN npm run build
 
-# --- Build stage ---
+# --- Prod stage ---
 FROM node:20-bullseye AS runtime
 
 WORKDIR /server
@@ -27,6 +31,6 @@ COPY --from=builder /server/node_modules ./node_modules
 COPY --from=builder /server ./
 
 EXPOSE 5001
-EXPOSE 40000-40100/udp
+EXPOSE 40000-40050/udp
 
 CMD ["npm", "run", "start"]

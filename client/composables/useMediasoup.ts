@@ -1,8 +1,8 @@
 let connection: mediasoupConn;
 
 export function useMediasoup() {
+  const toaster = useToast();
   if (!connection) {
-    const toaster = useToast();
     connection = new mediasoupConn(toaster);
   }
 

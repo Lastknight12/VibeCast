@@ -2,6 +2,7 @@
 import CreateRoomDialog from "~/components/CreateRoomDialog.vue";
 import type { User } from "better-auth/types";
 import type { SocketCallback } from "~/composables/useSocket";
+import { generateRandomUser, user } from "~/lib/randomUser";
 
 useHead({
   title: "VibeCast homepage",
@@ -14,10 +15,19 @@ useHead({
   ],
 });
 
-const socket = useSocket();
-const authClient = useAuthClient();
+onMounted(() => {
+  session.data.value = generateRandomUser();
+  const socket = useSocket();
+  socket.emit("getAllRooms", handleRooms);
+  socket.on("userJoinRoom", handleUserJoin);
+  socket.on("userLeftRoom", handleUserLeft);
+  socket.on("roomCreated", handleRoomCreated);
+  socket.on("roomDeleted", handleRoomDeleted);
+});
 
-const session = await authClient.useSession(useCustomFetch);
+const toaster = useToast();
+const authClient = useAuthClient();
+const session = { data: ref(user) };
 
 const rooms = ref<
   Map<
@@ -81,21 +91,12 @@ const handleRoomDeleted = (roomId: string) => {
   rooms.value.delete(roomId);
 };
 
-onMounted(() => {
-  socket.emit("getAllRooms", handleRooms);
-  socket.on("userJoinRoom", handleUserJoin);
-  socket.on("userLeftRoom", handleUserLeft);
-  socket.on("roomCreated", handleRoomCreated);
-  socket.on("roomDeleted", handleRoomDeleted);
-});
+const handleRoomClick = async (roomId: string, roomName: string) => {
+  if (!session.data.value)
+    return toaster.error({ message: "Login to join room" });
 
-onUnmounted(() => {
-  socket.off("getAllRooms", handleRooms);
-  socket.off("userJoinRoom", handleUserJoin);
-  socket.off("userLeftRoom", handleUserLeft);
-  socket.off("roomCreated", handleRoomCreated);
-  socket.off("roomDeleted", handleRoomDeleted);
-});
+  await navigateTo(`/rooms/${roomId}?name=${roomName}`);
+};
 </script>
 
 <template>
@@ -112,7 +113,12 @@ onUnmounted(() => {
     >
       <h1 class="text-secondary text-xl">VibeCast</h1>
 
-      <CreateRoomDialog v-if="session.data.value" />
+      <div v-if="session.data.value" class="flex items-center gap-2">
+        <CreateRoomDialog />
+        <UiButton variant="destructive" @click="authClient.signOut()"
+          >Leave</UiButton
+        >
+      </div>
       <UiButton variant="secondary" size="sm" v-else @click="googleLogin">
         Sign in with Google
       </UiButton>
@@ -126,7 +132,8 @@ onUnmounted(() => {
         v-for="[roomId, room] of rooms"
         :key="roomId"
         class="p-6 bg-[#070707] border border-border rounded-xl"
-        @click="() => navigateTo(`/rooms/${roomId}?name=${room.name}`)"
+        :id="`room-${room.name}`"
+        @click="() => handleRoomClick(roomId, room.name)"
       >
         <h1 class="text-lg text-secondary">
           {{ room.name }}

@@ -6,6 +6,7 @@ import { ServerToClientEvents } from "src/types/socket";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { Static, TSchema } from "@sinclair/typebox";
 import ApiCoreError from "./errors";
+import { logger } from "src/lib/logger";
 
 export type CustomSocket = SocketWrapper<
   DefaultEventsMap,
@@ -116,7 +117,9 @@ function enhanceSocket(
             event: params.event,
             error: {
               code: "INVALID_PAYLOAD",
-              message: validator.Errors(payload).First()?.message,
+              // TODO
+              // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              message: validator.Errors(payload).First()!.message,
             },
           });
           return;
@@ -138,9 +141,10 @@ function enhanceSocket(
           await params.handler(payload);
         }
       } catch (error) {
+        logger.error(error);
         if (error instanceof SocketError) {
-          if (params.config?.expectCb) {
-            cb?.({
+          if (params.config?.expectCb && cb) {
+            cb({
               data: undefined,
               errors: [
                 {

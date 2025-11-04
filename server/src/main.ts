@@ -13,6 +13,14 @@ async function startServer() {
     logger: {
       level: env.FASTIFY_LOGGER_LEVEL,
     },
+    // TODO push to commit
+    https:
+      env.CERT && env.KEY
+        ? {
+            cert: env.CERT,
+            key: env.KEY,
+          }
+        : null,
   });
 
   await createMediasoupWorkers();
@@ -45,6 +53,8 @@ async function startServer() {
       host,
     });
     logger.info(`listening on ${host}:${port}`);
+    // TODO add to commit
+    logger.info(`mediasoup anounced ip ${env.ANNOUNCED_IP}`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);
