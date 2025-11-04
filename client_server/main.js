@@ -4,7 +4,7 @@ const puppeteer = require("puppeteer");
 const client_num = 5;
 const roomName = "A";
 
-const wss = new WebSocket.Server({ port: 3677 });
+const wss = new WebSocket.Server({ port: 3677, host: "0.0.0.0" });
 console.log("WebSocket server is running on ws://localhost:3677");
 
 const browsers = [];

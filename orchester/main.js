@@ -1,10 +1,10 @@
 const readline = require("readline");
 
-const clients = ["ws://localhost:3677"];
+const clients = ["ws://18.207.102.103:3677"];
 const sockets = [];
 
 clients.forEach((client) => {
-  const socket = new WebSocket("ws://localhost:3677");
+  const socket = new WebSocket(client);
 
   socket.addEventListener("open", (event) => {
     console.log(`connected to ${client}`);
