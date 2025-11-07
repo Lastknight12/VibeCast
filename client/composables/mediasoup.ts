@@ -27,7 +27,7 @@ export class mediasoupConn {
   producers: Map<"video" | "audio" | "video_audio", Producer | undefined>;
   consumers: Map<string, Consumer>;
 
-  constructor(toaster?: ReturnType<typeof useToast>) {
+  constructor() {
     this.muted = true;
 
     this.transports = {};
@@ -50,8 +50,10 @@ export class mediasoupConn {
   }
 
   async getMediaStream() {
-    const stream = await navigator.mediaDevices.getDisplayMedia({
+    const stream = await navigator.mediaDevices.getUserMedia({
       video: {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
         frameRate: { ideal: 30, max: 30 },
       },
       audio: true,

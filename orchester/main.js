@@ -1,76 +1,162 @@
 const readline = require("readline");
+const WebSocket = require("ws");
 
-const clients = ["ws://18.207.102.103:3677"];
+const clients = ["ws://localhost:3677"];
 const sockets = [];
 
-clients.forEach((client) => {
+clients.forEach((client, index) => {
   const socket = new WebSocket(client);
 
-  socket.addEventListener("open", (event) => {
-    console.log(`connected to ${client}`);
-    sockets.push(socket);
+  socket.addEventListener("open", () => {
+    console.log(`Connected to ${client}`);
+    sockets[index] = socket;
   });
 
   socket.addEventListener("close", (event) => {
-    console.log(
-      `WebSocket (${client}) connection closed:`,
-      event.code,
-      event.reason
-    );
+    console.log(`WebSocket (${client}) closed:`, event.code, event.reason);
+  });
+
+  socket.addEventListener("message", (event) => {
+    console.log(`    Message from ${client}:`, event.data);
   });
 
   socket.addEventListener("error", (error) => {
-    console.error(`WebSocket (${client}) error:`, error);
+    console.error(`WebSocket (${client}) error:`, error.message);
   });
 });
 
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
-  prompt: "cmd> ",
+  prompt: "",
 });
 
 rl.prompt();
 
+function getSocket(id) {
+  const socket = sockets[id - 1];
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    console.log(`❌ Invalid generatorId ${id} or socket not connected`);
+    return null;
+  }
+  return socket;
+}
+
 rl.on("line", async (line) => {
-  const command = line.split(" ");
-  if (command[0] === "health") {
-    sockets.forEach((socket, i) => {
-      let answered = false;
-      const handler = (event) => {
-        const msg = event.data;
-        if (msg === "pong") {
-          console.log(`✅ socket ${i} відповів`);
-          answered = true;
+  const command = line.trim().split(/\s+/);
+  const cmd = command[0];
+
+  if (!cmd) return rl.prompt();
+
+  switch (cmd) {
+    case "health": {
+      sockets.forEach((socket, i) => {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          console.log(`❌ socket ${i} not connected`);
+          return;
         }
-        // Зняти слухача після першого виклику
-        socket.removeEventListener("message", handler);
-      };
 
-      // Додати одноразовий слухач
-      socket.addEventListener("message", handler);
-
-      // Надіслати запит
-      socket.send("ping");
-
-      // Таймаут, якщо не відповів
-      setTimeout(() => {
-        if (!answered) {
+        let answered = false;
+        const handler = (event) => {
+          if (event.data === "pong") {
+            console.log(`✅ socket ${i + 1} alive`);
+            answered = true;
+          }
           socket.removeEventListener("message", handler);
-          console.log(`socket ${i} не відповів ${socket.ip}`);
-        }
-      }, 3000);
-    });
-  } else if (command[0] === "spawn") {
-    console.log("Спавним браузер...");
-    sockets[command[1] - 1].send("spawn");
-  } else if (command === "exit") {
-    process.exit(0);
-  } else {
-    console.log(`Невідома команда: ${command}`);
+        };
+
+        socket.addEventListener("message", handler);
+        socket.send("ping");
+
+        setTimeout(() => {
+          if (!answered) {
+            socket.removeEventListener("message", handler);
+            console.log(`⚠️ socket ${i + 1} did not respond`);
+          }
+        }, 3000);
+      });
+      break;
+    }
+
+    case "exit":
+      process.exit(0);
+
+    case "spawn": {
+      const generatorId = Number(command[1]);
+      const count = Number(command[2]);
+      const socket = getSocket(generatorId);
+      if (!socket || isNaN(count) || count <= 0) break;
+      socket.send(`spawn ${count}`);
+      break;
+    }
+
+    case "produce": {
+      const generatorId = Number(command[1]);
+      const clientId = Number(command[2]);
+      const socket = getSocket(generatorId);
+      if (!socket || isNaN(clientId)) break;
+      socket.send(`produce ${clientId}`);
+      break;
+    }
+
+    case "consume": {
+      const generatorId = Number(command[1]);
+      const clientId = Number(command[2]);
+      const targetId = Number(command[3]);
+      const socket = getSocket(generatorId);
+      if (!socket || [clientId, targetId].some(isNaN)) break;
+      socket.send(`consume ${clientId} ${targetId}`);
+      break;
+    }
+
+    case "removeClient": {
+      const generatorId = Number(command[1]);
+      const clientId = Number(command[2]);
+      const socket = getSocket(generatorId);
+      if (!socket || isNaN(clientId)) break;
+      socket.send(`removeClient ${clientId}`);
+      break;
+    }
+
+    case "list": {
+      const generatorId = Number(command[1]);
+      const socket = getSocket(generatorId);
+      if (!socket) break;
+      socket.send("list");
+      break;
+    }
+
+    case "unconsume": {
+      const generatorId = Number(command[1]);
+      const clientId = Number(command[2]);
+      const targetId = Number(command[3]);
+
+      if (targetId === 0)
+        return console.log("id 0 is taken by user local video");
+
+      const socket = getSocket(generatorId);
+      if (!socket) break;
+      socket.send(`unconsume ${clientId} ${targetId}`);
+      break;
+    }
+
+    case "record": {
+      const generatorId = Number(command[1]);
+      const clientId = Number(command[2]);
+      const targetId = Number(command[3]);
+
+      if (targetId === 0)
+        return console.log("id 0 is taken by user local video");
+
+      const socket = getSocket(generatorId);
+      if (!socket) break;
+      socket.send(`record ${clientId} ${targetId}`);
+      break;
+    }
+
+    default:
+      console.log(`❓ Unknown command: ${cmd}`);
   }
 
   rl.prompt();
-}).on("close", () => {
-  process.exit(0);
-});
+}).on("close", () => process.exit(0));

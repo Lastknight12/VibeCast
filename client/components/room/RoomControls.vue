@@ -59,6 +59,7 @@ const room = useRoom(roomId);
       "
       variant="destructive"
       size="icon"
+      id="unwatch"
       class="text-red-200"
     >
       <Icon name="material-symbols-light:mimo-disconnect-outline" size="20" />
