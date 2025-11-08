@@ -119,20 +119,21 @@ export function useMedia(mediaConn: mediasoupConn) {
 
       videoTracks.forEach((track) => {
         track.addEventListener("ended", async () => {
-          await mediaConn.stopStream();
+          console.log("called in hook", videoStream.value);
           videoStream.value = null;
+          await mediaConn.stopStream();
         });
       });
 
       videoStream.value = new MediaStream(videoTracks);
       await mediaConn.produce("video");
-      interval = setInterval(() => {
-        collectVideoMetric(mediaConn.transports.send!);
-      }, 5000);
-
       if (stream.getAudioTracks().length > 0) {
         await mediaConn.produce("video_audio");
       }
+
+      interval = setInterval(() => {
+        collectVideoMetric(mediaConn.transports.send!);
+      }, 5000);
     } else {
       mediaConn.stopStream();
       videoStream.value = null;

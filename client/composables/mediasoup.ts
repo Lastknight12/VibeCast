@@ -50,7 +50,7 @@ export class mediasoupConn {
   }
 
   async getMediaStream() {
-    const stream = await navigator.mediaDevices.getUserMedia({
+    const stream = await navigator.mediaDevices.getDisplayMedia({
       video: {
         width: { ideal: 1920 },
         height: { ideal: 1080 },

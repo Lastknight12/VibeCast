@@ -69,42 +69,6 @@ interface Result {
   id: string;
 }
 
-export function generateSdp({
-  ip,
-  port,
-  rtcpPort,
-  codec,
-  ssrc,
-  rtcpMux = false,
-}: {
-  ip: string;
-  port: number;
-  rtcpPort?: number;
-  codec: { mimeType: string; payloadType: number; clockRate: number };
-  ssrc: number;
-  rtcpMux?: boolean;
-}): string {
-  const mediaType = codec.mimeType.split("/")[0].toLowerCase();
-  const sdpLines = [
-    "v=0",
-    "o=- 0 0 IN IP4 127.0.0.1",
-    "s=mediasoup-record",
-    `c=IN IP4 ${ip}`,
-    "t=0 0",
-    `m=${mediaType} ${port} RTP/AVP ${codec.payloadType}`,
-    `a=rtpmap:${codec.payloadType} ${codec.mimeType.split("/")[1]}/${codec.clockRate}`,
-    `a=ssrc:${ssrc} cname:recorder`,
-  ];
-
-  if (!rtcpMux && rtcpPort) {
-    sdpLines.splice(5, 0, `a=rtcp:${rtcpPort} IN IP4 ${ip}`);
-  } else if (rtcpMux) {
-    sdpLines.push("a=rtcp-mux");
-  }
-
-  return sdpLines.join("\r\n") + "\r\n";
-}
-
 export default function (socket: CustomSocket) {
   socket.customOn({
     event: "produce",

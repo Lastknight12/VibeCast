@@ -1,8 +1,8 @@
 <script setup lang="ts">
-const props = defineProps<{
-  peers: Ref<Map<string, Peer>>;
+defineProps<{
+  peers: Map<string, Peer>;
   activeSpeakers: Set<string>;
-  pinnedStream: Ref<pinnedStream | null>;
+  pinnedStream: pinnedStream | null;
 }>();
 
 const emit = defineEmits<{
@@ -18,11 +18,10 @@ const emit = defineEmits<{
     <slot name="localPeer" />
 
     <RoomPeer
-      v-for="[peerId, peer] in peers.value"
+      v-for="[peerId, peer] in peers"
       :key="peerId"
-      :peer-id="peerId"
       :peer="peer"
-      :is-pinned="pinnedStream.value?.peerId === peerId"
+      :is-pinned="pinnedStream?.peerId === peerId"
       :is-speaking="activeSpeakers.has(peerId)"
       @watch-stream="emit('watch-stream', peerId)"
       @pin-stream="emit('pin-stream', peerId)"

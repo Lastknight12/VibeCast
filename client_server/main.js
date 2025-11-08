@@ -9,6 +9,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+const server = "http://localhost:3000";
 let roomName = "A";
 let roomCreated = false;
 let nextClientId = 1;
@@ -30,13 +31,14 @@ async function spawnBrowser() {
       "--use-fake-device-for-media-stream",
       "--no-sandbox",
       "--disable-setuid-sandbox",
+      `--unsafely-treat-insecure-origin-as-secure=${server}`,
       // `--use-file-for-fake-video-capture=${absolutePath}`,
     ],
   });
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 720 });
-  await page.goto("http://localhost:3000");
+  await page.goto(server);
 
   browsers.push({ id, browser });
   pages.push({ id, page });
@@ -56,6 +58,34 @@ async function spawnBrowser() {
     await page.click("#createBtn");
     roomCreated = true;
   }
+
+  try {
+    const screenShareBtn = await page.waitForSelector("#toggleScreenShare");
+    const box = await screenShareBtn.boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + 3);
+
+    const stats = clientStats.get(clientId);
+    stats.producing = !stats.producing;
+    // ws.send(`Client ${clientId} producing: ${stats.producing}`);
+  } catch (e) {
+    // ws.send(`Error toggling screen share for ${clientId}: ${e.message}`);
+  }
+
+  pages.forEach(async (page) => {
+    try {
+      await page.page.waitForSelector('button[id^="watch"]');
+      await page.page.$$eval('button[id^="watch"]', (buttons) => {
+        buttons.forEach((btn) => {
+          if (btn) {
+            btn.click();
+          }
+        });
+        return true;
+      });
+    } catch (err) {
+      console.log(err.message);
+    }
+  });
 
   console.log(`Spawned browser client ${id}`);
 }

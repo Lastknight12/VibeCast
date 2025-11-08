@@ -142,6 +142,9 @@ export function useRoom(roomId: string) {
 
     await mediaConn.closeConsumer(videoConsumer.id);
     audioConsumer && (await mediaConn.closeConsumer(audioConsumer.id));
+    if (pinnedStream.value?.peerId === streamerPeerId) {
+      pinnedStream.value = null;
+    }
 
     peer.streams.screenShare = {
       active: false,
@@ -245,6 +248,7 @@ export function useRoom(roomId: string) {
     userId: string,
     type: "video" | "audio" | "video_audio"
   ) {
+    console.log("newProducer:", type);
     const peer = peers.value.get(userId);
     if (!peer) {
       toast.error({ message: "peer not founded" });

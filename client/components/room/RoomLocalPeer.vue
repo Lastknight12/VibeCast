@@ -21,17 +21,23 @@ async function captureFirstFrame() {
     });
 }
 
-watch(videoElem, (val) => {
-  val?.addEventListener("playing", async () => {
+watch(videoElem, (val, _, onCleanup) => {
+  if (!val) return;
+
+  const handlePlaying = () => {
     captureFirstFrame();
 
     const interval = setInterval(() => {
       captureFirstFrame();
     }, 15 * 60 * 1000);
 
-    onWatcherCleanup(() => {
-      clearInterval(interval);
-    });
+    onCleanup(() => clearInterval(interval));
+  };
+
+  val.addEventListener("playing", handlePlaying);
+
+  onCleanup(() => {
+    val.removeEventListener("playing", handlePlaying);
   });
 });
 </script>

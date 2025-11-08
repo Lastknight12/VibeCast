@@ -113,9 +113,9 @@ async function leave() {
 
     <div>
       <RoomPeersGrid
-        :peers="room.refs.peers"
+        :peers="room.refs.peers.value"
         :active-speakers="room.refs.activeSpeakers.value"
-        :pinned-stream="room.refs.pinnedStream"
+        :pinned-stream="room.refs.pinnedStream.value"
         @watch-stream="room.userActions.watchStream"
         @pin-stream="room.userActions.togglePinnedStream"
       >

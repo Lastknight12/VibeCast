@@ -7,6 +7,7 @@ import { cloudinary } from "src/lib/cloudinary";
 import { logger } from "src/lib/logger";
 import { CustomSocket } from "src/socket/core";
 import { Server } from "socket.io";
+import { closeRelatedConsumers } from "../../sfu/utils";
 
 export function createRoom(
   router: Router,
@@ -41,7 +42,13 @@ export async function leaveRoom(
     throw new Error("room not found for given id");
   }
 
+  const user = room.peers.get(userId);
+  if (!user) {
+    throw new Error("User not in current room");
+  }
+
   room.peers.delete(userId);
+
   socket.data.user.roomId = undefined;
   io.to(roomId).emit("userDisconnect", userId);
   if (room.type === "public") {
@@ -55,6 +62,19 @@ export async function leaveRoom(
       io.emit("roomDeleted", roomId);
     }
   }
+
+  Object.values(user.transports).forEach((transport) => {
+    transport.close();
+  });
+
+  closeRelatedConsumers(
+    [
+      user.producers.audio?.id,
+      user.producers.screenShare?.audio?.id,
+      user.producers.screenShare?.video.id,
+    ].filter(Boolean) as string[],
+    roomId
+  );
 
   try {
     await cloudinary.api.delete_resources_by_prefix(`thumbnails/${roomId}`);

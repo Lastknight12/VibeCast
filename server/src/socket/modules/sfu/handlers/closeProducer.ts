@@ -16,14 +16,16 @@ export default function (socket: CustomSocket) {
     config: {
       schema: closeProducerSchema,
       protected: true,
+      expectCb: true,
     },
-    async handler(input) {
+    async handler(input, cb) {
       const { user } = socket.data;
       if (!user.roomId) {
         throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
       }
+      const roomId = user.roomId;
 
-      const room = rooms.get(user.roomId);
+      const room = rooms.get(roomId);
       if (!room) {
         throw new SocketError(ApiRoomError.NOT_FOUND);
       }
@@ -34,8 +36,7 @@ export default function (socket: CustomSocket) {
       }
 
       const onConsumerClosed = (consumerId: string) => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        socket.broadcast.to(user.roomId!).emit("consumerClosed", consumerId);
+        socket.broadcast.to(roomId).emit("consumerClosed", consumerId);
       };
 
       switch (input.type) {
@@ -50,7 +51,7 @@ export default function (socket: CustomSocket) {
           systemAudioProducer?.close();
           peer.producers.screenShare = undefined;
 
-          socket.broadcast.to(user.roomId).emit("peerClosedProducer", {
+          socket.broadcast.to(roomId).emit("peerClosedProducer", {
             peerId: user.id,
             type: "screenShare",
           });
@@ -59,12 +60,12 @@ export default function (socket: CustomSocket) {
             [videoProducer.id, systemAudioProducer?.id].filter(
               Boolean
             ) as string[],
-            user.roomId,
+            roomId,
             onConsumerClosed
           );
 
-          await await cloudinary.api.delete_resources_by_prefix(
-            `thumbnails/${user.roomId}/${user.id}`
+          await cloudinary.api.delete_resources_by_prefix(
+            `thumbnails/${roomId}/${user.id}`
           );
           break;
         }
@@ -76,21 +77,19 @@ export default function (socket: CustomSocket) {
           }
           audioProducer.close();
 
-          socket.broadcast.to(user.roomId).emit("peerClosedProducer", {
+          socket.broadcast.to(roomId).emit("peerClosedProducer", {
             peerId: user.id,
             type: "audio",
           });
 
-          closeRelatedConsumers(
-            [audioProducer.id],
-            user.roomId,
-            onConsumerClosed
-          );
+          closeRelatedConsumers([audioProducer.id], roomId, onConsumerClosed);
 
           peer.producers.audio = undefined;
           break;
         }
       }
+
+      cb({ data: null });
     },
   });
 }

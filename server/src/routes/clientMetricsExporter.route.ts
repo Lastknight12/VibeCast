@@ -1,6 +1,5 @@
 import { FastifyInstance } from "fastify";
 import { env } from "src/config";
-import { logger } from "src/lib/logger";
 
 export default function (fastify: FastifyInstance) {
   fastify.route({
@@ -21,9 +20,8 @@ export default function (fastify: FastifyInstance) {
           }
         );
         reply.status(res.status);
-      } catch (err) {
+      } catch (_error) {
         reply.status(500);
-        logger.error(err);
       }
     },
   });
