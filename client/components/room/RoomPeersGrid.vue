@@ -6,7 +6,7 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "watch-stream", peerId: string): void;
+  (e: "watch-stream", peerId: string, cb: () => void): void;
   (e: "pin-stream", peerId: string): void;
 }>();
 </script>
@@ -23,7 +23,7 @@ const emit = defineEmits<{
       :peer="peer"
       :is-pinned="pinnedStream?.peerId === peerId"
       :is-speaking="activeSpeakers.has(peerId)"
-      @watch-stream="emit('watch-stream', peerId)"
+      @watch-stream="(peerId, cb) => emit('watch-stream', peerId, cb)"
       @pin-stream="emit('pin-stream', peerId)"
     />
   </div>

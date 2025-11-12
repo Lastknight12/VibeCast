@@ -32,6 +32,7 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
   io.on("connection", async (_socket) => {
     const socket = enhanceSocket(_socket);
     usersOnlineMetric.inc(1);
+    console.log(`Connected: ${socket.data.user.id}`);
 
     socket.on("disconnect", () => {
       usersOnlineMetric.dec(1);

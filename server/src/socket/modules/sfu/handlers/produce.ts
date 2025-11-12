@@ -119,6 +119,8 @@ export default function (socket: CustomSocket) {
         .to(user.roomId)
         .emit("newProducer", producer.id, user.id, input.appData.type);
       cb({ data: { id: producer.id } });
+
+      console.log(`producing ${input.appData.type}: ${producer.id}`);
     },
   });
 }

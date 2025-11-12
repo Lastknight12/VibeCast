@@ -105,6 +105,8 @@ export default function (socket: CustomSocket) {
           rtpParameters: consumer.rtpParameters,
         },
       });
+
+      console.log(`consumed ${input.producerId}`);
     },
   });
 }

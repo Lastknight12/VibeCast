@@ -8,7 +8,6 @@ const roomCount = new client.Gauge({
   registers: [register],
 });
 
-// 2. Кількість користувачів (Peers)
 const peerCount = new client.Gauge({
   name: "mediasoup_peer_count",
   help: "Total number of peers (users) across all rooms.",
@@ -21,7 +20,6 @@ export const usersOnlineMetric = new client.Gauge({
   registers: [register],
 });
 
-// 3. Кількість Продюсерів
 const producerCount = new client.Gauge({
   name: "mediasoup_producer_count",
   help: "Total number of active Producers (video, audio, video_audio).",
@@ -29,7 +27,6 @@ const producerCount = new client.Gauge({
   registers: [register],
 });
 
-// 4. Кількість Консюмерів
 const consumerCount = new client.Gauge({
   name: "mediasoup_consumer_count",
   help: "Total number of active Consumers.",
@@ -38,7 +35,6 @@ const consumerCount = new client.Gauge({
 });
 
 export const collectUserMetrics = (rooms: typeof roomsState) => {
-  // 1. Скидаємо лічильники для гарантії актуальності (якщо кімнати/об'єкти зникають)
   roomCount.reset();
   peerCount.reset();
   producerCount.reset();
@@ -51,7 +47,6 @@ export const collectUserMetrics = (rooms: typeof roomsState) => {
   for (const [_roomId, room] of rooms.entries()) {
     totalPeers += room.peers.size;
 
-    // Підрахунок Продюсерів та Консюмерів
     for (const [_peerId, peer] of room.peers.entries()) {
       const producers = peer.producers;
       if (producers.audio) {
@@ -73,19 +68,13 @@ export const collectUserMetrics = (rooms: typeof roomsState) => {
     }
   }
 
-  // 2. Встановлюємо загальні значення
   roomCount.set(rooms.size);
   peerCount.set(totalPeers);
 
-  // 3. Встановлюємо значення з мітками
   producerCount.set({ type: "audio" }, totalProducers.audio);
   producerCount.set({ type: "video" }, totalProducers.video);
   producerCount.set({ type: "video_audio" }, totalProducers.video_audio);
 
-  consumerCount.set(
-    { kind: "audio" },
-    totalConsumers.audio + totalConsumers.video
-  );
   consumerCount.set({ kind: "video" }, totalConsumers.video);
   consumerCount.set({ kind: "audio" }, totalConsumers.audio);
 };

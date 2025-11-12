@@ -37,6 +37,7 @@ const peers = ref<Map<string, Peer>>(new Map());
 const videoElem = ref<HTMLVideoElement | null>(null);
 const activeSpeakers = ref<Set<string>>(new Set());
 const disconnected = ref<boolean>(false);
+const isProcessingStream = ref<boolean>(false);
 
 export function useRoom(roomId: string) {
   const socket = useSocket();
@@ -72,7 +73,7 @@ export function useRoom(roomId: string) {
     socket.off("leaveRoom", handleLeaveRoom);
   };
 
-  async function watchStream(peerId: string) {
+  async function watchStream(peerId: string, cb?: () => void) {
     const peer = peers.value.get(peerId);
     if (!peer) {
       console.log("No peers founded");
@@ -86,31 +87,38 @@ export function useRoom(roomId: string) {
       return;
     }
 
-    const videoConsumer = await mediaConn.consume(videoProducerId);
-    if (!videoConsumer) {
-      console.log("Enexcepted error while creating consumer");
-      return;
+    try {
+      const videoConsumer = await mediaConn.consume(videoProducerId);
+      if (!videoConsumer) {
+        throw new Error("no consumer created");
+      }
+      const audioConsumer = audioProducerId
+        ? await mediaConn.consume(audioProducerId)
+        : undefined;
+
+      const videoStream = new MediaStream([videoConsumer.track]);
+      const audioStream =
+        audioConsumer && new MediaStream([audioConsumer.track]);
+
+      peer.streams.screenShare = {
+        active: true,
+        video: {
+          stream: videoStream,
+          producerId: videoConsumer.producerId,
+          consumerId: videoConsumer.id,
+        },
+        audio: {
+          stream: audioStream,
+          consumerId: audioConsumer?.id,
+          producerId: audioConsumer?.producerId,
+        },
+      };
+
+      cb?.();
+    } catch (error) {
+      toast.error({ message: "Failed to consume user stream" });
+      console.log(error);
     }
-    const audioConsumer = audioProducerId
-      ? await mediaConn.consume(audioProducerId)
-      : undefined;
-
-    const videoStream = new MediaStream([videoConsumer.track]);
-    const audioStream = audioConsumer && new MediaStream([audioConsumer.track]);
-
-    peer.streams.screenShare = {
-      active: true,
-      video: {
-        stream: videoStream,
-        producerId: videoConsumer.producerId,
-        consumerId: videoConsumer.id,
-      },
-      audio: {
-        stream: audioStream,
-        consumerId: audioConsumer?.id,
-        producerId: audioConsumer?.producerId,
-      },
-    };
   }
 
   async function stopWatchingStream(streamerPeerId: string) {
@@ -156,6 +164,7 @@ export function useRoom(roomId: string) {
         stream: undefined,
         producerId: audioConsumer?.producerId,
       },
+      thumbnail: undefined,
     };
   }
 
@@ -248,7 +257,6 @@ export function useRoom(roomId: string) {
     userId: string,
     type: "video" | "audio" | "video_audio"
   ) {
-    console.log("newProducer:", type);
     const peer = peers.value.get(userId);
     if (!peer) {
       toast.error({ message: "peer not founded" });
@@ -260,33 +268,57 @@ export function useRoom(roomId: string) {
         peer.streams.screenShare.video = {
           producerId,
         };
-
         break;
       }
       case "audio": {
-        const consumer = await mediaConn.consume(producerId);
-
-        if (!consumer) {
-          console.log("no consumer created");
-          return;
-        }
-        const stream = new MediaStream([consumer.track]);
-
-        peer.streams.audio = {
-          stream,
-          producerId,
-        };
-        trackVoiceActivity(stream, (isSpeaking) => {
-          if (isSpeaking) {
-            activeSpeakers.value.add(peer.userData.id);
-          } else {
-            activeSpeakers.value.delete(peer.userData.id);
+        try {
+          const consumer = await mediaConn.consume(producerId);
+          if (!consumer) {
+            throw new Error("no consumer created");
           }
-        });
+
+          const stream = new MediaStream([consumer.track]);
+
+          peer.streams.audio = {
+            stream,
+            producerId,
+          };
+          trackVoiceActivity(stream, (isSpeaking) => {
+            if (isSpeaking) {
+              activeSpeakers.value.add(peer.userData.id);
+            } else {
+              activeSpeakers.value.delete(peer.userData.id);
+            }
+          });
+        } catch (error) {
+          toast.error({ message: "Failed to consume user audio" });
+          console.log(error);
+        }
         break;
       }
       case "video_audio": {
-        peer.streams.screenShare.audio = { producerId };
+        // SOOOOO there is an issue.
+        // User can see stream only after he recieves new video producer and
+        // at that moment watchStream btn is available even if we don't have video audio.
+        // So user have video but don't hear any audio cuz he recieves video audio producer just after click watchStream btn.
+        // in that case load audio if we don't have one just in time
+        if (
+          peer.streams.screenShare.active &&
+          !peer.streams.screenShare.audio.consumerId
+        ) {
+          try {
+            const consumer = await mediaConn.consume(producerId);
+            if (!consumer) throw new Error("no consumer created");
+
+            const stream = new MediaStream([consumer?.track]);
+            peer.streams.screenShare.audio.consumerId = consumer.id;
+            peer.streams.screenShare.audio.stream = stream;
+          } catch (error) {
+            toast.error({ message: "Failed to consume stream audio" });
+            console.log(error);
+          }
+        }
+        peer.streams.screenShare.audio.producerId = producerId;
         break;
       }
     }
@@ -335,8 +367,8 @@ export function useRoom(roomId: string) {
               producerId: audioConsumer?.producerId,
             },
             screenShare: {
-              thumbnail: peer.producers.screenShare?.thumbnail,
               active: false,
+              thumbnail: peer.producers.screenShare?.thumbnail,
               video: {
                 producerId: peer.producers.screenShare?.video,
               },
@@ -375,6 +407,7 @@ export function useRoom(roomId: string) {
             active: false,
             video: {},
             audio: {},
+            thumbnail: undefined,
           });
         if (pinnedStream.value?.peerId === data.peerId) {
           pinnedStream.value = null;

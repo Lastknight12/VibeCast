@@ -6,22 +6,17 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "watch-stream", peerId: string): void;
+  (e: "watch-stream", peerId: string, cb: () => void): void;
   (e: "pin-stream", peerId: string): void;
 }>();
 
 const thumbnailUrl = ref(props.peer.streams.screenShare.thumbnail);
 const socket = useSocket();
 
+const isProcessingStream = ref<boolean>(false);
 const hasStream = computed(
   () => !!props.peer.streams.screenShare.video.producerId
 );
-
-socket.on("new-thumbnail", (url, peerId) => {
-  if (hasStream.value && peerId === props.peer.userData.id && !props.isPinned) {
-    thumbnailUrl.value = url;
-  }
-});
 
 const backgroundStyle = computed(() => {
   if (hasStream.value && !props.isPinned && thumbnailUrl.value) {
@@ -33,6 +28,29 @@ const backgroundStyle = computed(() => {
     };
   }
   return { backgroundImage: "unset" };
+});
+
+function updateThumbnail(url: string, peerId: string) {
+  if (hasStream.value && peerId === props.peer.userData.id && !props.isPinned) {
+    thumbnailUrl.value = url;
+  }
+}
+
+function watchStream() {
+  isProcessingStream.value = true;
+  emit(
+    "watch-stream",
+    props.peer.userData.id,
+    () => (isProcessingStream.value = false)
+  );
+}
+
+onMounted(() => {
+  socket.on("new-thumbnail", updateThumbnail);
+});
+
+onUnmounted(() => {
+  socket.removeListener("new-thumbnail", updateThumbnail);
 });
 </script>
 
@@ -54,7 +72,8 @@ const backgroundStyle = computed(() => {
         variant="secondary"
         class="bottom-3"
         id="watch"
-        @click="emit('watch-stream', peer.userData.id)"
+        :disabled="isProcessingStream"
+        @click="watchStream"
       >
         Watch Stream
       </UiButton>

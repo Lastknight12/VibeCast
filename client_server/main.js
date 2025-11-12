@@ -74,14 +74,12 @@ async function spawnBrowser() {
   pages.forEach(async (page) => {
     try {
       await page.page.waitForSelector('button[id^="watch"]');
-      await page.page.$$eval('button[id^="watch"]', (buttons) => {
-        buttons.forEach((btn) => {
-          if (btn) {
-            btn.click();
-          }
-        });
-        return true;
-      });
+      const buttons = await page.page.$$(`button[id^="watch"]`);
+      for (const btn of buttons) {
+        if (btn) {
+          await btn.click();
+        }
+      }
     } catch (err) {
       console.log(err.message);
     }
