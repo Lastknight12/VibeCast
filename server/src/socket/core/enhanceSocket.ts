@@ -117,7 +117,6 @@ function enhanceSocket(
             event: params.event,
             error: {
               code: "INVALID_PAYLOAD",
-              // TODO
               // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
               message: validator.Errors(payload).First()!.message,
             },

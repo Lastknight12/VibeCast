@@ -5,6 +5,7 @@ import { rooms } from "src/state/roomState";
 import { SocketError } from "src/socket/core";
 import ApiRoomError from "../../room/utils/errors";
 import { cloudinary } from "src/lib/cloudinary";
+import { logger } from "src/lib/logger";
 
 const closeProducerSchema = Type.Object({
   type: Type.Union([Type.Literal("audio"), Type.Literal("video")]),
@@ -44,7 +45,7 @@ export default function (socket: CustomSocket) {
           const videoProducer = peer.producers.screenShare?.video;
           const systemAudioProducer = peer.producers.screenShare?.audio;
           if (!videoProducer) {
-            console.log("Video producer not found");
+            logger.error("Video producer not found");
             return;
           }
           videoProducer.close();
@@ -64,15 +65,15 @@ export default function (socket: CustomSocket) {
             onConsumerClosed
           );
 
-          await cloudinary.api.delete_resources_by_prefix(
-            `thumbnails/${roomId}/${user.id}`
-          );
+          cloudinary.api
+            .delete_resources_by_prefix(`thumbnails/${user.id}`)
+            .catch(logger.error);
           break;
         }
         case "audio": {
           const audioProducer = peer.producers.audio;
           if (!audioProducer) {
-            console.log("Audio producer not found");
+            logger.error(console.log("Audio producer not found"));
             return;
           }
           audioProducer.close();

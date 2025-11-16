@@ -47,9 +47,24 @@ export async function leaveRoom(
     throw new Error("User not in current room");
   }
 
-  room.peers.delete(userId);
+  if (room.peers.size > 1) {
+    closeRelatedConsumers(
+      [
+        user.producers.audio?.id,
+        user.producers.screenShare?.audio?.id,
+        user.producers.screenShare?.video.id,
+      ].filter(Boolean) as string[],
+      roomId
+    );
+  }
 
+  Object.values(user.transports).forEach((transport) => {
+    transport.close();
+  });
+
+  room.peers.delete(userId);
   socket.data.user.roomId = undefined;
+
   io.to(roomId).emit("userDisconnect", userId);
   if (room.type === "public") {
     io.emit("userLeftRoom", roomId, userId);
@@ -63,23 +78,7 @@ export async function leaveRoom(
     }
   }
 
-  Object.values(user.transports).forEach((transport) => {
-    transport.close();
-  });
-
-  closeRelatedConsumers(
-    [
-      user.producers.audio?.id,
-      user.producers.screenShare?.audio?.id,
-      user.producers.screenShare?.video.id,
-    ].filter(Boolean) as string[],
-    roomId
-  );
-
-  try {
-    await cloudinary.api.delete_resources_by_prefix(`thumbnails/${roomId}`);
-    await cloudinary.api.delete_folder(`thumbnails/${roomId}`);
-  } catch (error) {
-    logger.error(error);
-  }
+  cloudinary.api
+    .delete_resources_by_prefix(`thumbnails/${userId}`)
+    .catch(logger.error);
 }

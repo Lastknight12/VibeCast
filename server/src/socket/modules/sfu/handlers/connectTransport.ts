@@ -16,7 +16,7 @@ const connectTransportSchema = Type.Object({
       { minItems: 1 }
     ),
   }),
-  type: Type.String({ minLength: 1 }),
+  type: Type.Union([Type.Literal("send"), Type.Literal("recv")]),
 });
 
 export default function (socket: CustomSocket) {

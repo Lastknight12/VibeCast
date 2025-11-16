@@ -37,7 +37,6 @@ const peers = ref<Map<string, Peer>>(new Map());
 const videoElem = ref<HTMLVideoElement | null>(null);
 const activeSpeakers = ref<Set<string>>(new Set());
 const disconnected = ref<boolean>(false);
-const isProcessingStream = ref<boolean>(false);
 
 export function useRoom(roomId: string) {
   const socket = useSocket();
@@ -248,8 +247,11 @@ export function useRoom(roomId: string) {
     }
   }
 
-  function handleUserDisconnect(userId: string) {
-    peers.value.delete(userId);
+  function handleUserDisconnect(peerId: string) {
+    if (pinnedStream.value?.peerId === peerId) {
+      pinnedStream.value = null;
+    }
+    peers.value.delete(peerId);
   }
 
   async function handleNewProducer(
@@ -409,6 +411,7 @@ export function useRoom(roomId: string) {
             audio: {},
             thumbnail: undefined,
           });
+        console.log(pinnedStream.value?.peerId, data.peerId);
         if (pinnedStream.value?.peerId === data.peerId) {
           pinnedStream.value = null;
         }

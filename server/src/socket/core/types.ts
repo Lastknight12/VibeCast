@@ -3,7 +3,6 @@ export interface HandlerError {
   message: string;
 }
 
-// TODO: add to commit
 export type HandlerCallback<Data> = (result: {
   data: Data;
   errors?: HandlerError[];

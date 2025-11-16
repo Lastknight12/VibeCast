@@ -1,5 +1,4 @@
 # --- Build stage ---
-# TODO
 FROM node:20-bullseye AS builder
 
 RUN apt-get update && apt-get install -y \

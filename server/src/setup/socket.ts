@@ -32,22 +32,21 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
   io.on("connection", async (_socket) => {
     const socket = enhanceSocket(_socket);
     usersOnlineMetric.inc(1);
-    console.log(`Connected: ${socket.data.user.id}`);
 
     socket.on("disconnect", () => {
       usersOnlineMetric.dec(1);
       if (socket.data.user.roomId) {
         leaveRoom(socket.data.user.id, socket.data.user.roomId, socket, io);
-        try {
-          fetch(
-            `${env.pushgateway}/metrics/job/webrtc/instance/${socket.data.user.id}`,
-            {
-              method: "DELETE",
-            }
-          );
-        } catch (error) {
-          logger.error(error);
-        }
+        // try {
+        //   fetch(
+        //     `${env.pushgateway}/metrics/job/webrtc/instance/${socket.data.user.id}`,
+        //     {
+        //       method: "DELETE",
+        //     }
+        //   );
+        // } catch (error) {
+        //   logger.error(error);
+        // }
       }
     });
 

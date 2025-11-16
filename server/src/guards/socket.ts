@@ -24,8 +24,8 @@ export async function socketGuard(
 
     socket.data.user = { ...session, roomId: undefined };
     next();
-  } catch (_e) {
-    logger.info(_e);
+  } catch (error) {
+    logger.error(error);
     next(new Error("Authentication error"));
   }
 }

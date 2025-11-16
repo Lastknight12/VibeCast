@@ -29,8 +29,8 @@ export default function (socket: CustomSocket) {
       await new Promise<UploadApiResponse>((resolve, reject) => {
         const cldUploadStream = cloudinary.uploader.upload_stream(
           {
-            folder: `thumbnails/${user.roomId}`,
-            public_id: `${user.id}`,
+            folder: `thumbnails`,
+            public_id: user.id,
           },
           (err, result) => {
             if (err) {
@@ -46,12 +46,10 @@ export default function (socket: CustomSocket) {
               return reject(error);
             }
 
-            const url = result.secure_url + `?t=${Date.now()}`;
-
-            thumbnails.set(user.id, url);
+            thumbnails.set(user.id, result.secure_url);
             resolve(result);
 
-            socket.broadcast.emit("new-thumbnail", url, user.id);
+            socket.broadcast.emit("new-thumbnail", result.secure_url, user.id);
           }
         );
 

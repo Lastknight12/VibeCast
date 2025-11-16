@@ -1,7 +1,5 @@
 import { DefaultEventsMap, type Socket } from "socket.io";
-// TODO
 import { ServerToClientEvents, CustomOn } from "src/socket/core";
-import { User } from "better-auth/types";
 import { User } from "better-auth/types";
 import { EventsMap } from "socket.io/dist/typed-events";
 

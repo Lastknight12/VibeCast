@@ -4,7 +4,6 @@ import { rooms } from "src/state/roomState";
 import { SocketError } from "src/socket/core";
 import ApiSfuError from "../utils/errors";
 import ApiRoomError from "../../room/utils/errors";
-import { logger } from "src/lib/logger";
 
 const closeProducerSchema = Type.Object({
   id: Type.String(),
@@ -40,7 +39,6 @@ export default function (socket: CustomSocket) {
 
       consumer.close();
       peer.consumers.delete(input.id);
-      logger.info(peer.consumers);
     },
   });
 }
