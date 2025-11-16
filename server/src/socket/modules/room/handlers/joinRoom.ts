@@ -51,10 +51,13 @@ export default function (socket: CustomSocket, io: Server) {
 
       socket.broadcast.to(data.roomId).emit("userJoined", { user });
       if (room.type === "public") {
-        socket.broadcast.emit("userJoinRoom", data.roomId, {
-          id: user.id,
-          name: user.name,
-          image: user.image ?? "",
+        socket.broadcast.emit("userJoinRoom", {
+          roomId: data.roomId,
+          userData: {
+            id: user.id,
+            name: user.name,
+            image: user.image ?? "",
+          },
         });
       }
 

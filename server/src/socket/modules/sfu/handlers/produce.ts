@@ -118,7 +118,11 @@ export default function (socket: CustomSocket) {
 
       socket.broadcast
         .to(user.roomId)
-        .emit("newProducer", producer.id, user.id, data.appData.type);
+        .emit("newProducer", {
+          producerId: producer.id,
+          userId: user.id,
+          type: data.appData.type,
+        });
       cb({ data: { id: producer.id } });
 
       console.log(`producing ${data.appData.type}: ${producer.id}`);

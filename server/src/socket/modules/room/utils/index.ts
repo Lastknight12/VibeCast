@@ -65,16 +65,16 @@ export async function leaveRoom(
   room.peers.delete(userId);
   socket.data.user.roomId = undefined;
 
-  io.to(roomId).emit("userDisconnect", userId);
+  io.to(roomId).emit("userDisconnected", { userId });
   if (room.type === "public") {
-    io.emit("userLeftRoom", roomId, userId);
+    io.emit("userLeftRoom", { roomId, userId });
   }
 
   if (room.peers.size === 0) {
     rooms.delete(roomId);
 
     if (room.type === "public") {
-      io.emit("roomDeleted", roomId);
+      io.emit("roomDeleted", { roomId });
     }
   }
 

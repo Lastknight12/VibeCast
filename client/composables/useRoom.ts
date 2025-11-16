@@ -46,11 +46,11 @@ export function useRoom(roomId: string) {
 
   const registerSocketListeners = () => {
     socket.on("userJoined", handleUserJoin);
-    socket.on("userDisconnect", handleUserDisconnect);
+    socket.on("userDisconnected", handleUserDisconnected);
 
     socket.on("newProducer", handleNewProducer);
     socket.on("consumerClosed", handleConsumerClosed);
-    socket.on("peerClosedProducer", handlePeerClosedProducer);
+    socket.on("userClosedProducer", handleUserClosedProducer);
 
     socket.on("micOff", handleUserMuted);
     socket.on("micOn", handleUserUnMuted);
@@ -60,11 +60,11 @@ export function useRoom(roomId: string) {
 
   const removeSocketListeners = () => {
     socket.off("userJoined", handleUserJoin);
-    socket.off("userDisconnect", handleUserDisconnect);
+    socket.off("userDisconnected", handleUserDisconnected);
 
     socket.off("newProducer", handleNewProducer);
     socket.off("consumerClosed", handleConsumerClosed);
-    socket.off("peerClosedProducer", handlePeerClosedProducer);
+    socket.off("userClosedProducer", handleUserClosedProducer);
 
     socket.off("micOff", handleUserMuted);
     socket.off("micOn", handleUserUnMuted);
@@ -233,48 +233,48 @@ export function useRoom(roomId: string) {
     });
   }
 
-  function handleUserMuted(id: string) {
-    const peer = peers.value.get(id);
+  function handleUserMuted(data: { userId: string }) {
+    const peer = peers.value.get(data.userId);
     if (peer) {
       peer.voiceMuted = true;
     }
   }
 
-  function handleUserUnMuted(id: string) {
-    const peer = peers.value.get(id);
+  function handleUserUnMuted(data: { userId: string }) {
+    const peer = peers.value.get(data.userId);
     if (peer) {
       peer.voiceMuted = false;
     }
   }
 
-  function handleUserDisconnect(peerId: string) {
-    if (pinnedStream.value?.peerId === peerId) {
+  function handleUserDisconnected(data: { userId: string }) {
+    if (pinnedStream.value?.peerId === data.userId) {
       pinnedStream.value = null;
     }
-    peers.value.delete(peerId);
+    peers.value.delete(data.userId);
   }
 
-  async function handleNewProducer(
-    producerId: string,
-    userId: string,
-    type: "video" | "audio" | "video_audio"
-  ) {
-    const peer = peers.value.get(userId);
+  async function handleNewProducer(data: {
+    producerId: string;
+    userId: string;
+    type: "video" | "audio" | "video_audio";
+  }) {
+    const peer = peers.value.get(data.userId);
     if (!peer) {
       toast.error({ message: "peer not founded" });
       return;
     }
 
-    switch (type) {
+    switch (data.type) {
       case "video": {
         peer.streams.screenShare.video = {
-          producerId,
+          producerId: data.producerId,
         };
         break;
       }
       case "audio": {
         try {
-          const consumer = await mediaConn.consume(producerId);
+          const consumer = await mediaConn.consume(data.producerId);
           if (!consumer) {
             throw new Error("no consumer created");
           }
@@ -283,7 +283,7 @@ export function useRoom(roomId: string) {
 
           peer.streams.audio = {
             stream,
-            producerId,
+            producerId: data.producerId,
           };
           trackVoiceActivity(stream, (isSpeaking) => {
             if (isSpeaking) {
@@ -309,7 +309,7 @@ export function useRoom(roomId: string) {
           !peer.streams.screenShare.audio.consumerId
         ) {
           try {
-            const consumer = await mediaConn.consume(producerId);
+            const consumer = await mediaConn.consume(data.producerId);
             if (!consumer) throw new Error("no consumer created");
 
             const stream = new MediaStream([consumer?.track]);
@@ -320,14 +320,14 @@ export function useRoom(roomId: string) {
             console.log(error);
           }
         }
-        peer.streams.screenShare.audio.producerId = producerId;
+        peer.streams.screenShare.audio.producerId = data.producerId;
         break;
       }
     }
   }
 
-  function handleConsumerClosed(consumerId: string) {
-    mediaConn.closeConsumer(consumerId);
+  function handleConsumerClosed(data: { consumerId: string }) {
+    mediaConn.closeConsumer(data.consumerId);
   }
 
   async function handlePeers({
@@ -396,11 +396,11 @@ export function useRoom(roomId: string) {
     }
   }
 
-  async function handlePeerClosedProducer(data: {
-    peerId: string;
+  async function handleUserClosedProducer(data: {
+    userId: string;
     type: "screenShare" | "audio";
   }) {
-    const peer = peers.value.get(data.peerId);
+    const peer = peers.value.get(data.userId);
 
     switch (data.type) {
       case "screenShare":
@@ -411,8 +411,8 @@ export function useRoom(roomId: string) {
             audio: {},
             thumbnail: undefined,
           });
-        console.log(pinnedStream.value?.peerId, data.peerId);
-        if (pinnedStream.value?.peerId === data.peerId) {
+        console.log(pinnedStream.value?.peerId, data.userId);
+        if (pinnedStream.value?.peerId === data.userId) {
           pinnedStream.value = null;
         }
         break;

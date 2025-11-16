@@ -30,9 +30,13 @@ const backgroundStyle = computed(() => {
   return { backgroundImage: "unset" };
 });
 
-function updateThumbnail(url: string, peerId: string) {
-  if (hasStream.value && peerId === props.peer.userData.id && !props.isPinned) {
-    thumbnailUrl.value = url;
+function updateThumbnail(data: { url: string; userId: string }) {
+  if (
+    hasStream.value &&
+    data.userId === props.peer.userData.id &&
+    !props.isPinned
+  ) {
+    thumbnailUrl.value = data.url;
   }
 }
 

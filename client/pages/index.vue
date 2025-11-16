@@ -20,7 +20,7 @@ onMounted(() => {
   const socket = useSocket();
   socket.emit("getAllRooms", handleRooms);
   socket.on("userJoinRoom", handleUserJoin);
-  socket.on("userLeftRoom", handleUserLeft);
+  socket.on("userLeftRoom", handleUserLeftRoom);
   socket.on("roomCreated", handleRoomCreated);
   socket.on("roomDeleted", handleRoomDeleted);
 });
@@ -60,35 +60,35 @@ const handleRooms: SocketCallback<Record<string, RoomInfo>> = ({ data }) => {
   }
 };
 
-const handleUserJoin = (
-  roomId: string,
-  peer: Pick<User, "id" | "name" | "image">
-) => {
-  const room = rooms.value.get(roomId);
+const handleUserJoin = (data: {
+  roomId: string;
+  userData: Pick<User, "id" | "name" | "image">;
+}) => {
+  const room = rooms.value.get(data.roomId);
 
   if (!room) {
-    console.log("no room with name" + roomId + "exist");
+    console.log("no room with name" + data.roomId + "exist");
   }
 
-  room?.peers.set(peer.id, peer);
+  room?.peers.set(data.userData.id, data.userData);
 };
 
-const handleUserLeft = (roomId: string, peerId: string) => {
-  const room = rooms.value.get(roomId);
+const handleUserLeftRoom = (data: { roomId: string; userId: string }) => {
+  const room = rooms.value.get(data.roomId);
 
   if (!room) {
-    console.log("no room with name" + roomId + "exist");
+    console.log("no room with name" + data.roomId + "exist");
   }
 
-  room?.peers.delete(peerId);
+  room?.peers.delete(data.userId);
 };
 
 const handleRoomCreated = (data: { name: string; id: string }) => {
   rooms.value.set(data.id, { name: data.name, peers: new Map() });
 };
 
-const handleRoomDeleted = (roomId: string) => {
-  rooms.value.delete(roomId);
+const handleRoomDeleted = (data: { roomId: string }) => {
+  rooms.value.delete(data.roomId);
 };
 
 const handleRoomClick = async (roomId: string, roomName: string) => {

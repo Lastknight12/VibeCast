@@ -49,7 +49,10 @@ export default function (socket: CustomSocket) {
             thumbnails.set(user.id, result.secure_url);
             resolve(result);
 
-            socket.broadcast.emit("new-thumbnail", result.secure_url, user.id);
+            socket.broadcast.emit("new-thumbnail", {
+              url: result.secure_url,
+              userId: user.id,
+            });
           }
         );
 

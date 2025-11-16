@@ -27,7 +27,7 @@ export default function (socket: CustomSocket) {
 
       peer.voiceMuted = !peer.voiceMuted;
       const event = peer.voiceMuted ? "micOff" : "micOn";
-      socket.broadcast.to(user.roomId).emit(event, user.id);
+      socket.broadcast.to(user.roomId).emit(event, { userId: user.id });
     },
   });
 }

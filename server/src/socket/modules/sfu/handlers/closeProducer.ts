@@ -37,7 +37,7 @@ export default function (socket: CustomSocket) {
       }
 
       const onConsumerClosed = (consumerId: string) => {
-        socket.broadcast.to(roomId).emit("consumerClosed", consumerId);
+        socket.broadcast.to(roomId).emit("consumerClosed", { consumerId });
       };
 
       switch (data.type) {
@@ -52,8 +52,8 @@ export default function (socket: CustomSocket) {
           systemAudioProducer?.close();
           peer.producers.screenShare = undefined;
 
-          socket.broadcast.to(roomId).emit("peerClosedProducer", {
-            peerId: user.id,
+          socket.broadcast.to(roomId).emit("userClosedProducer", {
+            userId: user.id,
             type: "screenShare",
           });
 
@@ -78,8 +78,8 @@ export default function (socket: CustomSocket) {
           }
           audioProducer.close();
 
-          socket.broadcast.to(roomId).emit("peerClosedProducer", {
-            peerId: user.id,
+          socket.broadcast.to(roomId).emit("userClosedProducer", {
+            userId: user.id,
             type: "audio",
           });
 
