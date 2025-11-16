@@ -1,4 +1,4 @@
-export default {
+export const ApiCoreErrors = {
   INVALID_CALLBACK: {
     code: "INVALID_CALLBACK",
     message: "Expected callback as last parameter",

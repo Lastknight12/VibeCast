@@ -1,4 +1,4 @@
-export default {
+export const ApiSfuErrors = {
   router: {
     CANNOT_CONSUME_PRODUCER: {
       code: "MEDIASOUP_ROUTER_CANNOT_CONSUME_PRODUCER",

@@ -1,4 +1,4 @@
-import { Static } from "@sinclair/typebox/build/cjs/type/static";
+import { Static } from "@sinclair/typebox";
 import { Router } from "mediasoup/node/lib/types";
 import { createRoomSchema } from "../handlers/createRoom";
 import { rooms } from "src/state/roomState";

@@ -2,8 +2,8 @@ import { Type } from "@sinclair/typebox";
 import { rooms } from "src/state/roomState";
 import { SocketError } from "src/socket/core";
 import { CustomSocket } from "src/socket/core";
-import ApiRoomError from "../../room/utils/errors";
-import ApiSfuError from "../utils/errors";
+import { ApiRoomErrors } from "../../room/utils/errors";
+import { ApiSfuErrors } from "../utils/errors";
 
 const connectTransportSchema = Type.Object({
   dtlsParameters: Type.Object({
@@ -28,37 +28,39 @@ export default function (socket: CustomSocket) {
       expectCb: true,
     },
     handler: async (input, cb) => {
+      const { data } = input;
       const { user } = socket.data;
       if (!user.roomId) {
-        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
+
       const room = rooms.get(user.roomId);
-      if (!room) throw new SocketError(ApiRoomError.NOT_FOUND);
+      if (!room) throw new SocketError(ApiRoomErrors.NOT_FOUND);
 
       const peer = room.peers.get(user.id);
       if (!peer) {
-        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
 
-      switch (input.type) {
+      switch (data.type) {
         case "send": {
           if (!peer.transports.send) {
-            throw new SocketError(ApiSfuError.transport.NOT_FOUND);
+            throw new SocketError(ApiSfuErrors.transport.NOT_FOUND);
           }
 
           await peer.transports.send.connect({
-            dtlsParameters: input.dtlsParameters,
+            dtlsParameters: data.dtlsParameters,
           });
 
           break;
         }
         case "recv": {
           if (!peer.transports.recv) {
-            throw new SocketError(ApiSfuError.transport.NOT_FOUND);
+            throw new SocketError(ApiSfuErrors.transport.NOT_FOUND);
           }
 
           await peer.transports.recv.connect({
-            dtlsParameters: input.dtlsParameters,
+            dtlsParameters: data.dtlsParameters,
           });
 
           break;

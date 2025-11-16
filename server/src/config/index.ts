@@ -18,7 +18,6 @@ const pinoLoggerLevelSchema = Type.Union(
 
 const envSchema = Type.Object({
   LOGGER_LEVEL: Type.Optional(pinoLoggerLevelSchema),
-  FASTIFY_LOGGER_LEVEL: Type.Optional(pinoLoggerLevelSchema),
 
   pushgateway: Type.String(),
 
@@ -51,7 +50,7 @@ type ForceRequired<T, K extends keyof T> = Omit<T, K> & {
 
 type EnvConfig = ForceRequired<
   Static<typeof envSchema>,
-  "MIN_MEDIASOUP_PORT" | "MAX_MEDIASOUP_PORT" | "PORT" | "HOST"
+  "LOGGER_LEVEL" | "MIN_MEDIASOUP_PORT" | "MAX_MEDIASOUP_PORT" | "PORT" | "HOST"
 >;
 
 export const env: EnvConfig = {} as EnvConfig;

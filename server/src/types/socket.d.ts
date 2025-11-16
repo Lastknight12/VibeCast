@@ -1,7 +1,4 @@
-import { DefaultEventsMap, type Socket } from "socket.io";
-import { ServerToClientEvents, CustomOn } from "src/socket/core";
 import { User } from "better-auth/types";
-import { EventsMap } from "socket.io/dist/typed-events";
 
 export interface EventError {
   event: string;
@@ -41,15 +38,4 @@ export interface ServerToClientEvents {
   ) => void;
   leaveRoom: () => void;
   "new-thumbnail": (url: string, peerId: string) => void;
-}
-
-export interface SocketData {
-  user: User & {
-    roomId?: string;
-  };
-}
-
-export interface SocketWrapper<CTS extends EventsMap, STC extends EventsMap>
-  extends Socket<CTS, STC, DefaultEventsMap, SocketData> {
-  customOn: CustomOn;
 }

@@ -11,7 +11,7 @@ async function startServer() {
 
   const server = fastify({
     logger: {
-      level: env.FASTIFY_LOGGER_LEVEL,
+      level: env.LOGGER_LEVEL,
     },
     https:
       env.CERT && env.KEY
@@ -50,7 +50,6 @@ async function startServer() {
       port,
       host,
     });
-    logger.info(`listening on ${host}:${port}`);
     logger.info(`mediasoup anounced ip ${env.ANNOUNCED_IP}`);
   } catch (err) {
     server.log.error(err);

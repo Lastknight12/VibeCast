@@ -4,7 +4,7 @@ import { Type } from "@sinclair/typebox";
 import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/state/roomState";
 import { SocketError } from "src/socket/core";
-import ApiRoomError from "../utils/errors";
+import { ApiRoomErrors } from "../utils/errors";
 import { createRoom } from "../utils";
 
 export const createRoomSchema = Type.Object({
@@ -33,12 +33,13 @@ export default function (socket: CustomSocket) {
       expectCb: true,
     },
     handler: async (input, cb) => {
-      if (rooms.has(input.roomName)) {
-        throw new SocketError(ApiRoomError.ALREADY_EXISTS);
+      const { data } = input;
+      if (rooms.has(data.roomName)) {
+        throw new SocketError(ApiRoomErrors.ALREADY_EXISTS);
       }
 
-      if (!safeRoomRegexp.test(input.roomName)) {
-        throw new SocketError(ApiRoomError.UNSAFE_NAME);
+      if (!safeRoomRegexp.test(data.roomName)) {
+        throw new SocketError(ApiRoomErrors.UNSAFE_NAME);
       }
 
       const worker = getMediasoupWorker();
@@ -46,14 +47,14 @@ export default function (socket: CustomSocket) {
         mediaCodecs,
       });
 
-      const roomId = createRoom(router, input.roomType, input.roomName);
+      const roomId = createRoom(router, data.roomType, data.roomName);
 
-      if (input.roomType === "public") {
+      if (data.roomType === "public") {
         socket.broadcast.emit("roomCreated", {
-          name: input.roomName,
+          name: data.roomName,
           id: roomId,
         });
-        socket.emit("roomCreated", { name: input.roomName, id: roomId });
+        socket.emit("roomCreated", { name: data.roomName, id: roomId });
       }
 
       cb({ data: { id: roomId } });

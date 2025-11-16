@@ -1,4 +1,4 @@
-export default {
+export const ApiRoomErrors = {
   UNSAFE_NAME: {
     code: "UNSAFE_NAME",
     message:

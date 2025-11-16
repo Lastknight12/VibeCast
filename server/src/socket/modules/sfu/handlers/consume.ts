@@ -7,8 +7,8 @@ import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/state/roomState";
 import { Type } from "@sinclair/typebox";
 import { HandlerCallback, SocketError } from "src/socket/core";
-import ApiRoomError from "../../room/utils/errors";
-import ApiSfuError from "../utils/errors";
+import { ApiRoomErrors } from "../../room/utils/errors";
+import { ApiSfuErrors } from "../utils/errors";
 
 const rtpCodecCapabilitySchema = Type.Object({
   kind: Type.Union([Type.Literal("audio"), Type.Literal("video")]),
@@ -69,30 +69,31 @@ export default function (socket: CustomSocket) {
       expectCb: true,
     },
     handler: async (input, cb: HandlerCallback<Result>) => {
+      const { data } = input;
       const { user } = socket.data;
       if (!user.roomId) {
-        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
 
       const room = rooms.get(user.roomId);
-      if (!room) throw new SocketError(ApiRoomError.NOT_FOUND);
+      if (!room) throw new SocketError(ApiRoomErrors.NOT_FOUND);
       if (
         !room.router.canConsume({
-          producerId: input.producerId,
-          rtpCapabilities: input.rtpCapabilities as RtpCapabilities,
+          producerId: data.producerId,
+          rtpCapabilities: data.rtpCapabilities as RtpCapabilities,
         })
       ) {
-        throw new SocketError(ApiSfuError.router.CANNOT_CONSUME_PRODUCER);
+        throw new SocketError(ApiSfuErrors.router.CANNOT_CONSUME_PRODUCER);
       }
 
       const peer = room.peers.get(user.id);
-      if (!peer) throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
+      if (!peer) throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       if (!peer.transports.recv)
-        throw new SocketError(ApiSfuError.transport.NOT_FOUND);
+        throw new SocketError(ApiSfuErrors.transport.NOT_FOUND);
 
       const consumer = await peer.transports.recv.consume({
-        producerId: input.producerId,
-        rtpCapabilities: input.rtpCapabilities as RtpCapabilities,
+        producerId: data.producerId,
+        rtpCapabilities: data.rtpCapabilities as RtpCapabilities,
         paused: true,
       });
       peer.consumers.set(consumer.id, consumer);
@@ -100,13 +101,13 @@ export default function (socket: CustomSocket) {
       cb({
         data: {
           id: consumer.id,
-          producerId: input.producerId,
+          producerId: data.producerId,
           kind: consumer.kind,
           rtpParameters: consumer.rtpParameters,
         },
       });
 
-      console.log(`consumed ${input.producerId}`);
+      console.log(`consumed ${data.producerId}`);
     },
   });
 }
