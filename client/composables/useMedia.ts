@@ -34,8 +34,8 @@ export async function collectVideoMetric(transport: Transport) {
       ) {
         const labels = `clientId="${user.id}",rid="${report.rid}"`;
         const metrics: { [key: string]: number } = {
-          packetsSent: report.packetsSent,
-          bytesSent: report.bytesSent,
+          packetsSent: report.packetsSent ?? 0,
+          bytesSent: report.bytesSent ?? 0,
           framesPerSecond: report.framesPerSecond ?? 0,
           frameWidth: report.frameWidth ?? 0,
           frameHeight: report.frameHeight ?? 0,
@@ -44,6 +44,8 @@ export async function collectVideoMetric(transport: Transport) {
           totalEncodeTime: report.totalEncodeTime ?? 0,
           framesEncoded: report.framesEncoded ?? 0,
         };
+
+        reportsMap.set(report.remoteId, report.rid);
 
         for (const [metricName, value] of Object.entries(metrics)) {
           payload += `clientmetric_video_${metricName}{${labels}} ${value}\n`;
