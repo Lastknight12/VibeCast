@@ -5,7 +5,6 @@ const isSpeaking = ref(false);
 const isMuted = ref(true);
 const videoStream = ref<MediaStream | null>(null);
 
-const prevStats = new Map();
 const reportsMap = new Map();
 
 export async function collectVideoMetric(transport: Transport) {
@@ -35,31 +34,16 @@ export async function collectVideoMetric(transport: Transport) {
       ) {
         const labels = `clientId="${user.id}",rid="${report.rid}"`;
         const metrics: { [key: string]: number } = {
-          bitrate_bps:
-            ((report.bytesSent - (prevStats.get(report.rid)?.bytesSent ?? 0)) *
-              8) /
-            5,
-
-          packetsRate:
-            ((report.packetsSent -
-              (prevStats.get(report.rid)?.packetsSent ?? 0)) *
-              8) /
-            5,
+          packetsSent: report.packetsSent,
+          bytesSent: report.bytesSent,
           framesPerSecond: report.framesPerSecond ?? 0,
           frameWidth: report.frameWidth ?? 0,
           frameHeight: report.frameHeight ?? 0,
-          packetsSent: report.packetsSent ?? 0,
           retransmittedPacketsSent: report.retransmittedPacketsSent ?? 0,
           targetBitrate: report.targetBitrate ?? 0,
           totalEncodeTime: report.totalEncodeTime ?? 0,
           framesEncoded: report.framesEncoded ?? 0,
         };
-
-        prevStats.set(report.rid, {
-          bytesSent: report.bytesSent,
-          packetsSent: report.packetsSent,
-        });
-        reportsMap.set(report.remoteId, report.rid);
 
         for (const [metricName, value] of Object.entries(metrics)) {
           payload += `clientmetric_video_${metricName}{${labels}} ${value}\n`;
