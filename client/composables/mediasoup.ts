@@ -50,18 +50,19 @@ export class mediasoupConn {
   }
 
   async getMediaStream() {
-    const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: {
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        frameRate: { ideal: 30, max: 30 },
-      },
-      audio: true,
-    });
+    const video = document.createElement("video");
+    video.src =
+      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    video.crossOrigin = "anonymous";
+    video.autoplay = true;
+
+    await video.play();
+
+    const stream = (video as any).captureStream();
 
     this.localStream = stream;
 
-    return stream;
+    return stream as MediaStream;
   }
 
   async createDevice() {
@@ -105,24 +106,33 @@ export class mediasoupConn {
               ? this.device!.createSendTransport(data)
               : this.device!.createRecvTransport(data);
 
-          transport.on("connect", ({ dtlsParameters }, callback) => {
-            this.socket.emit(
-              "connectTransport",
-              { dtlsParameters, type },
-              ({ errors }: SocketCallbackArgs<unknown>) => {
-                if (errors) return console.log(errors[0]?.message);
-                callback();
-              }
-            );
-          });
+          transport.on(
+            "connect",
+            ({ dtlsParameters }, callback, errorCallback) => {
+              this.socket.emit(
+                "connectTransport",
+                { dtlsParameters, type },
+                ({ errors }: SocketCallbackArgs<unknown>) => {
+                  if (errors) {
+                    errorCallback(Error(errors[0]?.message));
+                    return console.log(errors[0]?.message);
+                  }
+                  callback();
+                }
+              );
+            }
+          );
 
           if (type === "send") {
-            transport.on("produce", (parameters, callback) => {
+            transport.on("produce", (parameters, callback, errorCallback) => {
               this.socket.emit(
                 "produce",
                 parameters,
                 ({ data, errors }: SocketCallbackArgs<{ id: string }>) => {
-                  if (errors) return console.log(errors[0]?.message);
+                  if (errors) {
+                    errorCallback(Error(errors[0]?.message));
+                    return console.log(errors[0]?.message);
+                  }
                   callback({ id: data?.id });
                 }
               );

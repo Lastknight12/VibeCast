@@ -90,31 +90,12 @@ rl.on("line", async (line) => {
       break;
     }
 
-    case "produce": {
+    case "remove": {
       const generatorId = Number(command[1]);
       const clientId = Number(command[2]);
       const socket = getSocket(generatorId);
       if (!socket || isNaN(clientId)) break;
-      socket.send(`produce ${clientId}`);
-      break;
-    }
-
-    case "consume": {
-      const generatorId = Number(command[1]);
-      const clientId = Number(command[2]);
-      const targetId = Number(command[3]);
-      const socket = getSocket(generatorId);
-      if (!socket || [clientId, targetId].some(isNaN)) break;
-      socket.send(`consume ${clientId} ${targetId}`);
-      break;
-    }
-
-    case "removeClient": {
-      const generatorId = Number(command[1]);
-      const clientId = Number(command[2]);
-      const socket = getSocket(generatorId);
-      if (!socket || isNaN(clientId)) break;
-      socket.send(`removeClient ${clientId}`);
+      socket.send(`remove ${clientId}`);
       break;
     }
 

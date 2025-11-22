@@ -1,7 +1,6 @@
 const WebSocket = require("ws");
 const puppeteer = require("puppeteer");
 const cloudinary = require("cloudinary").v2;
-const path = require("path");
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -20,10 +19,8 @@ console.log("WebSocket server is running on ws://localhost:3677");
 let browsers = []; // [{ id, browser }]
 let pages = []; // [{ id, page }]
 const clientStats = new Map(); // id -> { producing, consumed }
-// const absolutePath = path.resolve("./output.y4m");
 
-async function spawnBrowser() {
-  const id = nextClientId++;
+async function spawnBrowser(id) {
   const browser = await puppeteer.launch({
     headless: false,
     args: [
@@ -32,13 +29,12 @@ async function spawnBrowser() {
       "--no-sandbox",
       "--disable-setuid-sandbox",
       `--unsafely-treat-insecure-origin-as-secure=${server}`,
-      // `--use-file-for-fake-video-capture=${absolutePath}`,
     ],
   });
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 720 });
-  await page.goto(server);
+  await page.goto(`${server}?userName=${nextClientId}`);
 
   browsers.push({ id, browser });
   pages.push({ id, page });
@@ -112,74 +108,15 @@ wss.on("connection", (ws) => {
           ws.send("Invalid spawn count");
           return;
         }
-        for (let i = 0; i < count; i++) await spawnBrowser();
+        for (let i = 0; i < count; i++) {
+          await spawnBrowser(nextClientId);
+          nextClientId++;
+        }
         ws.send("Successfully spawned browser");
         break;
       }
 
-      case "produce": {
-        const clientId = Number(parts[1]);
-        const entry = pages.find((p) => p.id === clientId);
-        if (!entry) return ws.send(`No page for client ${clientId}`);
-
-        const page = entry.page;
-        try {
-          const screenShareBtn = await page.waitForSelector(
-            "#toggleScreenShare"
-          );
-          const box = await screenShareBtn.boundingBox();
-          await page.mouse.click(box.x + box.width / 2, box.y + 3);
-
-          const stats = clientStats.get(clientId);
-          stats.producing = !stats.producing;
-          ws.send(`Client ${clientId} producing: ${stats.producing}`);
-        } catch (e) {
-          ws.send(`Error toggling screen share for ${clientId}: ${e.message}`);
-        }
-        break;
-      }
-
-      case "consume": {
-        const clientId = Number(parts[1]);
-        const targetId = Number(parts[2]);
-        const entry = pages.find((p) => p.id === clientId);
-        if (!entry) return ws.send(`No page for client ${clientId}`);
-
-        const page = entry.page;
-        try {
-          await page.waitForSelector("button");
-
-          const found = await page.$$eval(
-            "button",
-            (buttons, targetIndex) => {
-              const btns = buttons.filter((b) =>
-                b.textContent.includes("Watch Stream")
-              );
-              const btn = btns[targetIndex - 1];
-              if (btn) {
-                btn.click();
-                return true;
-              }
-              return false;
-            },
-            targetId
-          );
-
-          if (!found) {
-            ws.send(`No user with id ${targetId} producing`);
-            return;
-          }
-
-          const stats = clientStats.get(clientId);
-          stats.consumed += 1;
-          ws.send(`Client ${clientId} consumed from ${targetId}`);
-        } catch (err) {
-          ws.send(`Consume error: ${err.message}`);
-        }
-        break;
-      }
-
-      case "removeClient": {
+      case "remove": {
         const clientId = Number(parts[1]);
         const entry = browsers.find((b) => b.id === clientId);
         if (!entry) return ws.send(`No browser for client ${clientId}`);
@@ -201,53 +138,6 @@ wss.on("connection", (ws) => {
           consumed: s.consumed,
         }));
         ws.send(JSON.stringify(list));
-        break;
-      }
-
-      case "unconsume": {
-        const clientId = Number(parts[1]);
-        const targetId = Number(parts[2]);
-
-        if (targetId === 0) return ws.send("id 0 is taken by user local video");
-
-        const pageEntry = pages.find((p) => p.id === clientId);
-        if (!pageEntry) return ws.send(`No page for client ${clientId}`);
-
-        const page = pageEntry.page;
-        const stats = clientStats.get(clientId);
-        if (!stats) return ws.send(`No stats for client ${clientId}`);
-
-        try {
-          await page.waitForSelector("video");
-
-          const clicked = await page.$$eval(
-            "video",
-            (videos, { targetId, producing }) => {
-              const index = targetId;
-              const vid = videos[index];
-              if (!vid) return false;
-              vid.click();
-              return true;
-            },
-            { targetId, producing: stats.producing }
-          );
-
-          if (!clicked) {
-            ws.send(`No video found for target ${targetId}`);
-            return;
-          }
-
-          // Step 2: wait for the unwatch button and click it
-          await page.waitForSelector("button#unwatch", { timeout: 5000 });
-          await page.click("button#unwatch");
-
-          stats.consumed--;
-          clientStats.set(clientId, stats);
-          ws.send(`Client ${clientId} stopped consuming from ${targetId}`);
-        } catch (err) {
-          ws.send(`Unconsume error: ${err.message}`);
-        }
-
         break;
       }
 
