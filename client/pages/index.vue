@@ -68,7 +68,6 @@ const handleUserJoin = (data: {
   userData: Pick<User, "id" | "name" | "image">;
 }) => {
   const room = rooms.value.get(data.roomId);
-
   if (!room) {
     console.log("no room with name" + data.roomId + "exist");
   }
@@ -78,7 +77,6 @@ const handleUserJoin = (data: {
 
 const handleUserLeftRoom = (data: { roomId: string; userId: string }) => {
   const room = rooms.value.get(data.roomId);
-
   if (!room) {
     console.log("no room with name" + data.roomId + "exist");
   }
@@ -138,8 +136,8 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
         :id="`room-${room.name}`"
         @click="() => handleRoomClick(roomId, room.name)"
       >
-        <h1 class="text-lg text-secondary">
-          {{ room.name }}
+        <h1 :title="room.name" class="text-lg text-secondary">
+          {{ truncateString(room.name, 25) }}
         </h1>
         <div
           class="flex flex-wrap gap-2 mt-4"
@@ -156,7 +154,7 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
               height="30"
               class="rounded-full"
             />
-            <span>{{ peer.name }}</span>
+            <span :title="peer.name">{{ truncateString(peer.name, 15) }}</span>
           </div>
         </div>
       </div>

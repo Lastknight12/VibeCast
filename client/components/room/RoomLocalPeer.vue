@@ -50,7 +50,7 @@ watch(videoElem, (val, _, onCleanup) => {
     ]"
   >
     <div
-      class="absolute bottom-2 right-3 flex gap-3 items-center bg-[#1c1c1c] px-2.5 py-1 rounded-md"
+      class="absolute z-50 bottom-2 right-3 flex gap-3 items-center bg-[#1c1c1c] px-2.5 py-1 rounded-md"
     >
       <Icon
         :name="
@@ -60,7 +60,7 @@ watch(videoElem, (val, _, onCleanup) => {
         "
         size="20"
       />
-      <p>{{ userName }}</p>
+      <p :title="userName">{{ truncateString(userName, 25) }}</p>
     </div>
 
     <video

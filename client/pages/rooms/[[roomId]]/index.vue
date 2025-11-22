@@ -86,11 +86,16 @@ async function leave() {
 
 <template>
   <Transition @afterLeave="showContent = true">
-    <LoadingIcon
-      :loading-text="loadingStep"
+    <div
       v-if="loading"
-      class="w-full h-full flex justify-center items-center"
-    />
+      class="h-full flex flex-col items-center justify-center gap-3"
+    >
+      <LoadingIcon
+        :loading-text="loadingStep"
+        class="w-full h-full flex justify-center items-center"
+        text="Loading..."
+      />
+    </div>
   </Transition>
 
   <RoomError v-if="error" :message="error" />
@@ -102,7 +107,7 @@ async function leave() {
         :srcObject="room.refs.pinnedStream.value.stream"
         autoplay
         playsinline
-        class="rounded-lg object-cover shadow max-w-[780px]"
+        class="rounded-lg object-cover shadow max-w-[780px] mt-4"
         @click="
           room.userActions.togglePinnedStream(
             room.refs.pinnedStream.value.peerId
@@ -130,6 +135,7 @@ async function leave() {
       <RoomControls @leave="leave" />
     </div>
 
+    <!-- TODO: Remove below -->
     <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
       <div v-for="(val, key) in stats" :key="key" class="mb-3">
         <p class="text-red-700 font-mono mb-1">

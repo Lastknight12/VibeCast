@@ -113,7 +113,9 @@ onUnmounted(() => {
         "
         size="20"
       />
-      <p>{{ peer.userData.name }}</p>
+      <p :title="peer.userData.name">
+        {{ truncateString(peer.userData.name, 25) }}
+      </p>
     </div>
 
     <audio
