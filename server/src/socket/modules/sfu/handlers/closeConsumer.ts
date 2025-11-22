@@ -1,7 +1,6 @@
 import { Type } from "@sinclair/typebox";
-import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/state/roomState";
-import { SocketError } from "src/socket/core";
+import { SocketError, CustomSocket } from "src/socket/core";
 import { ApiSfuErrors } from "../utils/errors";
 import { ApiRoomErrors } from "../../room/utils/errors";
 

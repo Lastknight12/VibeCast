@@ -3,10 +3,9 @@ import {
   RtpCapabilities,
   RtpParameters,
 } from "mediasoup/node/lib/types";
-import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/state/roomState";
 import { Type } from "@sinclair/typebox";
-import { HandlerCallback, SocketError } from "src/socket/core";
+import { CustomSocket, HandlerCallback, SocketError } from "src/socket/core";
 import { ApiRoomErrors } from "../../room/utils/errors";
 import { ApiSfuErrors } from "../utils/errors";
 

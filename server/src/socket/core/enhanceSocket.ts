@@ -11,7 +11,7 @@ export interface SocketData {
   };
 }
 
-export interface SocketWrapper<CTS extends EventsMap, STC extends EventsMap>
+interface SocketWrapper<CTS extends EventsMap, STC extends EventsMap>
   extends Socket<CTS, STC, DefaultEventsMap, SocketData> {
   customOn: typeof customOn;
 }

@@ -1,8 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
-import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/state/roomState";
-import { HandlerCallback, SocketError } from "src/socket/core";
+import { CustomSocket, HandlerCallback, SocketError } from "src/socket/core";
 import { ApiRoomErrors } from "../../room/utils/errors";
 import { ApiSfuErrors } from "../utils/errors";
 
@@ -116,13 +115,11 @@ export default function (socket: CustomSocket) {
         }
       }
 
-      socket.broadcast
-        .to(user.roomId)
-        .emit("newProducer", {
-          producerId: producer.id,
-          userId: user.id,
-          type: data.appData.type,
-        });
+      socket.broadcast.to(user.roomId).emit("newProducer", {
+        producerId: producer.id,
+        userId: user.id,
+        type: data.appData.type,
+      });
       cb({ data: { id: producer.id } });
 
       console.log(`producing ${data.appData.type}: ${producer.id}`);

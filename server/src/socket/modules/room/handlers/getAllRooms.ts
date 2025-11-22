@@ -1,7 +1,6 @@
 import { User } from "better-auth/types";
 import { rooms } from "src/state/roomState";
-import { HandlerCallback } from "src/socket/core";
-import { CustomSocket } from "src/socket/core";
+import { CustomSocket, HandlerCallback } from "src/socket/core";
 
 type Result = Record<string, { name: string; peers: Record<string, User> }>;
 

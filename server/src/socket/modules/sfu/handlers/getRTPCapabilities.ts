@@ -1,8 +1,7 @@
-import { CustomSocket } from "src/socket/core";
-import { getRoomRouter } from "../utils";
 import { RtpCapabilities } from "mediasoup/node/lib/rtpParametersTypes";
-import { HandlerCallback, SocketError } from "src/socket/core";
+import { CustomSocket, HandlerCallback, SocketError } from "src/socket/core";
 import { ApiRoomErrors } from "../../room/utils/errors";
+import { getRoomRouter } from "../utils";
 
 export default function (socket: CustomSocket) {
   socket.customOn({

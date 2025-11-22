@@ -1,10 +1,9 @@
 import { Type } from "@sinclair/typebox";
-import { closeRelatedConsumers } from "../utils";
-import { CustomSocket } from "src/socket/core";
-import { rooms } from "src/state/roomState";
-import { SocketError } from "src/socket/core";
-import { ApiRoomErrors } from "../../room/utils/errors";
 import { cloudinary } from "src/lib/cloudinary";
+import { CustomSocket, SocketError } from "src/socket/core";
+import { rooms } from "src/state/roomState";
+import { ApiRoomErrors } from "../../room/utils/errors";
+import { closeRelatedConsumers } from "../utils";
 
 const closeProducerSchema = Type.Object({
   type: Type.Union([Type.Literal("audio"), Type.Literal("video")]),

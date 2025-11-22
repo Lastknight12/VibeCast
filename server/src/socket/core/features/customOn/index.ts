@@ -6,7 +6,7 @@ import { CustomOnParams } from "./types";
 import { extractPayloadAndCb, isExpectCb } from "./utils";
 import { CustomSocket } from "../../enhanceSocket";
 
-class SocketError extends Error {
+export class SocketError extends Error {
   code: string;
   constructor(error: { code: string; message: string }) {
     super(error.message);
@@ -19,14 +19,14 @@ const schemasCache = new Map<
   ReturnType<typeof TypeCompiler.Compile>
 >();
 
-function customOn<Schema extends TSchema>(
+export function customOn<Schema extends TSchema>(
   params: CustomOnParams<false, Schema>
 ): void;
-function customOn<Schema extends TSchema>(
+export function customOn<Schema extends TSchema>(
   // eslint-disable-next-line @typescript-eslint/unified-signatures
   params: CustomOnParams<true, Schema>
 ): void;
-function customOn<Schema extends TSchema>(
+export function customOn<Schema extends TSchema>(
   this: CustomSocket,
   params: CustomOnParams<true, Schema> | CustomOnParams<false, Schema>
 ): void {
@@ -120,4 +120,3 @@ function customOn<Schema extends TSchema>(
 }
 
 export * from "./types";
-export { customOn, SocketError };

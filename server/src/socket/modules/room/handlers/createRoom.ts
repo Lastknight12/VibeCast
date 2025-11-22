@@ -1,9 +1,8 @@
 import { getMediasoupWorker } from "src/lib/worker";
 import { RouterRtpCodecCapability } from "mediasoup/node/lib/types";
 import { Type } from "@sinclair/typebox";
-import { CustomSocket } from "src/socket/core";
+import { CustomSocket, SocketError } from "src/socket/core";
 import { rooms } from "src/state/roomState";
-import { SocketError } from "src/socket/core";
 import { ApiRoomErrors } from "../utils/errors";
 import { createRoom } from "../utils";
 

@@ -1,6 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { SocketError } from "src/socket/core";
-import { CustomSocket } from "src/socket/core";
+import { CustomSocket, SocketError } from "src/socket/core";
 import { ApiRoomErrors } from "../utils/errors";
 import { cloudinary } from "src/lib/cloudinary";
 import streamifier from "streamifier";

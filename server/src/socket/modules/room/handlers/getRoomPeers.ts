@@ -1,6 +1,5 @@
-import { HandlerCallback, SocketError } from "src/socket/core";
+import { CustomSocket, HandlerCallback, SocketError } from "src/socket/core";
 import { User } from "better-auth/types";
-import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/state/roomState";
 import { ApiRoomErrors } from "../utils/errors";
 import { thumbnails } from "./uploadThumbnail";

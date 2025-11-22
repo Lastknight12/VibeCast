@@ -4,13 +4,16 @@ import {
   DtlsParameters,
   IceCandidate,
   IceParameters,
+  SctpParameters,
 } from "mediasoup/node/lib/types";
-import { SctpParameters } from "mediasoup/node/lib/types";
-import { CustomSocket } from "src/socket/core";
+import {
+  HandlerCallback,
+  SocketError,
+  ApiCoreErrors,
+  CustomSocket,
+} from "src/socket/core";
 import { rooms } from "src/state/roomState";
-import { HandlerCallback, SocketError } from "src/socket/core";
 import { ApiRoomErrors } from "../../room/utils/errors";
-import { ApiCoreErrors } from "src/socket/core/errors";
 
 interface Result {
   id: string;

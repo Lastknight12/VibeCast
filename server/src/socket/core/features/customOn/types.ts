@@ -1,16 +1,11 @@
 import { Static, TSchema } from "@sinclair/typebox";
 import pino from "pino";
 
-export interface CustomOnConfig<
-  Schema extends TSchema,
-  ExpectCb extends boolean,
-> {
-  schema?: Schema;
-  expectCb?: ExpectCb;
-  protected?: boolean;
+export interface Context {
+  logger: pino.Logger;
 }
 
-export interface HandlerError {
+interface HandlerError {
   code: string;
   message: string;
 }
@@ -20,8 +15,13 @@ export type HandlerCallback<Data> = (result: {
   errors?: HandlerError[];
 }) => void;
 
-interface Context {
-  logger: pino.Logger;
+export interface CustomOnConfig<
+  Schema extends TSchema,
+  ExpectCb extends boolean,
+> {
+  schema?: Schema;
+  expectCb?: ExpectCb;
+  protected?: boolean;
 }
 
 export interface CustomOnParams<

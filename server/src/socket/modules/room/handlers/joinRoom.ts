@@ -1,9 +1,8 @@
 import { DataList } from "src/lib/dataTypes/dataList";
 import { Type } from "@sinclair/typebox";
-import { CustomSocket } from "src/socket/core";
 import { Server } from "socket.io";
 import { rooms } from "src/state/roomState";
-import { SocketError } from "src/socket/core";
+import { CustomSocket, SocketError } from "src/socket/core";
 import { ApiRoomErrors } from "../utils/errors";
 
 const joinRoomSchema = Type.Object({

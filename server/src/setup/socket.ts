@@ -7,7 +7,7 @@ import path from "path";
 import { enhanceSocket, preloadModules } from "src/socket/core";
 import { usersOnlineMetric } from "src/lib/prometheus/userMetrics";
 import { leaveRoom } from "src/socket/modules/room/utils/index";
-import { logger } from "src/lib/logger";
+// import { logger } from "src/lib/logger";
 
 let handlers: Awaited<ReturnType<typeof preloadModules>>;
 
@@ -37,16 +37,16 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
       usersOnlineMetric.dec(1);
       if (socket.data.user.roomId) {
         leaveRoom(socket.data.user.id, socket.data.user.roomId, socket, io);
-        try {
-          fetch(
-            `${env.pushgateway}/metrics/job/webrtc/instance/${socket.data.user.id}`,
-            {
-              method: "DELETE",
-            }
-          );
-        } catch (error) {
-          logger.error(error);
-        }
+        // try {
+        //   fetch(
+        //     `${env.pushgateway}/metrics/job/webrtc/instance/${socket.data.user.id}`,
+        //     {
+        //       method: "DELETE",
+        //     }
+        //   );
+        // } catch (error) {
+        //   logger.error(error);
+        // }
       }
     });
 
