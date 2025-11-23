@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import type { Socket } from "socket.io-client";
+import {
+  collectConsumersMetrics,
+  collectProducersMetrics,
+} from "~/lib/metrics";
 import { user } from "~/lib/randomUser";
 
 const socket = useSocket();
@@ -52,59 +56,6 @@ function handleBeforeUnload(socket: Socket) {
 
 let interval: string | number | NodeJS.Timeout | undefined;
 
-async function collectConsumersMetric(
-  mediaConn: mediasoupConn,
-  roomId: string
-) {
-  try {
-    const stats = await mediaConn.getConsumerStatistic();
-    let payload = "";
-
-    stats.forEach(({ stats: s, id }) => {
-      s.forEach((report) => {
-        console.log(report.type, report.kind);
-        if (report.type === "inbound-rtp" && report.kind === "video") {
-          const labels = `clientId="${user.id}",roomId="${roomId}",consumerId="${id}"`;
-
-          const metrics: { [key: string]: number } = {
-            fractionLost: report.fractionLost ?? 0,
-            packetsLost: report.packetsLost ?? 0,
-            packetsReceived: report.packetsReceived ?? 0,
-            bytesReceived: report.bytesReceived ?? 0,
-            firCount: report.firCount ?? 0,
-            frameWidth: report.frameWidth ?? 0,
-            frameHeight: report.frameHeight ?? 0,
-            framesDropped: report.framesDropped ?? 0,
-            framesDecoded: report.framesDecoded ?? 0,
-            framesPerSecond: report.framesPerSecond ?? 0,
-            freezeCount: report.freezeCount ?? 0,
-            nackCount: report.nackCount ?? 0,
-            totalFreezesDuration: report.totalFreezesDuration ?? 0,
-            roundTripTime: report.roundTripTime ?? 0,
-            jitter: report.jitter ?? 0,
-          };
-
-          for (const [metricName, value] of Object.entries(metrics)) {
-            payload += `clientmetric_consumer_${metricName}{${labels}} ${value}\n`;
-          }
-        }
-      });
-    });
-
-    if (payload) {
-      $fetch(`/exportClientMetrics/${user.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: payload,
-        baseURL: useRuntimeConfig().public.backendUrl,
-      });
-      console.log("Metrics pushed successfully");
-    }
-  } catch (err) {
-    console.error("Failed to push metrics", err);
-  }
-}
-
 onMounted(async () => {
   try {
     room.registerSocketListeners();
@@ -125,12 +76,11 @@ onMounted(async () => {
   }
 
   interval = setInterval(async () => {
-    const stat = await mediaConn.getProducerstatistic("video");
-    const consumerStats = await mediaConn.getConsumerStatistic();
-    collectConsumersMetric(mediaConn, roomId);
+    collectConsumersMetrics(mediaConn, roomId);
+    collectProducersMetrics(mediaConn, roomId);
 
-    cstats.value = consumerStats;
-    stats.value = stat;
+    cstats.value = await mediaConn.getConsumerStatistic();
+    stats.value = await mediaConn.getProducerstatistic("video");
   }, 5000);
 });
 

@@ -26,7 +26,7 @@ const room = useRoom(roomId);
     </UiButton>
 
     <UiButton
-      @click="() => media.toggleScreenShare(roomId)"
+      @click="media.toggleScreenShare"
       id="toggleScreenShare"
       :variant="media.videoStream.value ? 'destructive' : 'secondary'"
       size="icon"
