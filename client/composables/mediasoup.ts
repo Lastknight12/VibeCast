@@ -55,6 +55,7 @@ export class mediasoupConn {
       "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
     video.crossOrigin = "anonymous";
     video.autoplay = true;
+    video.loop = true;
 
     await video.play();
 
@@ -386,5 +387,20 @@ export class mediasoupConn {
 
     const stats = { video, audio, video_audio };
     return stats[type];
+  }
+
+  async getConsumerStatistic() {
+    const consumersArray = Array.from(this.consumers.values());
+
+    const statsPromises = consumersArray
+      .filter((consumer) => consumer.kind === "video")
+      .map(async (consumer) => {
+        const stats = await consumer.getStats();
+        return { id: consumer.id, stats: stats };
+      });
+
+    const results = await Promise.all(statsPromises);
+
+    return results;
   }
 }

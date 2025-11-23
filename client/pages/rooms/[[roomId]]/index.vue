@@ -37,6 +37,8 @@ watchEffect(() => {
 });
 
 const stats = ref<Awaited<ReturnType<typeof mediaConn.getProducerstatistic>>>();
+const cstats =
+  ref<Awaited<ReturnType<typeof mediaConn.getConsumerStatistic>>>();
 
 function handleBeforeUnload(socket: Socket) {
   if (!room.refs.disconnected.value && !error.value) {
@@ -45,6 +47,61 @@ function handleBeforeUnload(socket: Socket) {
         toast.error({ message: errors[0]!.message });
       }
     });
+  }
+}
+
+let interval: string | number | NodeJS.Timeout | undefined;
+
+async function collectConsumersMetric(
+  mediaConn: mediasoupConn,
+  roomId: string
+) {
+  try {
+    const stats = await mediaConn.getConsumerStatistic();
+    let payload = "";
+
+    stats.forEach(({ stats: s, id }) => {
+      s.forEach((report) => {
+        console.log(report.type, report.kind);
+        if (report.type === "inbound-rtp" && report.kind === "video") {
+          const labels = `clientId="${user.id}",roomId="${roomId}",consumerId="${id}"`;
+
+          const metrics: { [key: string]: number } = {
+            fractionLost: report.fractionLost ?? 0,
+            packetsLost: report.packetsLost ?? 0,
+            packetsReceived: report.packetsReceived ?? 0,
+            bytesReceived: report.bytesReceived ?? 0,
+            firCount: report.firCount ?? 0,
+            frameWidth: report.frameWidth ?? 0,
+            frameHeight: report.frameHeight ?? 0,
+            framesDropped: report.framesDropped ?? 0,
+            framesDecoded: report.framesDecoded ?? 0,
+            framesPerSecond: report.framesPerSecond ?? 0,
+            freezeCount: report.freezeCount ?? 0,
+            nackCount: report.nackCount ?? 0,
+            totalFreezesDuration: report.totalFreezesDuration ?? 0,
+            roundTripTime: report.roundTripTime ?? 0,
+            jitter: report.jitter ?? 0,
+          };
+
+          for (const [metricName, value] of Object.entries(metrics)) {
+            payload += `clientmetric_consumer_${metricName}{${labels}} ${value}\n`;
+          }
+        }
+      });
+    });
+
+    if (payload) {
+      $fetch(`/exportClientMetrics/${user.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: payload,
+        baseURL: useRuntimeConfig().public.backendUrl,
+      });
+      console.log("Metrics pushed successfully");
+    }
+  } catch (err) {
+    console.error("Failed to push metrics", err);
   }
 }
 
@@ -67,16 +124,21 @@ onMounted(async () => {
     loading.value = false;
   }
 
-  setInterval(async () => {
+  interval = setInterval(async () => {
     const stat = await mediaConn.getProducerstatistic("video");
+    const consumerStats = await mediaConn.getConsumerStatistic();
+    collectConsumersMetric(mediaConn, roomId);
+
+    cstats.value = consumerStats;
     stats.value = stat;
-  }, 1000);
+  }, 5000);
 });
 
 onUnmounted(() => {
   room.removeSocketListeners();
   handleBeforeUnload(socket);
   mediaConn.close();
+  clearInterval(interval);
 });
 
 async function leave() {
@@ -144,6 +206,25 @@ async function leave() {
         <ul class="ml-4 text-red-400 font-mono list-disc">
           <li v-for="(v, k) in val[1]" :key="k">
             <span class="text-red-500">{{ k }}:</span> {{ v }}
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
+      <div v-for="(val, key) in cstats" :key="key" class="mb-3">
+        <p class="text-red-700 font-mono mb-1">
+          <strong>id: {{ val.id }}</strong>
+        </p>
+        <ul class="ml-4 text-red-400 font-mono list-disc">
+          <li v-for="(v, k) in val.stats" :key="k">
+            <span class="text-red-500">{{ v[1].type }}:</span>
+
+            <ul class="ml-4 text-red-400 font-mono list-disc">
+              <li v-for="(value, key) in v[1]" :key="key">
+                {{ key }}: {{ value }}
+              </li>
+            </ul>
           </li>
         </ul>
       </div>

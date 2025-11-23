@@ -30,5 +30,7 @@ export function useSocket() {
     });
   }
 
+  if (socket && !socket.connected) socket.connect();
+
   return socket;
 }

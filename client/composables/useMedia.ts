@@ -7,7 +7,7 @@ const videoStream = ref<MediaStream | null>(null);
 
 const reportsMap = new Map();
 
-export async function collectVideoMetric(transport: Transport) {
+export async function collectVideoMetric(transport: Transport, roomId: string) {
   try {
     const stats = await transport.getStats();
     let payload = "";
@@ -32,7 +32,7 @@ export async function collectVideoMetric(transport: Transport) {
         report.kind === "video" &&
         report.rid
       ) {
-        const labels = `clientId="${user.id}",rid="${report.rid}"`;
+        const labels = `clientId="${user.id}",rid="${report.rid}",roomId="${roomId}"`;
         const metrics: { [key: string]: number } = {
           packetsSent: report.packetsSent ?? 0,
           bytesSent: report.bytesSent ?? 0,
@@ -53,7 +53,7 @@ export async function collectVideoMetric(transport: Transport) {
       }
       if (report.type === "remote-inbound-rtp" && report.kind === "video") {
         const rid = reportsMap.get(report.id);
-        const labels = `clientId="${user.id}",rid="${rid}"`;
+        const labels = `clientId="${user.id}",rid="${rid}",roomId="${roomId}"`;
 
         const metrics: { [key: string]: number } = {
           fractionLost: report.fractionLost ?? 0,
@@ -69,10 +69,11 @@ export async function collectVideoMetric(transport: Transport) {
     });
 
     if (payload) {
-      useCustomFetch(`/exportClientMetrics/${user.id}`, {
+      $fetch(`/exportClientMetrics/${user.id}`, {
         method: "POST",
         headers: { "Content-Type": "text/plain" },
         body: payload,
+        baseURL: useRuntimeConfig().public.backendUrl,
       });
       console.log("Metrics pushed successfully");
     }
@@ -98,7 +99,7 @@ export function useMedia(mediaConn: mediasoupConn) {
 
   let interval: NodeJS.Timeout;
 
-  async function toggleScreenShare() {
+  async function toggleScreenShare(roomId: string) {
     if (!videoStream.value) {
       const stream = await mediaConn.getMediaStream();
       const videoTracks = stream.getVideoTracks();
@@ -118,11 +119,14 @@ export function useMedia(mediaConn: mediasoupConn) {
       }
 
       interval = setInterval(() => {
-        collectVideoMetric(mediaConn.transports.send!);
+        collectVideoMetric(mediaConn.transports.send!, roomId);
       }, 5000);
+
+      onUnmounted(() => clearInterval(interval));
     } else {
       mediaConn.stopStream();
       videoStream.value = null;
+      clearInterval(interval);
     }
   }
 
