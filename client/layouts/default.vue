@@ -1,0 +1,4 @@
+<template>
+  <Toaster />
+  <slot />
+</template>

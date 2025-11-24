@@ -60,14 +60,6 @@ onMounted(async () => {
   try {
     room.registerSocketListeners();
     await room.userActions.joinRoom();
-    await new Promise<void>((resolve, reject) => {
-      loadingStep.value = "Connecting to the media server...";
-      mediaConn.transports.send?.on("connectionstatechange", (state) => {
-        if (state === "connected") resolve();
-        if (state === "disconnected" || state === "failed")
-          reject("failed to connect to the media server");
-      });
-    });
   } catch (errMsg) {
     socket.disconnect();
     error.value = errMsg as string;

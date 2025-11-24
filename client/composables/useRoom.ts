@@ -202,7 +202,6 @@ export function useRoom(roomId: string) {
               mediaConn.createTransport("recv"),
             ]);
 
-            await startMic();
             socket.emit("getRoomPeers", handlePeers);
             resolve();
           } catch (err) {

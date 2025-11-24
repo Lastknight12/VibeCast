@@ -42,7 +42,16 @@ export class mediasoupConn {
       },
     });
 
-    stream.getAudioTracks();
+    // const video = document.createElement("video");
+    // video.src =
+    //   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
+    // video.crossOrigin = "anonymous";
+    // video.autoplay = true;
+    // video.loop = true;
+
+    // await video.play();
+
+    // const stream = (video as any).captureStream();
 
     this.audioStream = stream;
 

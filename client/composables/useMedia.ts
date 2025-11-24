@@ -3,8 +3,15 @@ const isMuted = ref(true);
 const videoStream = ref<MediaStream | null>(null);
 
 export function useMedia(mediaConn: mediasoupConn) {
+  async function checkMic() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+
+    return devices.some((device) => device.kind === "audioinput");
+  }
+
   async function startMic() {
     const stream = await mediaConn.getAudioStream();
+    if (!stream) return;
 
     trackVoiceActivity(stream, (currSpeaking) => {
       isSpeaking.value = currSpeaking && !isMuted.value;
@@ -13,7 +20,9 @@ export function useMedia(mediaConn: mediasoupConn) {
     await mediaConn.produce("audio");
   }
 
-  function toggleMicState() {
+  async function toggleMicState() {
+    if (!mediaConn.audioStream) await startMic();
+
     isMuted.value = mediaConn.toggleMic();
   }
 
@@ -54,5 +63,6 @@ export function useMedia(mediaConn: mediasoupConn) {
     startMic,
     toggleMicState,
     toggleScreenShare,
+    checkMic,
   };
 }

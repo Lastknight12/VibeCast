@@ -6,15 +6,24 @@ const emit = defineEmits<{
 const route = useRoute();
 const roomId = route.params.roomId as string;
 
+const toast = useToast();
 const mediaConn = useMediasoup();
 const media = useMedia(mediaConn);
+
+const hasMic = await media.checkMic();
 
 const room = useRoom(roomId);
 </script>
 
 <template>
   <div class="fixed bottom-3 left-1/2 -translate-x-1/2 flex gap-3">
-    <UiButton @click="media.toggleMicState" variant="secondary" size="icon">
+    <UiButton
+      @click="media.toggleMicState"
+      class="relative"
+      variant="secondary"
+      size="icon"
+      :disabled="!hasMic"
+    >
       <Icon
         :name="
           media.isMuted.value
@@ -22,6 +31,13 @@ const room = useRoom(roomId);
             : 'famicons:mic-outline'
         "
         size="20"
+      />
+
+      <Icon
+        v-if="!hasMic"
+        class="absolute -top-1 -right-1 z-90 !bg-red-500"
+        name="famicons:alert-circle-sharp"
+        size="18"
       />
     </UiButton>
 
