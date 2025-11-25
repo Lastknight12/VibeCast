@@ -10,7 +10,6 @@ cloudinary.config({
 
 const server = "http://localhost:3000";
 let roomName = "A";
-let roomCreated = false;
 let nextClientId = 1;
 
 const wss = new WebSocket.Server({ port: 3677, host: "0.0.0.0" });
@@ -20,7 +19,7 @@ let browsers = []; // [{ id, browser }]
 let pages = []; // [{ id, page }]
 const clientStats = new Map(); // id -> { producing, consumed }
 
-async function spawnBrowser(id) {
+async function spawnBrowser(id, isCreatedRoom, ws) {
   const browser = await puppeteer.launch({
     headless: false,
     args: [
@@ -40,7 +39,7 @@ async function spawnBrowser(id) {
   pages.push({ id, page });
   clientStats.set(id, { producing: false, consumed: 0 });
 
-  if (roomCreated) {
+  if (isCreatedRoom) {
     await page.waitForSelector(`#room-${roomName}`);
     await page.click(`#room-${roomName}`);
   } else {
@@ -52,7 +51,7 @@ async function spawnBrowser(id) {
     await page.click("#isPrivateSwitch");
     await page.waitForSelector("#createBtn");
     await page.click("#createBtn");
-    roomCreated = true;
+    ws.send(`/roomCreated ${roomName}`);
   }
 
   try {
@@ -86,6 +85,7 @@ async function spawnBrowser(id) {
 
 wss.on("connection", (ws) => {
   console.log("Orchestrator connected");
+  ws.send(`/myRoom ${roomName}`);
 
   ws.on("message", async (msg) => {
     const parts = msg.toString().trim().split(" ");
@@ -104,12 +104,19 @@ wss.on("connection", (ws) => {
 
       case "spawn": {
         const count = Number(parts[1]);
+        const generatorId = Number(parts[2]);
+        const isRoomCreated = Boolean(parts[3]);
+
         if (isNaN(count) || count <= 0) {
           ws.send("Invalid spawn count");
           return;
         }
         for (let i = 0; i < count; i++) {
-          await spawnBrowser(nextClientId);
+          await spawnBrowser(
+            `${generatorId}-${nextClientId}`,
+            isRoomCreated,
+            ws
+          );
           nextClientId++;
         }
         ws.send("Successfully spawned browser");

@@ -4,6 +4,11 @@ const WebSocket = require("ws");
 const clients = ["ws://localhost:3677"];
 const sockets = [];
 
+const generatorToRoom = new Map([]);
+clients.forEach((client) => {
+  generatorToRoom.set(client, "");
+});
+
 clients.forEach((client, index) => {
   const socket = new WebSocket(client);
 
@@ -17,6 +22,18 @@ clients.forEach((client, index) => {
   });
 
   socket.addEventListener("message", (event) => {
+    if (event.data[0] === "/") {
+      const parts = event.data.split(" ");
+      switch (parts[0]) {
+        case "/roomCreated": {
+          createdRooms.push(event.data.split(" ")[1]);
+        }
+        case "/myRoom": {
+          const room = parts[1];
+          generatorToRoom.set(client, room);
+        }
+      }
+    }
     console.log(`    Message from ${client}:`, event.data);
   });
 
@@ -78,6 +95,9 @@ rl.on("line", async (line) => {
       break;
     }
 
+    case "assign": {
+    }
+
     case "exit":
       process.exit(0);
 
@@ -86,7 +106,10 @@ rl.on("line", async (line) => {
       const count = Number(command[2]);
       const socket = getSocket(generatorId);
       if (!socket || isNaN(count) || count <= 0) break;
-      socket.send(`spawn ${count} ${roomCreated} ${generatorId}`);
+      const roomName = generatorToRoom.get(generatorId);
+      if (!roomId) console.log("generator don't send his room name");
+      const isRoomCreated = createdRooms.includes(roomID);
+      socket.send(`spawn ${count} ${generatorId}`, isRoomCreated);
       break;
     }
 
