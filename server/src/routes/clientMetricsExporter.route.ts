@@ -10,19 +10,19 @@ export default function (fastify: FastifyInstance) {
       // @ts-expect-error
       const { userId } = request.params;
 
-      // try {
-      //   const res = await fetch(
-      //     `${env.pushgateway}/metrics/job/webrtc/instance/${userId}`,
-      //     {
-      //       method: "POST",
-      //       headers: { "Content-Type": "text/plain" },
-      //       body: request.body as string,
-      //     }
-      //   );
-      //   reply.status(res.status);
-      // } catch (_error) {
-      //   reply.status(500);
-      // }
+      try {
+        const res = await fetch(
+          `${env.pushgateway}/metrics/job/webrtc/instance/${userId}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "text/plain" },
+            body: request.body as string,
+          }
+        );
+        reply.status(res.status);
+      } catch (_error) {
+        reply.status(500);
+      }
     },
   });
 }

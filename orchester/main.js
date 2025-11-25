@@ -1,11 +1,8 @@
 const readline = require("readline");
 const WebSocket = require("ws");
 
-const clients = ["ws://192.168.119.143:3677", "ws://192.168.119.96:3677"];
+const clients = ["ws://localhost:3677"];
 const sockets = [];
-
-let roomCreated = false;
-let nextClientId = 1;
 
 clients.forEach((client, index) => {
   const socket = new WebSocket(client);
