@@ -1,9 +1,19 @@
 const readline = require("readline");
 const WebSocket = require("ws");
 
-const clients = ["ws://localhost:3677"];
+const clients = [
+  "ws://192.168.119.143:3677",
+  // "ws://192.168.119.96:3677",
+  // "ws://192.168.119.156:3677",
+  // "ws://192.168.119.104:3677",
+  // "ws://192.168.119.118:3677",
+  // "ws://192.168.119.158:3677",
+  // "ws://192.168.119.160:3677",
+  // "ws://192.168.119.135:3677",
+];
 const sockets = [];
 
+const createdRooms = [];
 const generatorToRoom = new Map([]);
 clients.forEach((client) => {
   generatorToRoom.set(client, "");
@@ -106,10 +116,13 @@ rl.on("line", async (line) => {
       const count = Number(command[2]);
       const socket = getSocket(generatorId);
       if (!socket || isNaN(count) || count <= 0) break;
-      const roomName = generatorToRoom.get(generatorId);
-      if (!roomId) console.log("generator don't send his room name");
-      const isRoomCreated = createdRooms.includes(roomID);
-      socket.send(`spawn ${count} ${generatorId}`, isRoomCreated);
+
+      const roomName = generatorToRoom.get(clients[generatorId - 1]);
+      if (!roomName) return;
+
+      const isRoomCreated = createdRooms.includes(roomName);
+      console.log(isRoomCreated);
+      socket.send(`spawn ${count} ${generatorId} ${isRoomCreated}`);
       break;
     }
 

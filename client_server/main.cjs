@@ -19,7 +19,7 @@ let browsers = []; // [{ id, browser }]
 let pages = []; // [{ id, page }]
 const clientStats = new Map(); // id -> { producing, consumed }
 
-async function spawnBrowser(id, isCreatedRoom, ws) {
+async function spawnBrowser(id, isRoomCreated, ws) {
   const browser = await puppeteer.launch({
     headless: false,
     args: [
@@ -33,13 +33,13 @@ async function spawnBrowser(id, isCreatedRoom, ws) {
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 720 });
-  await page.goto(`${server}?userName=${nextClientId}`);
+  await page.goto(`${server}?userName=${id}`);
 
   browsers.push({ id, browser });
   pages.push({ id, page });
   clientStats.set(id, { producing: false, consumed: 0 });
 
-  if (isCreatedRoom) {
+  if (isRoomCreated) {
     await page.waitForSelector(`#room-${roomName}`);
     await page.click(`#room-${roomName}`);
   } else {
@@ -105,7 +105,7 @@ wss.on("connection", (ws) => {
       case "spawn": {
         const count = Number(parts[1]);
         const generatorId = Number(parts[2]);
-        const isRoomCreated = Boolean(parts[3]);
+        const isRoomCreated = JSON.parse(parts[3]);
 
         if (isNaN(count) || count <= 0) {
           ws.send("Invalid spawn count");
