@@ -10,7 +10,6 @@ cloudinary.config({
 
 const server = "http://localhost:3000";
 let roomName = "A";
-let roomCreated = false;
 let nextClientId = 1;
 
 const wss = new WebSocket.Server({ port: 3677, host: "0.0.0.0" });
@@ -20,7 +19,7 @@ let browsers = []; // [{ id, browser }]
 let pages = []; // [{ id, page }]
 const clientStats = new Map(); // id -> { producing, consumed }
 
-async function spawnBrowser(id) {
+async function spawnBrowser(id, isRoomCreated) {
   const browser = await puppeteer.launch({
     headless: false,
     args: [
@@ -34,13 +33,13 @@ async function spawnBrowser(id) {
 
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 720 });
-  await page.goto(`${server}?userName=${nextClientId}`);
+  await page.goto(`${server}?userName=${id}`);
 
   browsers.push({ id, browser });
   pages.push({ id, page });
   clientStats.set(id, { producing: false, consumed: 0 });
 
-  if (roomCreated) {
+  if (!isRoomCreated) {
     await page.waitForSelector(`#room-${roomName}`);
     await page.click(`#room-${roomName}`);
   } else {
@@ -104,12 +103,14 @@ wss.on("connection", (ws) => {
 
       case "spawn": {
         const count = Number(parts[1]);
+        const isRoomCreated = Number(parts[2]);
+        const generatorId = Number(parts[3]);
         if (isNaN(count) || count <= 0) {
           ws.send("Invalid spawn count");
           return;
         }
         for (let i = 0; i < count; i++) {
-          await spawnBrowser(nextClientId);
+          await spawnBrowser(`${generatorId}-${nextClientId}`, isRoomCreated);
           nextClientId++;
         }
         ws.send("Successfully spawned browser");
