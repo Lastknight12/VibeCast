@@ -19,7 +19,7 @@ let browsers = []; // [{ id, browser }]
 let pages = []; // [page]
 const clientStats = new Map(); // id -> { producing, consumed }
 
-async function watchStream(page) {
+async function watchStream(page, ws) {
   try {
     await page.waitForSelector('button[id^="watch"]');
     const buttons = await page.$$(`button[id^="watch"]`);
@@ -28,6 +28,7 @@ async function watchStream(page) {
         await btn.click();
       }
     }
+    ws.send("consumed stream");
   } catch (err) {
     console.log(err.message);
   }
@@ -77,7 +78,7 @@ async function spawnBrowser(id, isRoomCreated, ws) {
 
     const stats = clientStats.get(clientId);
     stats.producing = !stats.producing;
-    // ws.send(`Client ${clientId} producing: ${stats.producing}`);
+    ws.send(`Client ${clientId} producing: ${stats.producing}`);
   } catch (e) {
     // ws.send(`Error toggling screen share for ${clientId}: ${e.message}`);
   }
@@ -129,8 +130,9 @@ wss.on("connection", (ws) => {
 
       case "watch": {
         pages.forEach((page) => {
-          watchStream(page);
+          watchStream(page, ws);
         });
+        break;
       }
 
       case "remove": {

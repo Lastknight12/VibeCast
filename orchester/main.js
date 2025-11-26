@@ -2,7 +2,7 @@ const readline = require("readline");
 const WebSocket = require("ws");
 
 //  "ws://192.168.119.96:3677"
-const clients = ["ws://localhost:3677"];
+const clients = ["ws://192.168.119.143:3677", "ws://192.168.119.96:3677"];
 const sockets = [];
 
 const createdRooms = [];
@@ -38,7 +38,6 @@ clients.forEach((client, index) => {
         }
         case "/streamCreated": {
           const roomName = parts[1];
-          console.log(roomName, client, "@@@@");
           generatorToRoom.forEach(({ room, socket }, ip) => {
             if (ip === client) return;
             if (roomName === room) {
