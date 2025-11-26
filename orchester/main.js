@@ -1,16 +1,7 @@
 const readline = require("readline");
 const WebSocket = require("ws");
 
-const clients = [
-  "ws://192.168.119.143:3677",
-  // "ws://192.168.119.96:3677",
-  // "ws://192.168.119.156:3677",
-  // "ws://192.168.119.104:3677",
-  // "ws://192.168.119.118:3677",
-  // "ws://192.168.119.158:3677",
-  // "ws://192.168.119.160:3677",
-  // "ws://192.168.119.135:3677",
-];
+const clients = ["ws://localhost:3677"];
 const sockets = [];
 
 const createdRooms = [];
@@ -36,11 +27,20 @@ clients.forEach((client, index) => {
       const parts = event.data.split(" ");
       switch (parts[0]) {
         case "/roomCreated": {
-          createdRooms.push(event.data.split(" ")[1]);
+          createdRooms.push(parts[1]);
         }
         case "/myRoom": {
           const room = parts[1];
-          generatorToRoom.set(client, room);
+          generatorToRoom.set(client, { room, socket });
+        }
+        case "/createdStream": {
+          const roomName = parts[1];
+          generatorToRoom.forEach(({ room, socket }, ip) => {
+            if (ip === client) return;
+            if (roomName === room) {
+              socket.send("watch");
+            }
+          });
         }
       }
     }
@@ -105,9 +105,6 @@ rl.on("line", async (line) => {
       break;
     }
 
-    case "assign": {
-    }
-
     case "exit":
       process.exit(0);
 
@@ -117,11 +114,10 @@ rl.on("line", async (line) => {
       const socket = getSocket(generatorId);
       if (!socket || isNaN(count) || count <= 0) break;
 
-      const roomName = generatorToRoom.get(clients[generatorId - 1]);
+      const { room: roomName } = generatorToRoom.get(clients[generatorId - 1]);
       if (!roomName) return;
 
       const isRoomCreated = createdRooms.includes(roomName);
-      console.log(isRoomCreated);
       socket.send(`spawn ${count} ${generatorId} ${isRoomCreated}`);
       break;
     }

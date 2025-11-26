@@ -16,8 +16,22 @@ const wss = new WebSocket.Server({ port: 3677, host: "0.0.0.0" });
 console.log("WebSocket server is running on ws://localhost:3677");
 
 let browsers = []; // [{ id, browser }]
-let pages = []; // [{ id, page }]
+let pages = []; // [page]
 const clientStats = new Map(); // id -> { producing, consumed }
+
+async function watchStream(page) {
+  try {
+    await page.waitForSelector('button[id^="watch"]');
+    const buttons = await page.$$(`button[id^="watch"]`);
+    for (const btn of buttons) {
+      if (btn) {
+        await btn.click();
+      }
+    }
+  } catch (err) {
+    console.log(err.message);
+  }
+}
 
 async function spawnBrowser(id, isRoomCreated, ws) {
   const browser = await puppeteer.launch({
@@ -36,7 +50,7 @@ async function spawnBrowser(id, isRoomCreated, ws) {
   await page.goto(`${server}?userName=${id}`);
 
   browsers.push({ id, browser });
-  pages.push({ id, page });
+  pages.push(page);
   clientStats.set(id, { producing: false, consumed: 0 });
 
   if (isRoomCreated) {
@@ -61,24 +75,11 @@ async function spawnBrowser(id, isRoomCreated, ws) {
 
     const stats = clientStats.get(clientId);
     stats.producing = !stats.producing;
+    ws.send(`/createdStream ${roomName}`);
     // ws.send(`Client ${clientId} producing: ${stats.producing}`);
   } catch (e) {
     // ws.send(`Error toggling screen share for ${clientId}: ${e.message}`);
   }
-
-  pages.forEach(async (page) => {
-    try {
-      await page.page.waitForSelector('button[id^="watch"]');
-      const buttons = await page.page.$$(`button[id^="watch"]`);
-      for (const btn of buttons) {
-        if (btn) {
-          await btn.click();
-        }
-      }
-    } catch (err) {
-      console.log(err.message);
-    }
-  });
 
   console.log(`Spawned browser client ${id}`);
 }
@@ -121,6 +122,12 @@ wss.on("connection", (ws) => {
         }
         ws.send("Successfully spawned browser");
         break;
+      }
+
+      case "watch": {
+        pages.forEach((page) => {
+          watchStream(page);
+        });
       }
 
       case "remove": {
