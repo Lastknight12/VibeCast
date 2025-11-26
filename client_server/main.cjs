@@ -73,13 +73,16 @@ async function spawnBrowser(id, isRoomCreated, ws) {
     const box = await screenShareBtn.boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + 3);
 
+    ws.send(`/streamCreated ${roomName}`);
+
     const stats = clientStats.get(clientId);
     stats.producing = !stats.producing;
-    ws.send(`/createdStream ${roomName}`);
     // ws.send(`Client ${clientId} producing: ${stats.producing}`);
   } catch (e) {
     // ws.send(`Error toggling screen share for ${clientId}: ${e.message}`);
   }
+
+  watchStream(page);
 
   console.log(`Spawned browser client ${id}`);
 }
