@@ -16,6 +16,11 @@ services:
     restart: unless-stopped
     networks:
       - monitor-net
+    volumes:
+      - pushgateway-data:/data
+    command:
+      - "--persistence.file=/data/metrics"
+      - "--persistence.interval=1m"
 
   prometheus:
     image: prom/prometheus:latest
@@ -49,6 +54,8 @@ services:
       - "3001:3000"
     networks:
       - monitor-net
+    volumes:
+      - grafana-data:/var/lib/grafana
 
 networks:
   monitor-net:
@@ -56,3 +63,5 @@ networks:
 
 volumes:
   prometheus_data:
+  grafana-data:
+  pushgateway-data:

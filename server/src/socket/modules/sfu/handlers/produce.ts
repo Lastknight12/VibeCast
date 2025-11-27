@@ -122,7 +122,9 @@ export default function (socket: CustomSocket) {
       });
       cb({ data: { id: producer.id } });
 
-      console.log(`producing ${data.appData.type}: ${producer.id}`);
+      input.context.logger.info(
+        `producing ${data.appData.type}: ${producer.id}`
+      );
     },
   });
 }

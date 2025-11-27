@@ -1,6 +1,7 @@
 import { Worker } from "mediasoup/node/lib/types";
 import promClient from "prom-client";
 import register from "./registry";
+import { logger } from "../logger";
 
 // exporter.js
 
@@ -79,7 +80,7 @@ export async function collectWorkersMetrics(workers: Worker[]) {
         stats.ru_nivcsw
       );
     } else {
-      console.log(
+      logger.error(
         `Failed to get stats for worker ${worker.pid}:`,
         result.reason
       );

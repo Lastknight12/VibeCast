@@ -106,7 +106,7 @@ export default function (socket: CustomSocket) {
         },
       });
 
-      console.log(`consumed ${data.producerId}`);
+      input.context.logger.info(`consumed ${data.producerId}`);
     },
   });
 }

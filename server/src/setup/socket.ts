@@ -33,12 +33,12 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
     const socket = enhanceSocket(_socket);
     usersOnlineMetric.inc(1);
 
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async () => {
       usersOnlineMetric.dec(1);
       if (socket.data.user.roomId) {
         leaveRoom(socket.data.user.id, socket.data.user.roomId, socket, io);
         try {
-          fetch(
+          await fetch(
             `${env.pushgateway}/metrics/job/webrtc/instance/${socket.data.user.id}`,
             {
               method: "DELETE",

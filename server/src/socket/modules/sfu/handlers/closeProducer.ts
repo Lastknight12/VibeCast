@@ -72,7 +72,7 @@ export default function (socket: CustomSocket) {
         case "audio": {
           const audioProducer = peer.producers.audio;
           if (!audioProducer) {
-            context.logger.error(console.log("Audio producer not found"));
+            context.logger.error("Audio producer not found");
             return;
           }
           audioProducer.close();

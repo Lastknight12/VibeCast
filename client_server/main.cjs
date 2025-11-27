@@ -16,10 +16,10 @@ const wss = new WebSocket.Server({ port: 3677, host: "0.0.0.0" });
 console.log("WebSocket server is running on ws://localhost:3677");
 
 let browsers = []; // [{ id, browser }]
-let pages = []; // [page]
+let pages = []; // [{ id, page }]
 const clientStats = new Map(); // id -> { producing, consumed }
 
-async function watchStream(page, ws) {
+async function watchStream(ws, page) {
   try {
     await page.waitForSelector('button[id^="watch"]');
     const buttons = await page.$$(`button[id^="watch"]`);
@@ -28,13 +28,18 @@ async function watchStream(page, ws) {
         await btn.click();
       }
     }
-    ws.send("consumed stream");
+    console.log(`Client ${page.__clientId} consumed streams`);
+    ws.send(`Client ${page.__clientId} consumed streams`);
+
+    const id = page.__clientId;
+    const stats = clientStats.get(id);
+    if (stats) stats.consumed++;
   } catch (err) {
     console.log(err.message);
   }
 }
 
-async function spawnBrowser(id, isRoomCreated, ws) {
+async function spawnBrowser(ws, id, isRoomCreated, consumeLocalClients) {
   const browser = await puppeteer.launch({
     headless: false,
     args: [
@@ -47,11 +52,12 @@ async function spawnBrowser(id, isRoomCreated, ws) {
   });
 
   const page = await browser.newPage();
+  page.__clientId = id;
   await page.setViewport({ width: 1280, height: 720 });
   await page.goto(`${server}?userName=${id}`);
 
   browsers.push({ id, browser });
-  pages.push(page);
+  pages.push({ id, page });
   clientStats.set(id, { producing: false, consumed: 0 });
 
   if (isRoomCreated) {
@@ -66,30 +72,32 @@ async function spawnBrowser(id, isRoomCreated, ws) {
     await page.click("#isPrivateSwitch");
     await page.waitForSelector("#createBtn");
     await page.click("#createBtn");
+    console.log(`Client ${id}: room created '${roomName}'`);
     ws.send(`/roomCreated ${roomName}`);
   }
+
+  if (consumeLocalClients) watchStream(ws, page);
 
   try {
     const screenShareBtn = await page.waitForSelector("#toggleScreenShare");
     const box = await screenShareBtn.boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + 3);
 
-    ws.send(`/streamCreated ${roomName}`);
+    console.log(`Client ${id}: stream created`);
+    ws.send(`/streamCreated ${roomName} ${id}`);
 
-    const stats = clientStats.get(clientId);
+    const stats = clientStats.get(id);
     stats.producing = !stats.producing;
-    ws.send(`Client ${clientId} producing: ${stats.producing}`);
   } catch (e) {
-    // ws.send(`Error toggling screen share for ${clientId}: ${e.message}`);
+    ws.send(`Error toggling screen share for ${id}: ${e.message}`);
   }
 
-  watchStream(page);
-
-  console.log(`Spawned browser client ${id}`);
+  console.log(`Successfully spawned browser for client ${id}`);
 }
 
 wss.on("connection", (ws) => {
   console.log("Orchestrator connected");
+  console.log(`Using room: ${roomName}`);
   ws.send(`/myRoom ${roomName}`);
 
   ws.on("message", async (msg) => {
@@ -103,24 +111,24 @@ wss.on("connection", (ws) => {
         ws.send("pong");
         break;
 
-      case "setRoomName":
-        roomName = parts[1] || roomName;
-        break;
-
       case "spawn": {
         const count = Number(parts[1]);
         const generatorId = Number(parts[2]);
         const isRoomCreated = JSON.parse(parts[3]);
+        const consumeLocalClients = JSON.parse(parts[4]);
+        console.log(consumeLocalClients);
 
         if (isNaN(count) || count <= 0) {
           ws.send("Invalid spawn count");
           return;
         }
+
         for (let i = 0; i < count; i++) {
           await spawnBrowser(
+            ws,
             `${generatorId}-${nextClientId}`,
             isRoomCreated,
-            ws
+            consumeLocalClients
           );
           nextClientId++;
         }
@@ -129,23 +137,26 @@ wss.on("connection", (ws) => {
       }
 
       case "watch": {
-        pages.forEach((page) => {
-          watchStream(page, ws);
-        });
+        const creatorId = parts[1];
+        for (const { id, page } of pages) {
+          if (id === creatorId) return;
+          watchStream(ws, page, id);
+        }
         break;
       }
 
       case "remove": {
-        const clientId = Number(parts[1]);
+        const clientId = parts[1];
         const entry = browsers.find((b) => b.id === clientId);
         if (!entry) return ws.send(`No browser for client ${clientId}`);
 
-        if (browsers.length === 1) roomCreated = false;
-
         await entry.browser.close();
+
         browsers = browsers.filter((b) => b.id !== clientId);
         pages = pages.filter((p) => p.id !== clientId);
         clientStats.delete(clientId);
+
+        console.log(`Removed client: ${id}`);
         ws.send(`Removed client ${clientId}`);
         break;
       }
@@ -163,12 +174,12 @@ wss.on("connection", (ws) => {
       case "record": {
         const clientId = Number(parts[1]);
         const targetId = Number(parts[2]);
+
         if (targetId <= 0)
           return ws.send("Invalid targetId: cannot record local video");
 
         const pageEntry = pages.find((p) => p.id === clientId);
         if (!pageEntry) return ws.send(`No page for client ${clientId}`);
-
         const page = pageEntry.page;
 
         try {
@@ -202,13 +213,18 @@ wss.on("connection", (ws) => {
                 )
               );
 
-              return base64; // send back to Node for upload
+              return base64;
             },
             targetId,
             10
           );
           const buffer = Buffer.from(base64, "base64");
-          const res = await cloudinary.uploader.upload_stream(
+
+          const stream = require("stream");
+          const readable = new stream.PassThrough();
+          readable.end(buffer);
+
+          const res = cloudinary.uploader.upload_stream(
             { resource_type: "video" },
             (error, result) => {
               if (error) console.error("Cloudinary upload error:", error);
@@ -219,9 +235,6 @@ wss.on("connection", (ws) => {
             }
           );
 
-          const stream = require("stream");
-          const readable = new stream.PassThrough();
-          readable.end(buffer);
           readable.pipe(res);
         } catch (err) {
           ws.send(`Record error: ${err.message}`);
