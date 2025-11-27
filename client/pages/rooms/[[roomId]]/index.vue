@@ -54,7 +54,7 @@ function handleBeforeUnload(socket: Socket) {
   }
 }
 
-let interval: string | number | NodeJS.Timeout | undefined;
+let interval: number | undefined;
 
 onMounted(async () => {
   try {
@@ -68,8 +68,8 @@ onMounted(async () => {
   }
 
   interval = setInterval(async () => {
-    collectConsumersMetrics(mediaConn, roomId);
-    collectProducersMetrics(mediaConn, roomId);
+    collectConsumersMetrics(mediaConn, roomName as string);
+    collectProducersMetrics(mediaConn, roomName as string);
 
     cstats.value = await mediaConn.getConsumerStatistic();
     stats.value = await mediaConn.getProducerstatistic("video");
@@ -139,7 +139,7 @@ async function leave() {
       <RoomControls @leave="leave" />
     </div>
 
-    <!-- TODO: Remove below -->
+    <!-- TODO: Remove below
     <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
       <div v-for="(val, key) in stats" :key="key" class="mb-3">
         <p class="text-red-700 font-mono mb-1">
@@ -151,9 +151,9 @@ async function leave() {
           </li>
         </ul>
       </div>
-    </div>
+    </div> -->
 
-    <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
+    <!-- <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
       <div v-for="(val, key) in cstats" :key="key" class="mb-3">
         <p class="text-red-700 font-mono mb-1">
           <strong>id: {{ val.id }}</strong>
@@ -170,7 +170,7 @@ async function leave() {
           </li>
         </ul>
       </div>
-    </div>
+    </div> -->
   </div>
 </template>
 
