@@ -61,4 +61,4 @@ build/
 
 .env
 dist
-prometheus/prometheus.yml
+prometheus
