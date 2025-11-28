@@ -116,7 +116,6 @@ wss.on("connection", (ws) => {
         const generatorId = Number(parts[2]);
         const isRoomCreated = JSON.parse(parts[3]);
         const consumeLocalClients = JSON.parse(parts[4]);
-        console.log(consumeLocalClients);
 
         if (isNaN(count) || count <= 0) {
           ws.send("Invalid spawn count");
@@ -156,7 +155,7 @@ wss.on("connection", (ws) => {
         pages = pages.filter((p) => p.id !== clientId);
         clientStats.delete(clientId);
 
-        console.log(`Removed client: ${id}`);
+        console.log(`Removed client: ${clientId}`);
         ws.send(`Removed client ${clientId}`);
         break;
       }

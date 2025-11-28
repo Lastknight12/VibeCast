@@ -1,7 +1,7 @@
 const readline = require("readline");
 const WebSocket = require("ws");
 
-const clients = ["ws://localhost:3677", "ws://localhost:3679"];
+const clients = ["ws://192.168.119.143:3677"];
 
 const sockets = new Array(clients.length).fill(null);
 const createdRooms = [];
