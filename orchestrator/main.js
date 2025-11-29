@@ -1,7 +1,7 @@
 const readline = require("readline");
 const WebSocket = require("ws");
 
-const clients = ["ws://192.168.119.143:3677"];
+const clients = ["ws://localhost:3677"];
 
 const sockets = new Array(clients.length).fill(null);
 const createdRooms = [];
@@ -142,9 +142,7 @@ rl.on("line", async (line) => {
 
     case "spawn": {
       const generatorId = Number(command[1]);
-      const count = Number(command[2]);
       const socket = getSocket(generatorId);
-      if (!socket || isNaN(count) || count <= 0) break;
 
       const info = generatorToRoom.get(clients[generatorId - 1]) ?? {};
       const roomName = info.room;
@@ -155,7 +153,7 @@ rl.on("line", async (line) => {
       const isRoomCreated = createdRooms.includes(roomName);
       safeSend(
         socket,
-        `spawn ${count} ${generatorId} ${isRoomCreated} ${consumeLocalClients}`
+        `spawn ${generatorId} ${isRoomCreated} ${consumeLocalClients}`
       );
       break;
     }

@@ -45,7 +45,7 @@ watch(videoElem, (val, _, onCleanup) => {
 <template>
   <div
     :class="[
-      'bg-[#0f0f0f] relative rounded-lg flex items-center justify-center min-h-[180px] min-w-[240px]',
+      'bg-[#0f0f0f] relative rounded-lg flex items-center justify-center min-h-[180px] min-w-60',
       media.isSpeaking.value ? 'ring-4 ring-green-400' : '',
     ]"
   >

@@ -30,6 +30,7 @@ export function useMedia(mediaConn: mediasoupConn) {
     if (!videoStream.value) {
       const stream = await mediaConn.getMediaStream();
       const videoTracks = stream.getVideoTracks();
+      const hasAudioStream = stream.getAudioTracks().length > 0;
 
       videoTracks.forEach((track) => {
         track.addEventListener("ended", async () => {
@@ -38,11 +39,13 @@ export function useMedia(mediaConn: mediasoupConn) {
           await mediaConn.stopStream();
         });
       });
-
       videoStream.value = new MediaStream(videoTracks);
+
       await mediaConn.produce("video");
-      if (stream.getAudioTracks().length > 0) {
-        await mediaConn.produce("video_audio");
+      if (hasAudioStream) {
+        setTimeout(async () => {
+          await mediaConn.produce("video_audio");
+        }, 5000);
       }
     } else {
       mediaConn.stopStream();

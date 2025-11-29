@@ -32,17 +32,19 @@ export function createRoom(
 }
 
 export async function leaveRoom(
-  userId: string,
-  roomId: string,
-  socket: CustomSocket,
-  io: Server
+  io: Server,
+  clientInfo: {
+    id: string;
+    roomId: string;
+    socket: CustomSocket;
+  }
 ) {
-  const room = rooms.get(roomId);
+  const room = rooms.get(clientInfo.roomId);
   if (!room) {
     throw new Error("room not found for given id");
   }
 
-  const user = room.peers.get(userId);
+  const user = room.peers.get(clientInfo.id);
   if (!user) {
     throw new Error("User not in current room");
   }
@@ -54,7 +56,7 @@ export async function leaveRoom(
         user.producers.screenShare?.audio?.id,
         user.producers.screenShare?.video.id,
       ].filter(Boolean) as string[],
-      roomId
+      clientInfo.roomId
     );
   }
 
@@ -62,23 +64,26 @@ export async function leaveRoom(
     transport.close();
   });
 
-  room.peers.delete(userId);
-  socket.data.user.roomId = undefined;
+  room.peers.delete(clientInfo.id);
+  clientInfo.socket.data.user.roomId = undefined;
 
-  io.to(roomId).emit("userDisconnected", { userId });
+  io.to(clientInfo.roomId).emit("userDisconnected", { userId: clientInfo.id });
   if (room.type === "public") {
-    io.emit("userLeftRoom", { roomId, userId });
+    io.emit("userLeftRoom", {
+      roomId: clientInfo.roomId,
+      userId: clientInfo.id,
+    });
   }
 
   if (room.peers.size === 0) {
-    rooms.delete(roomId);
+    rooms.delete(clientInfo.roomId);
 
     if (room.type === "public") {
-      io.emit("roomDeleted", { roomId });
+      io.emit("roomDeleted", { roomId: clientInfo.roomId });
     }
   }
 
   cloudinary.api
-    .delete_resources_by_prefix(`thumbnails/${userId}`)
+    .delete_resources_by_prefix(`thumbnails/${clientInfo.id}`)
     .catch(logger.error);
 }

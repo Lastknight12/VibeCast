@@ -42,7 +42,6 @@ export function useRoom(roomId: string) {
   const socket = useSocket();
   const toast = useToast();
   const mediaConn = useMediasoup();
-  const { startMic } = useMedia(mediaConn);
 
   const registerSocketListeners = () => {
     socket.on("userJoined", handleUserJoin);
@@ -86,6 +85,8 @@ export function useRoom(roomId: string) {
       return;
     }
 
+    peer.streams.screenShare.active = true;
+
     try {
       const videoConsumer = await mediaConn.consume(videoProducerId);
       if (!videoConsumer) {
@@ -99,22 +100,20 @@ export function useRoom(roomId: string) {
       const audioStream =
         audioConsumer && new MediaStream([audioConsumer.track]);
 
-      peer.streams.screenShare = {
-        active: true,
-        video: {
-          stream: videoStream,
-          producerId: videoConsumer.producerId,
-          consumerId: videoConsumer.id,
-        },
-        audio: {
-          stream: audioStream,
-          consumerId: audioConsumer?.id,
-          producerId: audioConsumer?.producerId,
-        },
+      peer.streams.screenShare.video = {
+        stream: videoStream,
+        producerId: videoConsumer.producerId,
+        consumerId: videoConsumer.id,
+      };
+      peer.streams.screenShare.audio = {
+        stream: audioStream,
+        consumerId: audioConsumer?.id,
+        producerId: audioConsumer?.producerId,
       };
 
       cb?.();
     } catch (error) {
+      peer.streams.screenShare.active = false;
       toast.error({ message: "Failed to consume user stream" });
       console.log(error);
     }
@@ -358,6 +357,7 @@ export function useRoom(roomId: string) {
         audioConsumer = peer.producers.audio
           ? await mediaConn.consume(peer.producers.audio)
           : undefined;
+
         const audioStream =
           audioConsumer && new MediaStream([audioConsumer.track]);
 
@@ -410,7 +410,7 @@ export function useRoom(roomId: string) {
             audio: {},
             thumbnail: undefined,
           });
-        console.log(pinnedStream.value?.peerId, data.userId);
+
         if (pinnedStream.value?.peerId === data.userId) {
           pinnedStream.value = null;
         }
@@ -419,6 +419,15 @@ export function useRoom(roomId: string) {
         peer?.streams.audio && (peer.streams.audio = {});
         break;
     }
+  }
+
+  async function cleanup() {
+    removeSocketListeners();
+    pinnedStream.value = null;
+    peers.value = new Map();
+    videoElem.value = null;
+    activeSpeakers.value = new Set();
+    disconnected.value = false;
   }
 
   return {
@@ -431,7 +440,7 @@ export function useRoom(roomId: string) {
       videoElem,
     },
     registerSocketListeners,
-    removeSocketListeners,
+    cleanup,
     userActions: {
       togglePinnedStream,
       watchStream,

@@ -27,7 +27,7 @@ export default function (socket: CustomSocket, io: Server) {
       }
 
       const roomId = user.roomId;
-      await leaveRoom(user.id, roomId, socket, io);
+      await leaveRoom(io, { id: user.id, roomId, socket });
     },
   });
 }

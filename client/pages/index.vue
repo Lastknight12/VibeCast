@@ -101,67 +101,69 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
 </script>
 
 <template>
-  <Toaster />
-
-  <div class="overflow-hidden relative h-full">
-    <div
-      ref="ballRef"
-      class="w-screen h-[500px] rounded-full absolute -top-1/4 left-1/2 -translate-x-1/2 -z-[10] blur-[140px]"
-      style="background: #fed8371c"
-    />
-    <header
-      class="flex items-center justify-between py-4 px-8 border-b border-b-secondary backdrop-blur-[150px]"
-    >
-      <h1 class="text-secondary text-xl">VibeCast</h1>
-
-      <div v-if="session.data.value" class="flex items-center gap-2">
-        <CreateRoomDialog />
-        <UiButton variant="destructive" @click="authClient.signOut()"
-          >Leave</UiButton
-        >
-      </div>
-      <UiButton variant="secondary" size="sm" v-else @click="googleLogin">
-        Sign in with Google
-      </UiButton>
-    </header>
-
-    <div
-      class="mt-6 grid gap-8 p-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
-    >
+  <KeepAlive>
+    <div class="overflow-hidden relative h-full">
       <div
-        v-if="rooms.size > 0"
-        v-for="[roomId, room] of rooms"
-        :key="roomId"
-        class="p-6 bg-[#070707] border border-border rounded-xl"
-        :id="`room-${room.name}`"
-        @click="() => handleRoomClick(roomId, room.name)"
+        ref="ballRef"
+        class="w-screen h-[500px] rounded-full absolute -top-1/4 left-1/2 -translate-x-1/2 -z-10 blur-[140px]"
+        style="background: #fed8371c"
+      />
+      <header
+        class="flex items-center justify-between py-4 px-8 border-b border-b-secondary backdrop-blur-[150px]"
       >
-        <h1 :title="room.name" class="text-lg text-secondary">
-          {{ truncateString(room.name, 25) }}
-        </h1>
-        <div
-          class="flex flex-wrap gap-2 mt-4"
-          v-for="[id, peer] of room.peers"
-          :key="id"
-        >
-          <div
-            class="flex items-center bg-[#161616] gap-2 py-2 px-3 rounded-md"
+        <h1 class="text-secondary text-xl">VibeCast</h1>
+
+        <div v-if="session.data.value" class="flex items-center gap-2">
+          <CreateRoomDialog />
+          <UiButton variant="destructive" @click="authClient.signOut()"
+            >Leave</UiButton
           >
-            <img
-              :src="peer.image!"
-              :alt="peer.name + 'avatar'"
-              width="30"
-              height="30"
-              class="rounded-full"
-            />
-            <span :title="peer.name">{{ truncateString(peer.name, 15) }}</span>
+        </div>
+        <UiButton variant="secondary" size="sm" v-else @click="googleLogin">
+          Sign in with Google
+        </UiButton>
+      </header>
+
+      <div
+        class="mt-6 grid gap-8 p-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+      >
+        <div
+          v-if="rooms.size > 0"
+          v-for="[roomId, room] of rooms"
+          :key="roomId"
+          class="p-6 bg-[#070707] border border-border rounded-xl"
+          :id="`room-${room.name}`"
+          @click="() => handleRoomClick(roomId, room.name)"
+        >
+          <h1 :title="room.name" class="text-lg text-secondary">
+            {{ truncateString(room.name, 25) }}
+          </h1>
+          <div
+            class="flex flex-wrap gap-2 mt-4"
+            v-for="[id, peer] of room.peers"
+            :key="id"
+          >
+            <div
+              class="flex items-center bg-[#161616] gap-2 py-2 px-3 rounded-md"
+            >
+              <img
+                :src="peer.image!"
+                :alt="peer.name + 'avatar'"
+                width="30"
+                height="30"
+                class="rounded-full"
+              />
+              <span :title="peer.name">{{
+                truncateString(peer.name, 15)
+              }}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div v-else class="col-start-1 col-end-[-1] text-center">
-        No rooms created
+        <div v-else class="col-start-1 -col-end-1 text-center">
+          No rooms created
+        </div>
       </div>
     </div>
-  </div>
+  </KeepAlive>
 </template>

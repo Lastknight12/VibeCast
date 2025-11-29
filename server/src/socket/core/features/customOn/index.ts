@@ -63,7 +63,6 @@ export function customOn<Schema extends TSchema>(
       const childLogger = logger.child({
         type: "socket",
         event: params.event,
-        payload,
       });
 
       if (isExpectCb(params)) {
@@ -74,6 +73,7 @@ export function customOn<Schema extends TSchema>(
           });
           return;
         }
+
         await params.handler(
           {
             data: payload,

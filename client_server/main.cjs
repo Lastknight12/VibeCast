@@ -13,13 +13,15 @@ let roomName = "A";
 let nextClientId = 1;
 
 const wss = new WebSocket.Server({ port: 3677, host: "0.0.0.0" });
-console.log("WebSocket server is running on ws://localhost:3677");
+console.log(`WebSocket server is running on ws://0.0.0.0:3677`);
 
 let browsers = []; // [{ id, browser }]
 let pages = []; // [{ id, page }]
 const clientStats = new Map(); // id -> { producing, consumed }
 
-async function watchStream(ws, page) {
+const REASON_CONSUME_ALL = "consume-all";
+const REASON_CONSUME_NEW = "consume-new";
+async function watchStream(ws, page, reason) {
   try {
     await page.waitForSelector('button[id^="watch"]');
     const buttons = await page.$$(`button[id^="watch"]`);
@@ -28,17 +30,20 @@ async function watchStream(ws, page) {
         await btn.click();
       }
     }
-    console.log(`Client ${page.__clientId} consumed streams`);
-    ws.send(`Client ${page.__clientId} consumed streams`);
+    console.log(`Client ${page.__clientId} consumed streams: ${reason}`);
+    ws.send(`Client ${page.__clientId} consumed streams: ${reason}`);
 
     const id = page.__clientId;
     const stats = clientStats.get(id);
-    if (stats) stats.consumed++;
+    if (stats) {
+      stats.consumed = buttons.length;
+    }
   } catch (err) {
     console.log(err.message);
   }
 }
 
+let isSpawning = false;
 async function spawnBrowser(ws, id, isRoomCreated, consumeLocalClients) {
   const browser = await puppeteer.launch({
     headless: false,
@@ -60,23 +65,31 @@ async function spawnBrowser(ws, id, isRoomCreated, consumeLocalClients) {
   pages.push({ id, page });
   clientStats.set(id, { producing: false, consumed: 0 });
 
-  if (isRoomCreated) {
-    await page.waitForSelector(`#room-${roomName}`);
-    await page.click(`#room-${roomName}`);
-  } else {
-    await page.waitForSelector("#createRoomBtn");
-    await page.click("#createRoomBtn");
-    await page.waitForSelector("#roomNameInput");
-    await page.type("#roomNameInput", roomName);
-    await page.waitForSelector("#isPrivateSwitch");
-    await page.click("#isPrivateSwitch");
-    await page.waitForSelector("#createBtn");
-    await page.click("#createBtn");
-    console.log(`Client ${id}: room created '${roomName}'`);
-    ws.send(`/roomCreated ${roomName}`);
+  try {
+    if (isRoomCreated) {
+      await page.waitForSelector(`#room-${roomName}`);
+      await page.click(`#room-${roomName}`);
+    } else {
+      await page.waitForSelector("#createRoomBtn");
+      await page.click("#createRoomBtn");
+      await page.waitForSelector("#roomNameInput");
+      await page.type("#roomNameInput", roomName);
+      await page.waitForSelector("#isPrivateSwitch");
+      await page.click("#isPrivateSwitch");
+      await page.waitForSelector("#createBtn");
+      await page.click("#createBtn");
+      console.log(`Client ${id}: room created '${roomName}'`);
+      ws.send(`/roomCreated ${roomName}`);
+    }
+  } catch (err) {
+    console.log(
+      `Error ${isRoomCreated ? "joining" : "creating"} room ${roomName}: ${
+        err.message ?? err
+      }`
+    );
   }
 
-  if (consumeLocalClients) watchStream(ws, page);
+  if (consumeLocalClients) watchStream(ws, page, REASON_CONSUME_ALL);
 
   try {
     const screenShareBtn = await page.waitForSelector("#toggleScreenShare");
@@ -88,11 +101,13 @@ async function spawnBrowser(ws, id, isRoomCreated, consumeLocalClients) {
 
     const stats = clientStats.get(id);
     stats.producing = !stats.producing;
-  } catch (e) {
-    ws.send(`Error toggling screen share for ${id}: ${e.message}`);
+
+    console.log(`Successfully spawned browser for client ${id}`);
+  } catch (error) {
+    ws.send(`Error toggling screen share for ${id}: ${error.message ?? error}`);
   }
 
-  console.log(`Successfully spawned browser for client ${id}`);
+  isSpawning = false;
 }
 
 wss.on("connection", (ws) => {
@@ -112,25 +127,25 @@ wss.on("connection", (ws) => {
         break;
 
       case "spawn": {
-        const count = Number(parts[1]);
-        const generatorId = Number(parts[2]);
-        const isRoomCreated = JSON.parse(parts[3]);
-        const consumeLocalClients = JSON.parse(parts[4]);
-
-        if (isNaN(count) || count <= 0) {
-          ws.send("Invalid spawn count");
+        if (isSpawning) {
+          ws.send(
+            "Cannot execute spawn: a previous launch process is still in progress."
+          );
           return;
         }
+        isSpawning = true;
+        const generatorId = Number(parts[1]);
+        const isRoomCreated = JSON.parse(parts[2]);
+        const consumeLocalClients = JSON.parse(parts[3]);
 
-        for (let i = 0; i < count; i++) {
-          await spawnBrowser(
-            ws,
-            `${generatorId}-${nextClientId}`,
-            isRoomCreated,
-            consumeLocalClients
-          );
-          nextClientId++;
-        }
+        await spawnBrowser(
+          ws,
+          `${generatorId}-${nextClientId}`,
+          isRoomCreated,
+          consumeLocalClients
+        );
+        nextClientId++;
+
         ws.send("Successfully spawned browser");
         break;
       }
@@ -139,7 +154,7 @@ wss.on("connection", (ws) => {
         const creatorId = parts[1];
         for (const { id, page } of pages) {
           if (id === creatorId) return;
-          watchStream(ws, page, id);
+          watchStream(ws, page, REASON_CONSUME_NEW);
         }
         break;
       }

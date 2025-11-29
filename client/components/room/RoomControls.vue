@@ -6,7 +6,6 @@ const emit = defineEmits<{
 const route = useRoute();
 const roomId = route.params.roomId as string;
 
-const toast = useToast();
 const mediaConn = useMediasoup();
 const media = useMedia(mediaConn);
 
@@ -35,7 +34,7 @@ const room = useRoom(roomId);
 
       <Icon
         v-if="!hasMic"
-        class="absolute -top-1 -right-1 z-90 !bg-red-500"
+        class="absolute -top-1 -right-1 z-90 bg-red-500!"
         name="famicons:alert-circle-sharp"
         size="18"
       />

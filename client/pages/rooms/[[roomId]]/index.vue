@@ -77,9 +77,9 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  room.removeSocketListeners();
-  handleBeforeUnload(socket);
   mediaConn.close();
+  room.cleanup();
+  handleBeforeUnload(socket);
   clearInterval(interval);
 });
 

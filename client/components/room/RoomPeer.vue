@@ -60,7 +60,7 @@ onUnmounted(() => {
 
 <template>
   <div
-    class="relative rounded-lg flex items-center justify-center min-h-[180px] min-w-[240px] bg-[#0f0f0f] transition-all"
+    class="relative rounded-lg flex items-center justify-center min-h-[180px] min-w-60 bg-[#0f0f0f] transition-all"
     :class="{ 'ring-4 ring-green-400': isSpeaking }"
     :style="backgroundStyle"
   >
