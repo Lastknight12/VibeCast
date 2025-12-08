@@ -10,6 +10,9 @@ import type {
 import * as mediasoup from "mediasoup-client";
 import type { SocketCallbackArgs } from "./useSocket";
 
+const appConfig = useNuxtApp().$config;
+const simulcastEnabled = Boolean(appConfig.public.simulcast);
+
 export class mediasoupConn {
   private socket = useSocket();
 
@@ -309,14 +312,14 @@ export class mediasoupConn {
               scaleResolutionDownBy: 1,
               maxBitrate: 2_500_000,
               maxFramerate: 30,
-              scalabilityMode: "L1T3",
+              scalabilityMode: "L1T2",
             },
           ]
         : undefined;
 
     const producer = await this.transports.send.produce({
       track: track,
-      encodings,
+      encodings: simulcastEnabled ? encodings : undefined,
       appData: {
         type,
       },

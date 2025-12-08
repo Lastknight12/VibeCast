@@ -4,6 +4,7 @@ import type { User } from "better-auth/types";
 import type { SocketCallback } from "~/composables/useSocket";
 import { generateRandomUser, user } from "~/lib/randomUser";
 import { useRoute } from "vue-router";
+
 useHead({
   title: "VibeCast homepage",
   meta: [
@@ -28,7 +29,7 @@ onMounted(() => {
   socket.on("roomDeleted", handleRoomDeleted);
 });
 
-const toaster = useToast();
+const toast = useToast();
 const authClient = useAuthClient();
 const session = { data: ref(user) };
 
@@ -94,7 +95,7 @@ const handleRoomDeleted = (data: { roomId: string }) => {
 
 const handleRoomClick = async (roomId: string, roomName: string) => {
   if (!session.data.value)
-    return toaster.error({ message: "Login to join room" });
+    return toast.error({ message: "Login to join room" });
 
   await navigateTo(`/rooms/${roomId}?name=${roomName}`);
 };

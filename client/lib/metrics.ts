@@ -1,7 +1,8 @@
-import type { User } from "better-auth/types";
 import { user } from "./randomUser";
 
 const reportsMap = new Map();
+const appConfig = useNuxtApp().$config;
+const simulcastEnabled = Boolean(appConfig.public.simulcast);
 
 export async function collectProducersMetrics(
   mediaConn: mediasoupConn,
@@ -27,11 +28,9 @@ export async function collectProducersMetrics(
         }
       }
 
-      if (
-        report.type === "outbound-rtp" &&
-        report.kind === "video" &&
-        report.rid
-      ) {
+      if (report.type === "outbound-rtp" && report.kind === "video") {
+        if (simulcastEnabled) report.rid = report.rid ?? "default";
+
         const labels = `clientId="${user.id}",rid="${report.rid}",roomId="${roomId}"`;
         const metrics: { [key: string]: number } = {
           packetsSent: report.packetsSent ?? 0,

@@ -32,10 +32,6 @@ services:
       - "--config.file=/etc/prometheus/prometheus.yml"
     ports:
       - "9090:9090"
-    depends_on:
-      - pushgateway
-      - mediasoup-app
-      - node-exporter
     networks:
       - monitor-net
 
