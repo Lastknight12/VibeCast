@@ -176,16 +176,13 @@ rl.on("line", async (line) => {
     }
 
     case "record": {
-      const generatorId = Number(command[1]);
-      const clientId = command[2];
-      const targetId = Number(command[3]);
-
-      if (targetId === 0)
-        return console.log("id 0 is taken by user local video");
-
-      const socket = getSocket(generatorId);
-      if (!socket) break;
-      safeSend(socket, `record ${clientId} ${targetId}`);
+      clients.forEach((_client, i) => {
+        const socket = getSocket(i + 1);
+        if (!socket) {
+          return;
+        }
+        safeSend(socket, `record`);
+      });
       break;
     }
 

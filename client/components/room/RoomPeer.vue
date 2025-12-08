@@ -89,11 +89,12 @@ onUnmounted(() => {
         !isPinned &&
         peer.streams.screenShare.video.stream
       "
+      @click="emit('pin-stream', peer.userData.id)"
+      :srcObject="peer.streams.screenShare.video.stream"
+      id="video-stream"
       autoplay
       playsinline
       class="w-full h-full object-cover rounded-lg shadow"
-      :srcObject="peer.streams.screenShare.video.stream"
-      @click="emit('pin-stream', peer.userData.id)"
     />
 
     <img

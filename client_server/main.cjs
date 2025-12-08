@@ -186,73 +186,89 @@ wss.on("connection", (ws) => {
       }
 
       case "record": {
-        const clientId = Number(parts[1]);
-        const targetId = Number(parts[2]);
+        pages.forEach(async ({ id, page }) => {
+          try {
+            const videos = await page.$$("[id='video-stream']");
 
-        if (targetId <= 0)
-          return ws.send("Invalid targetId: cannot record local video");
+            for (const handle of videos) {
+              try {
+                const uint8 = await handle.evaluate(async (video) => {
+                  if (!video) throw new Error("Video element not found");
+                  if (!video.captureStream)
+                    throw new Error("captureStream not supported");
 
-        const pageEntry = pages.find((p) => p.id === clientId);
-        if (!pageEntry) return ws.send(`No page for client ${clientId}`);
-        const page = pageEntry.page;
+                  const stream = video.captureStream();
+                  const recorder = new MediaRecorder(stream, {
+                    mimeType: "video/webm",
+                  });
 
-        try {
-          const base64 = await page.evaluate(
-            async (targetId) => {
-              const videos = document.querySelectorAll("video");
-              const target = videos[targetId];
-              if (!target) throw new Error("Video element not found");
+                  const chunks = [];
+                  recorder.ondataavailable = (e) =>
+                    e.data.size && chunks.push(e.data);
 
-              const stream = target.captureStream();
-              const recorder = new MediaRecorder(stream, {
-                mimeType: "video/webm",
-              });
+                  recorder.start();
 
-              const chunks = [];
-              recorder.ondataavailable = (e) =>
-                e.data.size && chunks.push(e.data);
-              recorder.start();
+                  // record 10 seconds
+                  await new Promise((r) => setTimeout(r, 10_000));
 
-              await new Promise((r) => setTimeout(r, 10_000));
+                  recorder.stop();
+                  await new Promise((r) => (recorder.onstop = r));
 
-              recorder.stop();
-              await new Promise((r) => (recorder.onstop = r));
+                  // Convert blob → Uint8Array → plain array for transfer
+                  const blob = new Blob(chunks, { type: "video/webm" });
+                  const arr = new Uint8Array(await blob.arrayBuffer());
+                  return Array.from(arr);
+                });
 
-              const blob = new Blob(chunks, { type: "video/webm" });
-              const arrayBuffer = await blob.arrayBuffer();
-              const base64 = btoa(
-                new Uint8Array(arrayBuffer).reduce(
-                  (data, byte) => data + String.fromCharCode(byte),
-                  ""
-                )
-              );
+                const targetId = await handle.evaluate((video) => {
+                  // find nearest sibling .absolute element
+                  const sibling = video.parentElement.querySelector(
+                    ".absolute.bottom-2.right-3"
+                  );
+                  if (!sibling) return null;
 
-              return base64;
-            },
-            targetId,
-            10
-          );
-          const buffer = Buffer.from(base64, "base64");
+                  const p = sibling.querySelector("p");
+                  return p ? p.textContent.trim() : null;
+                });
 
-          const stream = require("stream");
-          const readable = new stream.PassThrough();
-          readable.end(buffer);
+                console.log(`Record: ${id} ==> ${targetId}`);
 
-          const res = cloudinary.uploader.upload_stream(
-            { resource_type: "video" },
-            (error, result) => {
-              if (error) console.error("Cloudinary upload error:", error);
-              else {
-                console.log("Uploaded:", result.secure_url);
-                ws.send(`Uploaded: ${result.secure_url}`);
+                // Convert back to Node Buffer
+                const buffer = Buffer.from(uint8);
+
+                // Upload to Cloudinary
+                const stream = require("stream");
+                const readable = new stream.PassThrough();
+                readable.end(buffer);
+
+                const upload = cloudinary.uploader.upload_stream(
+                  {
+                    resource_type: "video",
+                    public_id: `Room_${roomName}_user:${id}_target:${
+                      targetId.split(" ")[1]
+                    }`,
+                  },
+                  (error, result) => {
+                    if (error) {
+                      console.error("Cloudinary upload error:", error);
+                      ws.send(`Upload error: ${error.message}`);
+                    } else {
+                      console.log("Uploaded:", result.secure_url);
+                      ws.send(`Uploaded: ${id} ==> ${targetId}`);
+                    }
+                  }
+                );
+
+                readable.pipe(upload);
+              } catch (err) {
+                console.error("Video record error:", err);
+                ws.send(`Record error: ${err.message}`);
               }
             }
-          );
-
-          readable.pipe(res);
-        } catch (err) {
-          ws.send(`Record error: ${err.message}`);
-        }
+          } catch (err) {
+            ws.send(`Record error: ${err.message}`);
+          }
+        });
         break;
       }
 

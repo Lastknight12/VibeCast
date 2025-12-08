@@ -259,7 +259,7 @@ export function useRoom(roomId: string) {
   }) {
     const peer = peers.value.get(data.userId);
     if (!peer) {
-      toast.error({ message: "peer not founded" });
+      console.log("peer not founded");
       return;
     }
 
