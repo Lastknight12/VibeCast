@@ -54,7 +54,7 @@ function handleBeforeUnload(socket: Socket) {
   }
 }
 
-let interval: number | undefined;
+let interval: NodeJS.Timeout;
 
 onMounted(async () => {
   try {

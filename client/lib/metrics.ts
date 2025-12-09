@@ -74,7 +74,6 @@ export async function collectProducersMetrics(
         body: payload,
         baseURL: useRuntimeConfig().public.backendUrl,
       });
-      console.log("Metrics pushed successfully");
     }
   } catch (err) {
     console.error("Failed to push metrics", err);
@@ -126,7 +125,6 @@ export async function collectConsumersMetrics(
         body: payload,
         baseURL: useRuntimeConfig().public.backendUrl,
       });
-      console.log("Metrics pushed successfully");
     }
   } catch (err) {
     console.error("Failed to push metrics", err);

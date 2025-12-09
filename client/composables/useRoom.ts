@@ -74,14 +74,14 @@ export function useRoom(roomId: string) {
   async function watchStream(peerId: string, cb?: () => void) {
     const peer = peers.value.get(peerId);
     if (!peer) {
-      console.log("No peers founded");
+      console.log(`No peer with id: ${peerId} exist`);
       return;
     }
 
     const videoProducerId = peer.streams.screenShare.video.producerId;
     const audioProducerId = peer.streams.screenShare.audio.producerId;
     if (!videoProducerId) {
-      console.log("no producerId founded");
+      console.log("video producer not created");
       return;
     }
 
@@ -126,11 +126,11 @@ export function useRoom(roomId: string) {
 
     const peer = peers.value.get(streamerPeerId);
     if (!peer) {
-      console.log("No peer founded");
+      console.log(`No peer with id: ${streamerPeerId} exist`);
       return;
     }
     if (!peer.streams.screenShare.video.consumerId) {
-      console.log("no consumerId founded");
+      console.log("no video consumer founded");
       return;
     }
 
@@ -169,13 +169,13 @@ export function useRoom(roomId: string) {
   function togglePinnedStream(peerId: string) {
     const peer = peers.value.get(peerId);
     if (!peer) {
-      console.log("no peer founded");
+      console.log(`No peer with id: ${peerId} exist`);
       return;
     }
 
     const stream = peer.streams.screenShare?.video?.stream;
     if (!stream) {
-      console.log("no stream founded");
+      console.log("no video stream founded");
       return;
     }
 
@@ -259,7 +259,7 @@ export function useRoom(roomId: string) {
   }) {
     const peer = peers.value.get(data.userId);
     if (!peer) {
-      console.log("peer not founded");
+      console.log(`No peer with id: ${data.userId} exist`);
       return;
     }
 
