@@ -27,7 +27,6 @@ const { data: authData } = { data: { user } };
 
 const loading = ref(true);
 const loadingStep = ref();
-const showContent = ref(false);
 const error = ref<string | null>(null);
 
 const mediaConn = useMediasoup();
@@ -89,22 +88,20 @@ async function leave() {
 </script>
 
 <template>
-  <Transition @afterLeave="showContent = true">
-    <div
-      v-if="loading"
-      class="h-full flex flex-col items-center justify-center gap-3"
-    >
-      <LoadingIcon
-        :loading-text="loadingStep"
-        class="w-full h-full flex justify-center items-center"
-        text="Loading..."
-      />
-    </div>
-  </Transition>
+  <div
+    v-if="loading"
+    class="h-full flex flex-col items-center justify-center gap-3"
+  >
+    <LoadingIcon
+      :loading-text="loadingStep"
+      class="w-full h-full flex justify-center items-center"
+      text="Loading..."
+    />
+  </div>
 
-  <RoomError v-if="error" :message="error" />
+  <RoomError v-else-if="error" :message="error" />
 
-  <div v-else-if="!error && !loading">
+  <div v-else>
     <div class="w-full flex justify-center">
       <video
         v-if="room.refs.pinnedStream?.value?.stream"
