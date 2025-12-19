@@ -26,7 +26,6 @@ useHead({
 const { data: authData } = { data: { user } };
 
 const loading = ref(true);
-const loadingStep = ref();
 const error = ref<string | null>(null);
 
 const mediaConn = useMediasoup();
@@ -88,18 +87,7 @@ async function leave() {
 </script>
 
 <template>
-  <div
-    v-if="loading"
-    class="h-full flex flex-col items-center justify-center gap-3"
-  >
-    <LoadingIcon
-      :loading-text="loadingStep"
-      class="w-full h-full flex justify-center items-center"
-      text="Loading..."
-    />
-  </div>
-
-  <RoomError v-else-if="error" :message="error" />
+  <RoomError v-if="error" :message="error" />
 
   <div v-else>
     <div class="w-full flex justify-center">
@@ -136,7 +124,6 @@ async function leave() {
       <RoomControls @leave="leave" />
     </div>
 
-    <!-- TODO: Remove below
     <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
       <div v-for="(val, key) in stats" :key="key" class="mb-3">
         <p class="text-red-700 font-mono mb-1">
@@ -148,9 +135,9 @@ async function leave() {
           </li>
         </ul>
       </div>
-    </div> -->
+    </div>
 
-    <!-- <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
+    <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
       <div v-for="(val, key) in cstats" :key="key" class="mb-3">
         <p class="text-red-700 font-mono mb-1">
           <strong>id: {{ val.id }}</strong>
@@ -167,7 +154,7 @@ async function leave() {
           </li>
         </ul>
       </div>
-    </div> -->
+    </div>
   </div>
 </template>
 

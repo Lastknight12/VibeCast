@@ -42,6 +42,7 @@ export function useRoom(roomId: string) {
   const socket = useSocket();
   const toast = useToast();
   const mediaConn = useMediasoup();
+  const { startMic, toggleMicState } = useMedia(mediaConn);
 
   const registerSocketListeners = () => {
     socket.on("userJoined", handleUserJoin);
@@ -200,6 +201,9 @@ export function useRoom(roomId: string) {
               mediaConn.createTransport("send"),
               mediaConn.createTransport("recv"),
             ]);
+
+            await startMic();
+            await toggleMicState();
 
             socket.emit("getRoomPeers", handlePeers);
             resolve();

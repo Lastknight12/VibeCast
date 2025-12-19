@@ -43,9 +43,7 @@ export function useMedia(mediaConn: mediasoupConn) {
 
       await mediaConn.produce("video");
       if (hasAudioStream) {
-        setTimeout(async () => {
-          await mediaConn.produce("video_audio");
-        }, 5000);
+        await mediaConn.produce("video_audio");
       }
     } else {
       mediaConn.stopStream();

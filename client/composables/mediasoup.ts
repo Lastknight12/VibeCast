@@ -10,9 +10,6 @@ import type {
 import * as mediasoup from "mediasoup-client";
 import type { SocketCallbackArgs } from "./useSocket";
 
-const appConfig = useNuxtApp().$config;
-const simulcastEnabled = Boolean(appConfig.public.simulcast);
-
 export class mediasoupConn {
   private socket = useSocket();
 
@@ -30,12 +27,21 @@ export class mediasoupConn {
   producers: Map<"video" | "audio" | "video_audio", Producer | undefined>;
   consumers: Map<string, Consumer>;
 
-  constructor() {
+  _enableSharingLayers?: Boolean;
+  _numSharingSimulcastStreams: number;
+
+  constructor(params: {
+    enableSharingLayers?: boolean;
+    numSharingSimulcastStreams?: number;
+  }) {
     this.muted = true;
 
     this.transports = {};
     this.consumers = new Map();
     this.producers = new Map();
+
+    this._enableSharingLayers = true;
+    this._numSharingSimulcastStreams = params.numSharingSimulcastStreams ?? 2;
   }
 
   async getAudioStream() {
@@ -45,37 +51,24 @@ export class mediasoupConn {
       },
     });
 
-    // const video = document.createElement("video");
-    // video.src =
-    //   "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-    // video.crossOrigin = "anonymous";
-    // video.autoplay = true;
-    // video.loop = true;
-
-    // await video.play();
-
-    // const stream = (video as any).captureStream();
-
     this.audioStream = stream;
 
     return stream;
   }
 
   async getMediaStream() {
-    const video = document.createElement("video");
-    video.src =
-      "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
-    video.crossOrigin = "anonymous";
-    video.autoplay = true;
-    video.loop = true;
-
-    await video.play();
-
-    const stream = (video as any).captureStream();
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 60 },
+      },
+      audio: true,
+    });
 
     this.localStream = stream;
 
-    return stream as MediaStream;
+    return stream;
   }
 
   async createDevice() {
@@ -290,36 +283,59 @@ export class mediasoupConn {
       }
     }
 
-    const encodings: RtpEncodingParameters[] | undefined =
-      type === "video"
-        ? [
-            {
-              rid: "low",
-              scaleResolutionDownBy: 3,
-              maxBitrate: 300_000,
-              maxFramerate: 30,
-              scalabilityMode: "L1T2",
-            },
-            {
-              rid: "mid",
-              scaleResolutionDownBy: 1.5,
-              maxBitrate: 1_000_000,
-              maxFramerate: 30,
-              scalabilityMode: "L1T2",
-            },
-            {
-              rid: "high",
-              scaleResolutionDownBy: 1,
-              maxBitrate: 2_500_000,
-              maxFramerate: 30,
-              scalabilityMode: "L1T2",
-            },
-          ]
-        : undefined;
+    let encodings: RtpEncodingParameters[] | undefined;
+
+    if (this._enableSharingLayers) {
+      const firstVideoCodec = this.device.rtpCapabilities?.codecs?.find(
+        (c) => c.kind === "video"
+      );
+
+      if (
+        firstVideoCodec &&
+        ["video/vp9", "video/av1"].includes(
+          firstVideoCodec.mimeType.toLowerCase()
+        )
+      ) {
+        encodings = [
+          {
+            maxBitrate: 5000000,
+            scalabilityMode: "L3T3",
+            dtx: true,
+          },
+        ];
+      } else {
+        encodings = [
+          {
+            scaleResolutionDownBy: 1,
+            maxBitrate: 5000000,
+            scalabilityMode: "L1T3",
+            dtx: true,
+          },
+        ];
+
+        if (this._numSharingSimulcastStreams > 1) {
+          encodings.unshift({
+            scaleResolutionDownBy: 2,
+            maxBitrate: 1000000,
+            scalabilityMode: "L1T3",
+            dtx: true,
+          });
+        }
+
+        if (this._numSharingSimulcastStreams > 2) {
+          encodings.unshift({
+            scaleResolutionDownBy: 4,
+            maxBitrate: 500000,
+            scalabilityMode: "L1T3",
+            dtx: true,
+          });
+        }
+      }
+    }
 
     const producer = await this.transports.send.produce({
       track: track,
-      encodings: simulcastEnabled ? encodings : undefined,
+      encodings: type === "video" ? encodings : undefined,
       appData: {
         type,
       },
