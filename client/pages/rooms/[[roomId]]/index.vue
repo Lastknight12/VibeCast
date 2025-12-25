@@ -71,7 +71,7 @@ onMounted(async () => {
 
     cstats.value = await mediaConn.getConsumerStatistic();
     stats.value = await mediaConn.getProducerstatistic("video");
-  }, 5000);
+  }, 2000);
 });
 
 onUnmounted(() => {

@@ -48,8 +48,6 @@ async function spawnBrowser(ws, id, isRoomCreated, consumeLocalClients) {
   const browser = await puppeteer.launch({
     headless: false,
     args: [
-      "--use-fake-ui-for-media-stream",
-      "--use-fake-device-for-media-stream",
       "--no-sandbox",
       "--disable-setuid-sandbox",
       `--unsafely-treat-insecure-origin-as-secure=${server}`,
@@ -64,30 +62,6 @@ async function spawnBrowser(ws, id, isRoomCreated, consumeLocalClients) {
   browsers.push({ id, browser });
   pages.push({ id, page });
   clientStats.set(id, { producing: false, consumed: 0 });
-
-  try {
-    if (isRoomCreated) {
-      await page.waitForSelector(`#room-${roomName}`);
-      await page.click(`#room-${roomName}`);
-    } else {
-      await page.waitForSelector("#createRoomBtn");
-      await page.click("#createRoomBtn");
-      await page.waitForSelector("#roomNameInput");
-      await page.type("#roomNameInput", roomName);
-      await page.waitForSelector("#isPrivateSwitch");
-      await page.click("#isPrivateSwitch");
-      await page.waitForSelector("#createBtn");
-      await page.click("#createBtn");
-      console.log(`Client ${id}: room created '${roomName}'`);
-      ws.send(`/roomCreated ${roomName}`);
-    }
-  } catch (err) {
-    console.log(
-      `Error ${isRoomCreated ? "joining" : "creating"} room ${roomName}: ${
-        err.message ?? err
-      }`
-    );
-  }
 
   if (consumeLocalClients) watchStream(ws, page, REASON_CONSUME_ALL);
 
