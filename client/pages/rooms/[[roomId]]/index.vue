@@ -22,10 +22,10 @@ useHead({
   ],
 });
 
-// const authClient = useAuthClient();
 const { data: authData } = { data: { user } };
 
 const loading = ref(true);
+const isDisconnected = computed(() => room.refs.disconnected.value);
 const error = ref<string | null>(null);
 
 const mediaConn = useMediasoup();
@@ -38,12 +38,8 @@ watchEffect(() => {
   });
 });
 
-const stats = ref<Awaited<ReturnType<typeof mediaConn.getProducerstatistic>>>();
-const cstats =
-  ref<Awaited<ReturnType<typeof mediaConn.getConsumerStatistic>>>();
-
 function handleBeforeUnload(socket: Socket) {
-  if (!room.refs.disconnected.value && !error.value) {
+  if (!isDisconnected.value && !error.value) {
     socket.emit("leave", ({ errors }: SocketCallbackArgs<unknown>) => {
       if (errors) {
         toast.error({ message: errors[0]!.message });
@@ -68,9 +64,6 @@ onMounted(async () => {
   interval = setInterval(async () => {
     collectConsumersMetrics(mediaConn, roomName as string);
     collectProducersMetrics(mediaConn, roomName as string);
-
-    cstats.value = await mediaConn.getConsumerStatistic();
-    stats.value = await mediaConn.getProducerstatistic("video");
   }, 2000);
 });
 
@@ -87,7 +80,8 @@ async function leave() {
 </script>
 
 <template>
-  <RoomError v-if="error" :message="error" />
+  <RoomError v-if="isDisconnected" message="Discconnected from room" />
+  <RoomError v-else-if="error" :message="error" />
 
   <div v-else>
     <div class="w-full flex justify-center">
@@ -122,38 +116,6 @@ async function leave() {
       </RoomPeersGrid>
 
       <RoomControls @leave="leave" />
-    </div>
-
-    <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
-      <div v-for="(val, key) in stats" :key="key" class="mb-3">
-        <p class="text-red-700 font-mono mb-1">
-          <strong>{{ val[1].type }}:</strong>
-        </p>
-        <ul class="ml-4 text-red-400 font-mono list-disc">
-          <li v-for="(v, k) in val[1]" :key="k">
-            <span class="text-red-500">{{ k }}:</span> {{ v }}
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="p-4 bg-black/60 rounded-lg text-xs max-h-[300px] overflow-auto">
-      <div v-for="(val, key) in cstats" :key="key" class="mb-3">
-        <p class="text-red-700 font-mono mb-1">
-          <strong>id: {{ val.id }}</strong>
-        </p>
-        <ul class="ml-4 text-red-400 font-mono list-disc">
-          <li v-for="(v, k) in val.stats" :key="k">
-            <span class="text-red-500">{{ v[1].type }}:</span>
-
-            <ul class="ml-4 text-red-400 font-mono list-disc">
-              <li v-for="(value, key) in v[1]" :key="key">
-                {{ key }}: {{ value }}
-              </li>
-            </ul>
-          </li>
-        </ul>
-      </div>
     </div>
   </div>
 </template>

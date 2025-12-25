@@ -15,8 +15,8 @@ useHead({
     },
   ],
 });
+
 const route = useRoute();
-// TODO: remove in pr
 const name = route.query["userName"] as string;
 
 onMounted(() => {
@@ -30,7 +30,6 @@ onMounted(() => {
 });
 
 const toast = useToast();
-const authClient = useAuthClient();
 const session = { data: ref(user) };
 
 const rooms = ref<
@@ -41,9 +40,7 @@ const rooms = ref<
 >(new Map());
 
 const googleLogin = () => {
-  authClient.signIn.social({
-    provider: "google",
-  });
+  toast.sucess({ message: "Logined" });
 };
 
 interface RoomInfo {
@@ -116,7 +113,9 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
 
         <div v-if="session.data.value" class="flex items-center gap-2">
           <CreateRoomDialog />
-          <UiButton variant="destructive" @click="authClient.signOut()"
+          <UiButton
+            variant="destructive"
+            @click="toast.sucess({ message: 'Leaved' })"
             >Leave</UiButton
           >
         </div>

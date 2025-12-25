@@ -8,8 +8,16 @@ const roomId = route.params.roomId as string;
 
 const mediaConn = useMediasoup();
 const media = useMedia(mediaConn);
+const micAvailable = ref(false);
 
-const hasMic = await media.checkMic();
+onMounted(async () => {
+  try {
+    micAvailable.value = await media.checkMic();
+  } catch (error) {
+    micAvailable.value = false;
+    console.log(error);
+  }
+});
 
 const room = useRoom(roomId);
 </script>
@@ -21,7 +29,7 @@ const room = useRoom(roomId);
       class="relative"
       variant="secondary"
       size="icon"
-      :disabled="!hasMic"
+      :disabled="!micAvailable"
     >
       <Icon
         :name="
@@ -33,7 +41,7 @@ const room = useRoom(roomId);
       />
 
       <Icon
-        v-if="!hasMic"
+        v-if="!micAvailable"
         class="absolute -top-1 -right-1 z-90 bg-red-500!"
         name="famicons:alert-circle-sharp"
         size="18"

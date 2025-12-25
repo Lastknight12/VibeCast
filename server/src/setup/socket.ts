@@ -1,6 +1,5 @@
 import { FastifyInstance } from "fastify";
 import { Server } from "socket.io";
-
 import { env } from "src/config";
 import { socketGuard } from "src/guards/socket";
 import path from "path";
@@ -42,6 +41,7 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
             roomId: socket.data.user.roomId,
             socket,
           });
+
           await fetch(
             encodeURI(
               `${env.pushgateway}/metrics/job/webrtc/instance/${socket.data.user.id}`

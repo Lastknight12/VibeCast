@@ -195,8 +195,6 @@ export function useRoom(roomId: string) {
         async ({ errors }: SocketCallbackArgs<unknown>) => {
           if (errors?.length) return reject(errors[0]?.message);
 
-          socket.emit("getRoomPeers", handlePeers);
-
           try {
             await mediaConn.createDevice();
             await Promise.all([
@@ -207,6 +205,7 @@ export function useRoom(roomId: string) {
             await startMic();
             await toggleMicState();
 
+            socket.emit("getRoomPeers", handlePeers);
             resolve();
           } catch (err) {
             reject(err);
