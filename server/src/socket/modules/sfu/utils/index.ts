@@ -1,6 +1,7 @@
 import { Router } from "mediasoup/node/lib/RouterTypes";
 import { rooms } from "src/state/roomState";
 import { env } from "src/config";
+import { logger } from "src/lib/logger";
 
 export async function createWebRtcTransport(router: Router) {
   const transport = await router.createWebRtcTransport({
@@ -9,11 +10,13 @@ export async function createWebRtcTransport(router: Router) {
         protocol: "udp",
         ip: "0.0.0.0",
         announcedIp: env.ANNOUNCED_IP,
-        portRange: { min: 40000, max: 40100 },
+        portRange: {
+          min: +env.MIN_MEDIASOUP_PORT,
+          max: +env.MAX_MEDIASOUP_PORT,
+        },
       },
     ],
     enableUdp: true,
-    enableTcp: true,
     preferUdp: true,
   });
   return transport;
@@ -35,7 +38,7 @@ export function closeRelatedConsumers(
 ) {
   const room = rooms.get(roomId);
   if (!room) {
-    console.log("Room not found");
+    logger.error("Room not found");
     return;
   }
 

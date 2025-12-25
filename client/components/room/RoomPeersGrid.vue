@@ -2,11 +2,11 @@
 defineProps<{
   peers: Map<string, Peer>;
   activeSpeakers: Set<string>;
-  pinnedStream: Ref<pinnedStream | null>;
+  pinnedStream: pinnedStream | null;
 }>();
 
 const emit = defineEmits<{
-  (e: "watch-stream", peerId: string): void;
+  (e: "watch-stream", peerId: string, cb: () => void): void;
   (e: "pin-stream", peerId: string): void;
 }>();
 </script>
@@ -20,11 +20,10 @@ const emit = defineEmits<{
     <RoomPeer
       v-for="[peerId, peer] in peers"
       :key="peerId"
-      :peer-id="peerId"
       :peer="peer"
-      :is-pinned="pinnedStream.value?.peerId === peerId"
+      :is-pinned="pinnedStream?.peerId === peerId"
       :is-speaking="activeSpeakers.has(peerId)"
-      @watch-stream="emit('watch-stream', peerId)"
+      @watch-stream="(peerId, cb) => emit('watch-stream', peerId, cb)"
       @pin-stream="emit('pin-stream', peerId)"
     />
   </div>

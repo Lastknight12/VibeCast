@@ -1,10 +1,8 @@
 import { Type } from "@sinclair/typebox";
-import { SocketError } from "src/socket/core";
-import { CustomSocket } from "src/socket/core";
-import ApiRoomError from "../utils/errors";
+import { CustomSocket, SocketError } from "src/socket/core";
+import { ApiRoomErrors } from "../utils/errors";
 import { cloudinary } from "src/lib/cloudinary";
 import streamifier from "streamifier";
-import { logger } from "src/lib/logger";
 import { UploadApiResponse } from "cloudinary";
 
 const uploadThumbnailSchema = Type.Object({
@@ -21,20 +19,21 @@ export default function (socket: CustomSocket) {
       schema: uploadThumbnailSchema,
     },
     async handler(input) {
+      const { data, context } = input;
       const { user } = socket.data;
       if (!user.roomId) {
-        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
 
       await new Promise<UploadApiResponse>((resolve, reject) => {
         const cldUploadStream = cloudinary.uploader.upload_stream(
           {
-            folder: `thumbnails/${user.roomId}`,
-            public_id: `${user.id}`,
+            folder: `thumbnails`,
+            public_id: user.id,
           },
           (err, result) => {
             if (err) {
-              logger.error(err.message);
+              context.logger.error(err.message);
               return reject(err);
             }
 
@@ -42,21 +41,22 @@ export default function (socket: CustomSocket) {
               const error = new Error(
                 "Cloudinary upload failed: no result returned"
               );
-              logger.error(error.message);
+              context.logger.error(error.message);
               return reject(error);
             }
 
-            const url = result.secure_url + `?t=${Date.now()}`;
-
-            thumbnails.set(user.id, url);
+            thumbnails.set(user.id, result.secure_url);
             resolve(result);
 
-            socket.broadcast.emit("new-thumbnail", url, user.id);
+            socket.broadcast.emit("new-thumbnail", {
+              url: result.secure_url,
+              userId: user.id,
+            });
           }
         );
 
         streamifier
-          .createReadStream(Buffer.from(input.imageBuffer))
+          .createReadStream(Buffer.from(data.imageBuffer))
           .pipe(cldUploadStream);
       });
     },

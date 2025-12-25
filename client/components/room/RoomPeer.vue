@@ -6,59 +6,63 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: "watch-stream", peerId: string): void;
+  (e: "watch-stream", peerId: string, cb: () => void): void;
   (e: "pin-stream", peerId: string): void;
 }>();
 
+const thumbnailUrl = ref(props.peer.streams.screenShare.thumbnail);
 const socket = useSocket();
 
-const rootEl = ref<HTMLDivElement>();
-
+const isProcessingStream = ref<boolean>(false);
 const hasStream = computed(
-  () => props.peer.streams.screenShare.video.producerId
+  () => !!props.peer.streams.screenShare.video.producerId
 );
 
-onMounted(() => {
-  if (rootEl.value) {
-    watch(hasStream, (hasStream) => {
-      if (
-        hasStream &&
-        props.peer.userData.id === props.peer.userData.id &&
-        !props.isPinned
-      ) {
-        rootEl.value!.style.backgroundImage = `url(${props.peer.streams.screenShare.thumbnail})`;
-        rootEl.value!.style.backgroundSize = "cover";
-        rootEl.value!.style.backgroundPosition = "center";
-        rootEl.value!.style.backdropFilter = "brightness(0.3)";
-      } else {
-        rootEl.value!.style.backgroundImage = `unset`;
-      }
-    });
-
-    if (props.peer.streams.screenShare.thumbnail) {
-      rootEl.value.style.backgroundImage = `url(${props.peer.streams.screenShare.thumbnail})`;
-      rootEl.value.style.backgroundSize = "cover";
-      rootEl.value.style.backgroundPosition = "center";
-      rootEl.value.style.backdropFilter = "brightness(0.3)";
-    }
-    socket.on("new-thumbnail", (url, peerId) => {
-      if (hasStream && peerId === props.peer.userData.id && !props.isPinned) {
-        rootEl.value!.style.backgroundImage = `url(${url})`;
-        rootEl.value!.style.backgroundSize = "cover";
-        rootEl.value!.style.backgroundPosition = "center";
-        rootEl.value!.style.backdropFilter = "brightness(0.3)";
-      }
-    });
+const backgroundStyle = computed(() => {
+  if (hasStream.value && !props.isPinned && thumbnailUrl.value) {
+    return {
+      backgroundImage: `url(${thumbnailUrl.value})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backdropFilter: "brightness(0.3)",
+    };
   }
+  return { backgroundImage: "unset" };
+});
+
+function updateThumbnail(data: { url: string; userId: string }) {
+  if (
+    hasStream.value &&
+    data.userId === props.peer.userData.id &&
+    !props.isPinned
+  ) {
+    thumbnailUrl.value = data.url;
+  }
+}
+
+function watchStream() {
+  isProcessingStream.value = true;
+  emit(
+    "watch-stream",
+    props.peer.userData.id,
+    () => (isProcessingStream.value = false)
+  );
+}
+
+onMounted(() => {
+  socket.on("new-thumbnail", updateThumbnail);
+});
+
+onUnmounted(() => {
+  socket.removeListener("new-thumbnail", updateThumbnail);
 });
 </script>
+
 <template>
   <div
-    ref="rootEl"
-    class="relative rounded-lg flex items-center justify-center min-h-[180px] min-w-[240px] bg-[#0f0f0f] transition-all"
-    :class="{
-      'ring-4 ring-green-400': isSpeaking,
-    }"
+    class="relative rounded-lg flex items-center justify-center min-h-[180px] min-w-60 bg-[#0f0f0f] transition-all"
+    :class="{ 'ring-4 ring-green-400': isSpeaking }"
+    :style="backgroundStyle"
   >
     <div
       v-if="
@@ -71,7 +75,9 @@ onMounted(() => {
         size="sm"
         variant="secondary"
         class="bottom-3"
-        @click="emit('watch-stream', peer.userData.id)"
+        id="watch"
+        :disabled="isProcessingStream"
+        @click="watchStream"
       >
         Watch Stream
       </UiButton>
@@ -83,11 +89,12 @@ onMounted(() => {
         !isPinned &&
         peer.streams.screenShare.video.stream
       "
+      @click="emit('pin-stream', peer.userData.id)"
+      :srcObject="peer.streams.screenShare.video.stream"
+      id="video-stream"
       autoplay
       playsinline
       class="w-full h-full object-cover rounded-lg shadow"
-      :srcObject="peer.streams.screenShare.video.stream"
-      @click="emit('pin-stream', peer.userData.id)"
     />
 
     <img
@@ -107,7 +114,9 @@ onMounted(() => {
         "
         size="20"
       />
-      <p>{{ peer.userData.name }}</p>
+      <p :title="peer.userData.name">
+        {{ truncateString(peer.userData.name, 25) }}
+      </p>
     </div>
 
     <audio

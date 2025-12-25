@@ -8,13 +8,29 @@ const roomId = route.params.roomId as string;
 
 const mediaConn = useMediasoup();
 const media = useMedia(mediaConn);
+const micAvailable = ref(false);
+
+onMounted(async () => {
+  try {
+    micAvailable.value = await media.checkMic();
+  } catch (error) {
+    micAvailable.value = false;
+    console.log(error);
+  }
+});
 
 const room = useRoom(roomId);
 </script>
 
 <template>
   <div class="fixed bottom-3 left-1/2 -translate-x-1/2 flex gap-3">
-    <UiButton @click="media.toggleMicState" variant="secondary" size="icon">
+    <UiButton
+      @click="media.toggleMicState"
+      class="relative"
+      variant="secondary"
+      size="icon"
+      :disabled="!micAvailable"
+    >
       <Icon
         :name="
           media.isMuted.value
@@ -23,10 +39,18 @@ const room = useRoom(roomId);
         "
         size="20"
       />
+
+      <Icon
+        v-if="!micAvailable"
+        class="absolute -top-1 -right-1 z-90 bg-red-500!"
+        name="famicons:alert-circle-sharp"
+        size="18"
+      />
     </UiButton>
 
     <UiButton
       @click="media.toggleScreenShare"
+      id="toggleScreenShare"
       :variant="media.videoStream.value ? 'destructive' : 'secondary'"
       size="icon"
     >
@@ -58,6 +82,7 @@ const room = useRoom(roomId);
       "
       variant="destructive"
       size="icon"
+      id="unwatch"
       class="text-red-200"
     >
       <Icon name="material-symbols-light:mimo-disconnect-outline" size="20" />

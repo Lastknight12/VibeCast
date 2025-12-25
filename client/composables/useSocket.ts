@@ -13,13 +13,19 @@ export type SocketCallback<Res> = (
   res: SocketCallbackArgs<Res>
 ) => void | Promise<void>;
 
-let socket: Socket | undefined = undefined;
+let socket: Socket;
 
 export function useSocket() {
   if (!socket) {
     const config = useRuntimeConfig();
-    socket = io(config.public.backendUrl, { withCredentials: true });
+    socket = io(config.public.backendUrl, {
+      withCredentials: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 5000,
+    });
   }
+
+  if (socket && !socket.connected) socket.connect();
 
   return socket;
 }

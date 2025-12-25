@@ -1,5 +1,6 @@
 import type { User } from "better-auth/types";
 import type { SocketCallbackArgs } from "./useSocket";
+import type { Consumer } from "mediasoup-client/types";
 
 type PeerStream = {
   stream?: MediaStream;
@@ -35,22 +36,21 @@ const pinnedStream = ref<pinnedStream | null>(null);
 const peers = ref<Map<string, Peer>>(new Map());
 const videoElem = ref<HTMLVideoElement | null>(null);
 const activeSpeakers = ref<Set<string>>(new Set());
-const joinRoomErrorMessage = ref<string | null>(null);
 const disconnected = ref<boolean>(false);
 
 export function useRoom(roomId: string) {
   const socket = useSocket();
   const toast = useToast();
   const mediaConn = useMediasoup();
-  const { startMic } = useMedia(mediaConn);
+  const { startMic, toggleMicState } = useMedia(mediaConn);
 
   const registerSocketListeners = () => {
     socket.on("userJoined", handleUserJoin);
-    socket.on("userDisconnect", handleUserDisconnect);
+    socket.on("userDisconnected", handleUserDisconnected);
 
     socket.on("newProducer", handleNewProducer);
     socket.on("consumerClosed", handleConsumerClosed);
-    socket.on("peerClosedProducer", handlePeerClosedProducer);
+    socket.on("userClosedProducer", handleUserClosedProducer);
 
     socket.on("micOff", handleUserMuted);
     socket.on("micOn", handleUserUnMuted);
@@ -60,11 +60,11 @@ export function useRoom(roomId: string) {
 
   const removeSocketListeners = () => {
     socket.off("userJoined", handleUserJoin);
-    socket.off("userDisconnect", handleUserDisconnect);
+    socket.off("userDisconnected", handleUserDisconnected);
 
     socket.off("newProducer", handleNewProducer);
     socket.off("consumerClosed", handleConsumerClosed);
-    socket.off("peerClosedProducer", handlePeerClosedProducer);
+    socket.off("userClosedProducer", handleUserClosedProducer);
 
     socket.off("micOff", handleUserMuted);
     socket.off("micOn", handleUserUnMuted);
@@ -72,55 +72,66 @@ export function useRoom(roomId: string) {
     socket.off("leaveRoom", handleLeaveRoom);
   };
 
-  async function watchStream(peerId: string) {
+  async function watchStream(peerId: string, cb?: () => void) {
     const peer = peers.value.get(peerId);
     if (!peer) {
-      console.log("No peers founded");
+      console.log(`No peer with id: ${peerId} exist`);
       return;
     }
 
     const videoProducerId = peer.streams.screenShare.video.producerId;
     const audioProducerId = peer.streams.screenShare.audio.producerId;
     if (!videoProducerId) {
-      console.log("no producerId founded");
+      console.log("video producer not created");
       return;
     }
 
-    const videoConsumer = await mediaConn.consume(videoProducerId);
-    if (!videoConsumer) {
-      console.log("Enexcepted error while creating consumer");
-      return;
-    }
-    const audioConsumer = audioProducerId
-      ? await mediaConn.consume(audioProducerId)
-      : undefined;
+    peer.streams.screenShare.active = true;
 
-    const videoStream = new MediaStream([videoConsumer.track]);
-    const audioStream = audioConsumer && new MediaStream([audioConsumer.track]);
+    try {
+      const videoConsumer = await mediaConn.consume(videoProducerId);
+      if (!videoConsumer) {
+        throw new Error("no consumer created");
+      }
+      const audioConsumer = audioProducerId
+        ? await mediaConn.consume(audioProducerId)
+        : undefined;
 
-    peer.streams.screenShare = {
-      active: true,
-      video: {
+      const videoStream = new MediaStream([videoConsumer.track]);
+      const audioStream =
+        audioConsumer && new MediaStream([audioConsumer.track]);
+
+      peer.streams.screenShare.video = {
         stream: videoStream,
         producerId: videoConsumer.producerId,
         consumerId: videoConsumer.id,
-      },
-      audio: {
+      };
+      peer.streams.screenShare.audio = {
         stream: audioStream,
         consumerId: audioConsumer?.id,
         producerId: audioConsumer?.producerId,
-      },
-    };
+      };
+
+      cb?.();
+    } catch (error) {
+      peer.streams.screenShare.active = false;
+      toast.error({ message: "Failed to consume user stream" });
+      console.log(error);
+    }
   }
 
   async function stopWatchingStream(streamerPeerId: string) {
+    if (pinnedStream.value?.peerId === streamerPeerId) {
+      pinnedStream.value = null;
+    }
+
     const peer = peers.value.get(streamerPeerId);
     if (!peer) {
-      console.log("No peer founded");
+      console.log(`No peer with id: ${streamerPeerId} exist`);
       return;
     }
     if (!peer.streams.screenShare.video.consumerId) {
-      console.log("no consumerId founded");
+      console.log("no video consumer founded");
       return;
     }
 
@@ -152,19 +163,20 @@ export function useRoom(roomId: string) {
         stream: undefined,
         producerId: audioConsumer?.producerId,
       },
+      thumbnail: undefined,
     };
   }
 
   function togglePinnedStream(peerId: string) {
     const peer = peers.value.get(peerId);
     if (!peer) {
-      console.log("no peer founded");
+      console.log(`No peer with id: ${peerId} exist`);
       return;
     }
 
     const stream = peer.streams.screenShare?.video?.stream;
     if (!stream) {
-      console.log("no stream founded");
+      console.log("no video stream founded");
       return;
     }
 
@@ -175,26 +187,28 @@ export function useRoom(roomId: string) {
     }
   }
 
-  async function joinRoom() {
-    await new Promise((resolve, reject) => {
+  async function joinRoom(): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
       socket.emit(
         "joinRoom",
-        {
-          roomId,
-        },
+        { roomId },
         async ({ errors }: SocketCallbackArgs<unknown>) => {
-          if (errors) {
-            const errorMessage = errors[0]!.message;
-            joinRoomErrorMessage.value = errorMessage;
-            reject(errorMessage);
-          } else {
-            await mediaConn.createDevice();
-            await mediaConn.createTransport("send");
-            await mediaConn.createTransport("recv");
-            await startMic();
-            socket.emit("getRoomPeers", handlePeers);
+          if (errors?.length) return reject(errors[0]?.message);
 
-            resolve(null);
+          try {
+            await mediaConn.createDevice();
+            await Promise.all([
+              mediaConn.createTransport("send"),
+              mediaConn.createTransport("recv"),
+            ]);
+
+            await startMic();
+            await toggleMicState();
+
+            socket.emit("getRoomPeers", handlePeers);
+            resolve();
+          } catch (err) {
+            reject(err);
           }
         }
       );
@@ -221,74 +235,101 @@ export function useRoom(roomId: string) {
     });
   }
 
-  function handleUserMuted(id: string) {
-    const peer = peers.value.get(id);
+  function handleUserMuted(data: { userId: string }) {
+    const peer = peers.value.get(data.userId);
     if (peer) {
       peer.voiceMuted = true;
     }
   }
 
-  function handleUserUnMuted(id: string) {
-    const peer = peers.value.get(id);
+  function handleUserUnMuted(data: { userId: string }) {
+    const peer = peers.value.get(data.userId);
     if (peer) {
       peer.voiceMuted = false;
     }
   }
 
-  function handleUserDisconnect(userId: string) {
-    peers.value.delete(userId);
+  function handleUserDisconnected(data: { userId: string }) {
+    if (pinnedStream.value?.peerId === data.userId) {
+      pinnedStream.value = null;
+    }
+    peers.value.delete(data.userId);
   }
 
-  async function handleNewProducer(
-    producerId: string,
-    userId: string,
-    type: "video" | "audio" | "video_audio"
-  ) {
-    const peer = peers.value.get(userId);
+  async function handleNewProducer(data: {
+    producerId: string;
+    userId: string;
+    type: "video" | "audio" | "video_audio";
+  }) {
+    const peer = peers.value.get(data.userId);
     if (!peer) {
-      toast.error({ message: "peer not founded" });
+      console.log(`No peer with id: ${data.userId} exist`);
       return;
     }
 
-    switch (type) {
+    switch (data.type) {
       case "video": {
         peer.streams.screenShare.video = {
-          producerId,
+          producerId: data.producerId,
         };
-
         break;
       }
       case "audio": {
-        const consumer = await mediaConn.consume(producerId);
-
-        if (!consumer) {
-          console.log("no consumer created");
-          return;
-        }
-        const stream = new MediaStream([consumer.track]);
-
-        peer.streams.audio = {
-          stream,
-          producerId,
-        };
-        trackVoiceActivity(stream, (isSpeaking) => {
-          if (isSpeaking) {
-            activeSpeakers.value.add(peer.userData.id);
-          } else {
-            activeSpeakers.value.delete(peer.userData.id);
+        try {
+          const consumer = await mediaConn.consume(data.producerId);
+          if (!consumer) {
+            throw new Error("no consumer created");
           }
-        });
+
+          const stream = new MediaStream([consumer.track]);
+
+          peer.streams.audio = {
+            stream,
+            producerId: data.producerId,
+          };
+          trackVoiceActivity(stream, (isSpeaking) => {
+            if (isSpeaking) {
+              activeSpeakers.value.add(peer.userData.id);
+            } else {
+              activeSpeakers.value.delete(peer.userData.id);
+            }
+          });
+        } catch (error) {
+          toast.error({ message: "Failed to consume user audio" });
+          console.log(error);
+        }
         break;
       }
       case "video_audio": {
-        peer.streams.screenShare.audio = { producerId };
+        // SOOOOO there is an issue.
+        // User can see stream only after he recieves new video producer and
+        // at that moment watchStream btn is available even if we don't have video audio.
+        // So user have video but don't hear any audio cuz he recieves video audio producer just after click watchStream btn.
+        // in that case load audio if we don't have one just in time
+        if (
+          peer.streams.screenShare.active &&
+          !peer.streams.screenShare.audio.consumerId
+        ) {
+          try {
+            const consumer = await mediaConn.consume(data.producerId);
+            if (!consumer) throw new Error("no consumer created");
+
+            const stream = new MediaStream([consumer?.track]);
+            peer.streams.screenShare.audio.consumerId = consumer.id;
+            peer.streams.screenShare.audio.stream = stream;
+          } catch (error) {
+            toast.error({ message: "Failed to consume stream audio" });
+            console.log(error);
+          }
+        }
+        peer.streams.screenShare.audio.producerId = data.producerId;
         break;
       }
     }
   }
 
-  function handleConsumerClosed(consumerId: string) {
-    mediaConn.closeConsumer(consumerId);
+  function handleConsumerClosed(data: { consumerId: string }) {
+    mediaConn.closeConsumer(data.consumerId);
   }
 
   async function handlePeers({
@@ -315,9 +356,12 @@ export function useRoom(roomId: string) {
 
     if (peersList) {
       for (const peer of peersList) {
-        const audioConsumer = peer.producers.audio
+        let audioConsumer: Consumer | undefined;
+
+        audioConsumer = peer.producers.audio
           ? await mediaConn.consume(peer.producers.audio)
           : undefined;
+
         const audioStream =
           audioConsumer && new MediaStream([audioConsumer.track]);
 
@@ -328,8 +372,8 @@ export function useRoom(roomId: string) {
               producerId: audioConsumer?.producerId,
             },
             screenShare: {
-              thumbnail: peer.producers.screenShare?.thumbnail,
               active: false,
+              thumbnail: peer.producers.screenShare?.thumbnail,
               video: {
                 producerId: peer.producers.screenShare?.video,
               },
@@ -355,11 +399,11 @@ export function useRoom(roomId: string) {
     }
   }
 
-  async function handlePeerClosedProducer(data: {
-    peerId: string;
+  async function handleUserClosedProducer(data: {
+    userId: string;
     type: "screenShare" | "audio";
   }) {
-    const peer = peers.value.get(data.peerId);
+    const peer = peers.value.get(data.userId);
 
     switch (data.type) {
       case "screenShare":
@@ -368,8 +412,10 @@ export function useRoom(roomId: string) {
             active: false,
             video: {},
             audio: {},
+            thumbnail: undefined,
           });
-        if (pinnedStream.value?.peerId === data.peerId) {
+
+        if (pinnedStream.value?.peerId === data.userId) {
           pinnedStream.value = null;
         }
         break;
@@ -379,37 +425,31 @@ export function useRoom(roomId: string) {
     }
   }
 
-  function handleBeforeUnload() {
-    if (!disconnected.value && !joinRoomErrorMessage.value) {
-      socket.emit("leave", ({ errors }: SocketCallbackArgs<unknown>) => {
-        if (errors) {
-          toast.error({ message: errors[0]!.message });
-        }
-      });
-    }
+  async function cleanup() {
+    removeSocketListeners();
+    pinnedStream.value = null;
+    peers.value = new Map();
+    videoElem.value = null;
+    activeSpeakers.value = new Set();
+    disconnected.value = false;
   }
 
   return {
     refs: {
       mediaConn,
       activeSpeakers,
-      joinRoomErrorMessage,
       peers,
       pinnedStream,
       disconnected,
       videoElem,
     },
     registerSocketListeners,
-    removeSocketListeners,
+    cleanup,
     userActions: {
       togglePinnedStream,
       watchStream,
       stopWatchingStream,
       joinRoom,
-    },
-    clearFunctions: {
-      handleBeforeUnload,
-      removeSocketListeners,
     },
   };
 }

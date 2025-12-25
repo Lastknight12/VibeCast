@@ -12,6 +12,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       backendUrl: process.env.NUXT_PUBLIC_BACKEND_URL,
+      enableSharingLayers: process.env.NUXT_PUBLIC_enableSharingLayers,
+      numSharingSimulcastStreams:
+        process.env.NUXT_PUBLIC_numSharingSimulcastStreams,
     },
   },
   components: {

@@ -25,9 +25,9 @@ const icons: Record<Toast["label"], { name: string; color: string }> = {
           <Icon
             :name="icons[toast.label].name"
             :style="{ color: icons[toast.label].color }"
-            class="min-w-[20px] min-h-[20px]"
+            class="min-w-5 min-h-5"
           />
-          <p class="ml-[10px]">{{ toast.message }}</p>
+          <p class="ml-2.5">{{ toast.message }}</p>
         </div>
       </div>
     </transition-group>

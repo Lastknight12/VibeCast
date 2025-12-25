@@ -6,17 +6,23 @@ import { createMediasoupWorkers } from "./lib/worker";
 import { logger } from "./lib/logger";
 
 async function startServer() {
-  const port = env.PORT ? +env.PORT : 5001;
-  const host = env.HOST ?? "localhost";
+  const port = +env.PORT;
+  const host = env.HOST;
 
   const server = fastify({
     logger: {
-      level: env.FASTIFY_LOGGER_LEVEL,
+      level: env.LOGGER_LEVEL,
     },
+    https:
+      env.CERT && env.KEY
+        ? {
+            cert: env.CERT,
+            key: env.KEY,
+          }
+        : null,
   });
 
   await createMediasoupWorkers();
-
   setupFastifyModules(server);
   initializeSocketServer(server);
 
@@ -44,7 +50,7 @@ async function startServer() {
       port,
       host,
     });
-    logger.info(`listening on ${host}:${port}`);
+    logger.info(`mediasoup anounced ip ${env.ANNOUNCED_IP}`);
   } catch (err) {
     server.log.error(err);
     process.exit(1);

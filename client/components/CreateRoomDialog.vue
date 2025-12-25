@@ -65,7 +65,7 @@ function reset() {
     "
   >
     <UiDialogTrigger as-child>
-      <UiButton variant="secondary"> Create Room </UiButton>
+      <UiButton variant="secondary" id="createRoomBtn"> Create Room </UiButton>
     </UiDialogTrigger>
     <UiDialogContent>
       <UiDialogHeader>
@@ -83,11 +83,12 @@ function reset() {
           <UiInput
             v-model="roomName"
             :class="cn('col-span-3', error && 'border-red-400')"
+            id="roomNameInput"
           />
         </div>
         <div class="flex items-center space-x-2">
-          <UiSwitch v-model="isPrivate" id="airplane-mode" />
-          <UiLabel for="airplane-mode"
+          <UiSwitch v-model="isPrivate" id="isPrivateSwitch" />
+          <UiLabel for="isPrivateSwitch"
             >Private:
             <span :class="cn(isPrivate ? 'text-green-400' : 'text-red-400')">{{
               isPrivate
@@ -96,7 +97,12 @@ function reset() {
         </div>
       </div>
       <UiDialogFooter>
-        <UiButton type="submit" variant="secondary" @click="createRoom">
+        <UiButton
+          type="submit"
+          variant="secondary"
+          @click="createRoom"
+          id="createBtn"
+        >
           Create
         </UiButton>
       </UiDialogFooter>

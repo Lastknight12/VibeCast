@@ -21,17 +21,23 @@ async function captureFirstFrame() {
     });
 }
 
-watch(videoElem, (val) => {
-  val?.addEventListener("playing", async () => {
+watch(videoElem, (val, _, onCleanup) => {
+  if (!val) return;
+
+  const handlePlaying = () => {
     captureFirstFrame();
 
     const interval = setInterval(() => {
       captureFirstFrame();
     }, 15 * 60 * 1000);
 
-    onWatcherCleanup(() => {
-      clearInterval(interval);
-    });
+    onCleanup(() => clearInterval(interval));
+  };
+
+  val.addEventListener("playing", handlePlaying);
+
+  onCleanup(() => {
+    val.removeEventListener("playing", handlePlaying);
   });
 });
 </script>
@@ -39,12 +45,12 @@ watch(videoElem, (val) => {
 <template>
   <div
     :class="[
-      'bg-[#0f0f0f] relative rounded-lg flex items-center justify-center min-h-[180px] min-w-[240px]',
+      'bg-[#0f0f0f] relative rounded-lg flex items-center justify-center min-h-[180px] min-w-60',
       media.isSpeaking.value ? 'ring-4 ring-green-400' : '',
     ]"
   >
     <div
-      class="absolute bottom-2 right-3 flex gap-3 items-center bg-[#1c1c1c] px-2.5 py-1 rounded-md"
+      class="absolute z-50 bottom-2 right-3 flex gap-3 items-center bg-[#1c1c1c] px-2.5 py-1 rounded-md"
     >
       <Icon
         :name="
@@ -54,7 +60,7 @@ watch(videoElem, (val) => {
         "
         size="20"
       />
-      <p>{{ userName }}</p>
+      <p :title="userName">{{ truncateString(userName, 25) }}</p>
     </div>
 
     <video

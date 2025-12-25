@@ -3,8 +3,15 @@ const isMuted = ref(true);
 const videoStream = ref<MediaStream | null>(null);
 
 export function useMedia(mediaConn: mediasoupConn) {
+  async function checkMic() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+
+    return devices.some((device) => device.kind === "audioinput");
+  }
+
   async function startMic() {
     const stream = await mediaConn.getAudioStream();
+    if (!stream) return;
 
     trackVoiceActivity(stream, (currSpeaking) => {
       isSpeaking.value = currSpeaking && !isMuted.value;
@@ -13,7 +20,9 @@ export function useMedia(mediaConn: mediasoupConn) {
     await mediaConn.produce("audio");
   }
 
-  function toggleMicState() {
+  async function toggleMicState() {
+    if (!mediaConn.audioStream) await startMic();
+
     isMuted.value = mediaConn.toggleMic();
   }
 
@@ -21,11 +30,19 @@ export function useMedia(mediaConn: mediasoupConn) {
     if (!videoStream.value) {
       const stream = await mediaConn.getMediaStream();
       const videoTracks = stream.getVideoTracks();
+      const hasAudioStream = stream.getAudioTracks().length > 0;
 
+      videoTracks.forEach((track) => {
+        track.addEventListener("ended", async () => {
+          console.log("called in hook", videoStream.value);
+          videoStream.value = null;
+          await mediaConn.stopStream();
+        });
+      });
       videoStream.value = new MediaStream(videoTracks);
-      await mediaConn.produce("video");
 
-      if (stream.getAudioTracks().length > 0) {
+      await mediaConn.produce("video");
+      if (hasAudioStream) {
         await mediaConn.produce("video_audio");
       }
     } else {
@@ -47,5 +64,6 @@ export function useMedia(mediaConn: mediasoupConn) {
     startMic,
     toggleMicState,
     toggleScreenShare,
+    checkMic,
   };
 }

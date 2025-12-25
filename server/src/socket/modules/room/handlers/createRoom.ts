@@ -1,10 +1,9 @@
 import { getMediasoupWorker } from "src/lib/worker";
 import { RouterRtpCodecCapability } from "mediasoup/node/lib/types";
 import { Type } from "@sinclair/typebox";
-import { CustomSocket } from "src/socket/core";
+import { CustomSocket, SocketError } from "src/socket/core";
 import { rooms } from "src/state/roomState";
-import { SocketError } from "src/socket/core";
-import ApiRoomError from "../utils/errors";
+import { ApiRoomErrors } from "../utils/errors";
 import { createRoom } from "../utils";
 
 export const createRoomSchema = Type.Object({
@@ -19,7 +18,45 @@ const mediaCodecs: RouterRtpCodecCapability[] = [
     clockRate: 48000,
     channels: 2,
   },
-  { kind: "video", mimeType: "video/VP8", clockRate: 90000 },
+  {
+    kind: "video",
+    mimeType: "video/VP8",
+    clockRate: 90000,
+    parameters: {
+      "x-google-start-bitrate": 1000,
+    },
+  },
+  {
+    kind: "video",
+    mimeType: "video/VP9",
+    clockRate: 90000,
+    parameters: {
+      "profile-id": 2,
+      "x-google-start-bitrate": 1000,
+    },
+  },
+  {
+    kind: "video",
+    mimeType: "video/h264",
+    clockRate: 90000,
+    parameters: {
+      "packetization-mode": 1,
+      "profile-level-id": "4d0032",
+      "level-asymmetry-allowed": 1,
+      "x-google-start-bitrate": 1000,
+    },
+  },
+  {
+    kind: "video",
+    mimeType: "video/h264",
+    clockRate: 90000,
+    parameters: {
+      "packetization-mode": 1,
+      "profile-level-id": "42e01f",
+      "level-asymmetry-allowed": 1,
+      "x-google-start-bitrate": 1000,
+    },
+  },
 ];
 
 const safeRoomRegexp = /^(?!.*\.\.)[a-zA-Z0-9._~-]+$/;
@@ -33,12 +70,13 @@ export default function (socket: CustomSocket) {
       expectCb: true,
     },
     handler: async (input, cb) => {
-      if (rooms.has(input.roomName)) {
-        throw new SocketError(ApiRoomError.ALREADY_EXISTS);
+      const { data } = input;
+      if (rooms.has(data.roomName)) {
+        throw new SocketError(ApiRoomErrors.ALREADY_EXISTS);
       }
 
-      if (!safeRoomRegexp.test(input.roomName)) {
-        throw new SocketError(ApiRoomError.UNSAFE_NAME);
+      if (!safeRoomRegexp.test(data.roomName)) {
+        throw new SocketError(ApiRoomErrors.UNSAFE_NAME);
       }
 
       const worker = getMediasoupWorker();
@@ -46,14 +84,14 @@ export default function (socket: CustomSocket) {
         mediaCodecs,
       });
 
-      const roomId = createRoom(router, input.roomType, input.roomName);
+      const roomId = createRoom(router, data.roomType, data.roomName);
 
-      if (input.roomType === "public") {
+      if (data.roomType === "public") {
         socket.broadcast.emit("roomCreated", {
-          name: input.roomName,
+          name: data.roomName,
           id: roomId,
         });
-        socket.emit("roomCreated", { name: input.roomName, id: roomId });
+        socket.emit("roomCreated", { name: data.roomName, id: roomId });
       }
 
       cb({ data: { id: roomId } });

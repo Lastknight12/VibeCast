@@ -1,9 +1,8 @@
 import { Type } from "@sinclair/typebox";
 import { rooms } from "src/state/roomState";
-import { SocketError } from "src/socket/core";
-import { CustomSocket } from "src/socket/core";
-import ApiRoomError from "../../room/utils/errors";
-import ApiSfuError from "../utils/errors";
+import { CustomSocket, SocketError } from "src/socket/core";
+import { ApiRoomErrors } from "../../room/utils/errors";
+import { ApiSfuErrors } from "../utils/errors";
 
 const consumerReadySchema = Type.Object({
   id: Type.String({ minLength: 1 }),
@@ -17,28 +16,30 @@ export default function (socket: CustomSocket) {
       protected: true,
       expectCb: true,
     },
-    handler: (input) => {
+    handler: (input, cb) => {
+      const { data } = input;
       const { user } = socket.data;
       if (!user.roomId) {
-        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
 
       const room = rooms.get(user.roomId);
       if (!room) {
-        throw new SocketError(ApiRoomError.NOT_FOUND);
+        throw new SocketError(ApiRoomErrors.NOT_FOUND);
       }
 
       const peer = room.peers.get(user.id);
       if (!peer) {
-        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
 
-      const peerConsumer = peer.consumers.get(input.id);
+      const peerConsumer = peer.consumers.get(data.id);
       if (!peerConsumer) {
-        throw new SocketError(ApiSfuError.consumer.NOT_FOUND);
+        throw new SocketError(ApiSfuErrors.consumer.NOT_FOUND);
       }
 
       peerConsumer.resume();
+      cb({ data: null });
     },
   });
 }

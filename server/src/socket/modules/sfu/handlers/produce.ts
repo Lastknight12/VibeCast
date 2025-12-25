@@ -1,11 +1,9 @@
 import { Type } from "@sinclair/typebox";
 import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
-import { ProducerType } from "mediasoup/node/lib/ProducerTypes";
-import { CustomSocket } from "src/socket/core";
 import { rooms } from "src/state/roomState";
-import { HandlerCallback, SocketError } from "src/socket/core";
-import ApiRoomError from "../../room/utils/errors";
-import ApiSfuError from "../utils/errors";
+import { CustomSocket, HandlerCallback, SocketError } from "src/socket/core";
+import { ApiRoomErrors } from "../../room/utils/errors";
+import { ApiSfuErrors } from "../utils/errors";
 
 const rtcpFeedbackSchema = Type.Object({
   type: Type.String(),
@@ -79,26 +77,28 @@ export default function (socket: CustomSocket) {
       expectCb: true,
     },
     handler: async (input, cb: HandlerCallback<Result>) => {
+      const { data } = input;
       const { user } = socket.data;
 
       if (!user.roomId) {
-        throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
+        throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
 
       const room = rooms.get(user.roomId);
-      if (!room) throw new SocketError(ApiRoomError.NOT_FOUND);
+      if (!room) throw new SocketError(ApiRoomErrors.NOT_FOUND);
 
       const peer = room.peers.get(user.id);
-      if (!peer) throw new SocketError(ApiRoomError.USER_NOT_IN_ROOM);
+      if (!peer) throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       if (!peer.transports.send)
-        throw new SocketError(ApiSfuError.transport.SEND_TRANSPORT_NOT_FOUND);
+        throw new SocketError(ApiSfuErrors.transport.SEND_TRANSPORT_NOT_FOUND);
 
       const producer = await peer.transports.send.produce({
-        kind: input.kind,
-        rtpParameters: input.rtpParameters as unknown as RtpParameters,
+        kind: data.kind,
+        rtpParameters: data.rtpParameters as unknown as RtpParameters,
+        appData: { type: data.appData.type },
       });
 
-      switch (input.appData.type) {
+      switch (data.appData.type) {
         case "audio": {
           peer.producers.audio = producer;
           break;
@@ -115,15 +115,16 @@ export default function (socket: CustomSocket) {
         }
       }
 
-      socket.broadcast
-        .to(user.roomId)
-        .emit(
-          "newProducer",
-          producer.id,
-          user.id,
-          input.appData.type as ProducerType
-        );
+      socket.broadcast.to(user.roomId).emit("newProducer", {
+        producerId: producer.id,
+        userId: user.id,
+        type: data.appData.type,
+      });
       cb({ data: { id: producer.id } });
+
+      input.context.logger.info(
+        `producing ${data.appData.type}: ${producer.id}`
+      );
     },
   });
 }
