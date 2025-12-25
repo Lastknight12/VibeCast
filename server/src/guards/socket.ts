@@ -1,6 +1,6 @@
 import { ExtendedError, Socket } from "socket.io";
 import { logger } from "src/lib/logger";
-// import { auth } from "../lib/auth";
+import { auth } from "../lib/auth";
 
 export async function socketGuard(
   socket: Socket,
@@ -20,9 +20,12 @@ export async function socketGuard(
       }
     }
 
-    const session = JSON.parse(socket.handshake.auth["userok"]);
+    const session = await auth.api.getSession({
+      headers,
+    });
+    if (!session) throw new Error("Invalid session");
 
-    socket.data.user = { ...session, roomId: undefined };
+    socket.data.user = { ...session.user, roomId: undefined };
     next();
   } catch (error) {
     logger.error(error);

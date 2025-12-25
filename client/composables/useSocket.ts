@@ -1,5 +1,4 @@
 import { io, Socket } from "socket.io-client";
-import { user } from "~/lib/randomUser";
 
 export interface HandlerError {
   code: string;
@@ -14,7 +13,7 @@ export type SocketCallback<Res> = (
   res: SocketCallbackArgs<Res>
 ) => void | Promise<void>;
 
-let socket: Socket | undefined = undefined;
+let socket: Socket;
 
 export function useSocket() {
   if (!socket) {
@@ -23,10 +22,6 @@ export function useSocket() {
       withCredentials: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 5000,
-      reconnection: true,
-      auth: {
-        userok: JSON.stringify(user),
-      },
     });
   }
 

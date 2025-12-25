@@ -30,10 +30,11 @@ export default function (socket: CustomSocket, io: Server) {
       if (previousPeer) {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const socketId = previousPeer.sockets.pop()!;
-        const socket = io.sockets.sockets.get(socketId);
+        const pSocket = io.sockets.sockets.get(socketId) as CustomSocket;
 
-        await socket?.leave(data.roomId);
-        socket?.emit("leaveRoom");
+        await pSocket?.leave(data.roomId);
+        pSocket.data.user.roomId = undefined;
+        pSocket?.emit("leaveRoom");
       }
 
       socket.join(data.roomId);

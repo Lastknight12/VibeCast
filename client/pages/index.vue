@@ -2,8 +2,6 @@
 import CreateRoomDialog from "~/components/CreateRoomDialog.vue";
 import type { User } from "better-auth/types";
 import type { SocketCallback } from "~/composables/useSocket";
-import { generateRandomUser, user } from "~/lib/randomUser";
-import { useRoute } from "vue-router";
 
 useHead({
   title: "VibeCast homepage",
@@ -15,12 +13,7 @@ useHead({
     },
   ],
 });
-const route = useRoute();
-// TODO: remove in pr
-const name = route.query["userName"] as string;
-
 onMounted(() => {
-  session.data.value = generateRandomUser(name ?? window.crypto.randomUUID());
   const socket = useSocket();
   socket.emit("getAllRooms", handleRooms);
   socket.on("userJoinRoom", handleUserJoin);
@@ -31,7 +24,7 @@ onMounted(() => {
 
 const toast = useToast();
 const authClient = useAuthClient();
-const session = { data: ref(user) };
+const session = await authClient.useSession(useCustomFetch);
 
 const rooms = ref<
   Map<

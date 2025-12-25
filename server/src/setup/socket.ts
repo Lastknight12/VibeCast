@@ -1,11 +1,9 @@
 import { FastifyInstance } from "fastify";
 import { Server } from "socket.io";
-
 import { env } from "src/config";
 import { socketGuard } from "src/guards/socket";
 import path from "path";
 import { enhanceSocket, preloadModules } from "src/socket/core";
-import { usersOnlineMetric } from "src/lib/prometheus/userMetrics";
 import { leaveRoom } from "src/socket/modules/room/utils/index";
 import { logger } from "src/lib/logger";
 
@@ -31,10 +29,8 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
 
   io.on("connection", async (_socket) => {
     const socket = enhanceSocket(_socket);
-    usersOnlineMetric.inc(1);
 
     socket.on("disconnect", async () => {
-      usersOnlineMetric.dec(1);
       if (socket.data.user.roomId) {
         try {
           await leaveRoom(io, {
@@ -42,14 +38,6 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
             roomId: socket.data.user.roomId,
             socket,
           });
-          await fetch(
-            encodeURI(
-              `${env.pushgateway}/metrics/job/webrtc/instance/${socket.data.user.id}`
-            ),
-            {
-              method: "DELETE",
-            }
-          );
         } catch (error) {
           logger.error(error);
         }
