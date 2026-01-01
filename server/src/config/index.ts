@@ -19,8 +19,6 @@ const pinoLoggerLevelSchema = Type.Union(
 const envSchema = Type.Object({
   LOGGER_LEVEL: Type.Optional(pinoLoggerLevelSchema),
 
-  pushgateway: Type.String(),
-
   CERT: Type.Optional(Type.String()),
   KEY: Type.Optional(Type.String()),
 

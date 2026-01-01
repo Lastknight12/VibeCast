@@ -1,5 +1,5 @@
 # --- Build stage ---
-FROM node:20-bullseye AS builder
+FROM node:20-bullseye
 
 RUN apt-get update && apt-get install -y \
     python3 \
@@ -17,17 +17,10 @@ COPY /prisma/schema.prisma ./
 
 RUN npm ci
 
-COPY . .
+COPY src /server/src
+COPY tsconfig.json /server/
 
 RUN npm run build
-
-# --- Prod stage ---
-FROM node:20-bullseye AS runtime
-
-WORKDIR /server
-
-COPY --from=builder /server/node_modules ./node_modules
-COPY --from=builder /server ./
 
 EXPOSE 5001
 EXPOSE 40000-40050/udp
