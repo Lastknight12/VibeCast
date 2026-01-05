@@ -5,6 +5,7 @@ import { ApiCoreErrors } from "../../errors";
 import { CustomOnParams } from "./types";
 import { extractPayloadAndCb, isExpectCb } from "./utils";
 import { CustomSocket } from "../../enhanceSocket";
+export * from "./types";
 
 export class SocketError extends Error {
   code: string;
@@ -118,5 +119,3 @@ export function customOn<Schema extends TSchema>(
 
   this.on(params.event, listener);
 }
-
-export * from "./types";
