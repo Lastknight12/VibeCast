@@ -1,6 +1,6 @@
 import { rooms } from "src/state/roomState";
 import { CustomSocket, SocketError } from "src/socket/core";
-import { ApiRoomErrors } from "../utils/errors";
+import { ApiRoomErrors } from "../errors";
 import { leaveRoom } from "../utils";
 import { Server } from "socket.io";
 

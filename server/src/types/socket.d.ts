@@ -1,4 +1,5 @@
 import { User } from "better-auth/types";
+import { Message } from "src/state/chatMessages";
 
 export interface EventError {
   event: string;
@@ -39,4 +40,5 @@ export interface ServerToClientEvents {
   }) => void;
   leaveRoom: () => void;
   "new-thumbnail": (data: { url: string; userId: string }) => void;
+  newMessage: (data: Message) => void;
 }

@@ -4,6 +4,10 @@ export const ApiSfuErrors = {
       code: "MEDIASOUP_ROUTER_CANNOT_CONSUME_PRODUCER",
       message: "Cannot consume the provided producer",
     },
+    NOT_FOUND: {
+      code: "MEDIASOUP_ROUTER_NOT_FOUND",
+      message: "Could not get room router. Please try again later.",
+    },
   },
   transport: {
     NOT_FOUND: {

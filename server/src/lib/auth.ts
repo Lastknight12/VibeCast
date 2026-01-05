@@ -8,6 +8,10 @@ import axios from "axios";
 import { env } from "../config";
 import { logger } from "./logger";
 
+// HACK: Yeah yeah bullshit, just lazy to figure out how to make image type of string, not null or undefined
+export const defaultUserAvatar =
+  "https://i.pinimg.com/736x/27/5f/99/275f99923b080b18e7b474ed6155a17f.jpg";
+
 export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
@@ -23,8 +27,7 @@ export const auth = betterAuth({
             responseType: "arraybuffer",
           });
 
-          let image =
-            "https://i.pinimg.com/736x/27/5f/99/275f99923b080b18e7b474ed6155a17f.jpg";
+          let image = defaultUserAvatar;
 
           const cldUploadStream = cloudinary.uploader.upload_stream(
             {

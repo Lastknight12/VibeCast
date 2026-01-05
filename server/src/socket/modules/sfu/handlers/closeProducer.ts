@@ -2,7 +2,7 @@ import { Type } from "@sinclair/typebox";
 import { cloudinary } from "src/lib/cloudinary";
 import { CustomSocket, SocketError } from "src/socket/core";
 import { rooms } from "src/state/roomState";
-import { ApiRoomErrors } from "../../room/utils/errors";
+import { ApiRoomErrors } from "../../room/errors";
 import { closeRelatedConsumers } from "../utils";
 
 const closeProducerSchema = Type.Object({

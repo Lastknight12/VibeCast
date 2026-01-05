@@ -1,7 +1,7 @@
 import { CustomSocket, HandlerCallback, SocketError } from "src/socket/core";
 import { User } from "better-auth/types";
 import { rooms } from "src/state/roomState";
-import { ApiRoomErrors } from "../utils/errors";
+import { ApiRoomErrors } from "../errors";
 import { thumbnails } from "./uploadThumbnail";
 
 interface RoomPeer {

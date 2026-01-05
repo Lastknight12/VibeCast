@@ -1,18 +1,18 @@
 import { Static } from "@sinclair/typebox";
 import { Router } from "mediasoup/node/lib/types";
-import { createRoomSchema } from "../handlers/createRoom";
+import { createRoomSchema } from "./handlers/createRoom";
 import { rooms } from "src/state/roomState";
 import { PeersMap } from "src/lib/dataTypes/peersMap";
 import { cloudinary } from "src/lib/cloudinary";
 import { logger } from "src/lib/logger";
 import { CustomSocket } from "src/socket/core";
 import { Server } from "socket.io";
-import { closeRelatedConsumers } from "../../sfu/utils";
+import { closeRelatedConsumers } from "../sfu/utils";
 
 export function createRoom(
   router: Router,
   roomType: Static<typeof createRoomSchema.properties.roomType>,
-  name: string
+  name: Static<typeof createRoomSchema.properties.roomName>
 ) {
   const uuid = crypto.randomUUID();
 

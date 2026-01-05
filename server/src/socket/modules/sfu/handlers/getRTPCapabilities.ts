@@ -1,7 +1,8 @@
 import { RtpCapabilities } from "mediasoup/node/lib/rtpParametersTypes";
 import { CustomSocket, HandlerCallback, SocketError } from "src/socket/core";
-import { ApiRoomErrors } from "../../room/utils/errors";
+import { ApiRoomErrors } from "../../room/errors";
 import { getRoomRouter } from "../utils";
+import { ApiSfuErrors } from "../errors";
 
 export default function (socket: CustomSocket) {
   socket.customOn({
@@ -18,7 +19,7 @@ export default function (socket: CustomSocket) {
 
       const router = getRoomRouter(user.roomId);
       if (!router) {
-        throw new SocketError(ApiRoomErrors.ROUTER_NOT_FOUND);
+        throw new SocketError(ApiSfuErrors.router.NOT_FOUND);
       }
 
       cb({ data: router.rtpCapabilities });

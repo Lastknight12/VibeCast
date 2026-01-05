@@ -16,8 +16,4 @@ export const ApiRoomErrors = {
     code: "ROOM_NOT_FOUND",
     message: "Room not found.",
   },
-  ROUTER_NOT_FOUND: {
-    code: "ROOM_ROUTER_NOT_FOUND",
-    message: "Could not get room router. Please try again later.",
-  },
 };

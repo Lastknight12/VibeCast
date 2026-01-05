@@ -1,8 +1,8 @@
 import { Type } from "@sinclair/typebox";
 import { rooms } from "src/state/roomState";
 import { CustomSocket, SocketError } from "src/socket/core";
-import { ApiRoomErrors } from "../../room/utils/errors";
-import { ApiSfuErrors } from "../utils/errors";
+import { ApiRoomErrors } from "../../room/errors";
+import { ApiSfuErrors } from "../errors";
 
 const consumerReadySchema = Type.Object({
   id: Type.String({ minLength: 1 }),

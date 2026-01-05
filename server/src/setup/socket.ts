@@ -4,7 +4,7 @@ import { env } from "src/config";
 import { socketGuard } from "src/guards/socket";
 import path from "path";
 import { enhanceSocket, preloadModules } from "src/socket/core";
-import { leaveRoom } from "src/socket/modules/room/utils/index";
+import { leaveRoom } from "src/socket/modules/room/utils";
 import { logger } from "src/lib/logger";
 
 let handlers: Awaited<ReturnType<typeof preloadModules>>;

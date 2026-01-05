@@ -2,8 +2,8 @@ import { Type } from "@sinclair/typebox";
 import { RtpParameters } from "mediasoup/node/lib/rtpParametersTypes";
 import { rooms } from "src/state/roomState";
 import { CustomSocket, HandlerCallback, SocketError } from "src/socket/core";
-import { ApiRoomErrors } from "../../room/utils/errors";
-import { ApiSfuErrors } from "../utils/errors";
+import { ApiRoomErrors } from "../../room/errors";
+import { ApiSfuErrors } from "../errors";
 
 const rtcpFeedbackSchema = Type.Object({
   type: Type.String(),

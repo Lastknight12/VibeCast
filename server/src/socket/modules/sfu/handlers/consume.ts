@@ -6,8 +6,8 @@ import {
 import { rooms } from "src/state/roomState";
 import { Type } from "@sinclair/typebox";
 import { CustomSocket, HandlerCallback, SocketError } from "src/socket/core";
-import { ApiRoomErrors } from "../../room/utils/errors";
-import { ApiSfuErrors } from "../utils/errors";
+import { ApiRoomErrors } from "../../room/errors";
+import { ApiSfuErrors } from "../errors";
 
 const rtpCodecCapabilitySchema = Type.Object({
   kind: Type.Union([Type.Literal("audio"), Type.Literal("video")]),

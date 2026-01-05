@@ -13,7 +13,7 @@ import {
   CustomSocket,
 } from "src/socket/core";
 import { rooms } from "src/state/roomState";
-import { ApiRoomErrors } from "../../room/utils/errors";
+import { ApiRoomErrors } from "../../room/errors";
 
 interface Result {
   id: string;

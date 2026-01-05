@@ -1,8 +1,8 @@
 import { Type } from "@sinclair/typebox";
 import { rooms } from "src/state/roomState";
 import { SocketError, CustomSocket } from "src/socket/core";
-import { ApiSfuErrors } from "../utils/errors";
-import { ApiRoomErrors } from "../../room/utils/errors";
+import { ApiSfuErrors } from "../errors";
+import { ApiRoomErrors } from "../../room/errors";
 
 const closeProducerSchema = Type.Object({
   id: Type.String(),

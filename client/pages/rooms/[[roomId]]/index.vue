@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Socket } from "socket.io-client";
+import { cn } from "~/lib/utils";
 
 const socket = useSocket();
 const route = useRoute();
@@ -68,6 +69,9 @@ async function leave() {
 </script>
 
 <template>
+  <RoomChat />
+
+  <!-- TODO: rebuild this Bullshit so error will have some sort of code? -->
   <RoomError v-if="isDisconnected" message="Discconnected from room" />
   <RoomError v-else-if="error" :message="error" />
 
@@ -109,13 +113,20 @@ async function leave() {
 </template>
 
 <style>
-.v-enter-active,
-.v-leave-active {
-  transition: opacity 0.2s ease;
+@keyframes show-chat {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 100%;
+  }
 }
 
-.v-enter-from,
-.v-leave-to {
-  opacity: 0;
+.chat-enter-active {
+  animation: show-chat 0.3s ease-in forwards;
+}
+
+.chat-leave-active {
+  animation: show-chat 0.3s ease-in reverse forwards;
 }
 </style>

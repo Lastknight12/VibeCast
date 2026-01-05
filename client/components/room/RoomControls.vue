@@ -23,7 +23,7 @@ const room = useRoom(roomId);
 </script>
 
 <template>
-  <div class="fixed bottom-3 left-1/2 -translate-x-1/2 flex gap-3">
+  <div class="fixed bottom-3 left-1/2 -translate-x-1/2 flex gap-3 z-50">
     <UiButton
       @click="media.toggleMicState"
       class="relative"

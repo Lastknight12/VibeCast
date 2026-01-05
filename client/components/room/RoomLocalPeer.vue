@@ -7,28 +7,48 @@ defineProps<{
 const mediaConn = useMediasoup();
 const socket = useSocket();
 const media = useMedia(mediaConn);
-const snapshot = useSnapshot();
+const toast = useToast();
 
 const videoElem = ref<HTMLVideoElement | null>(null);
 
-async function captureFirstFrame() {
-  const thumbnailBlob = await snapshot?.captureFrame(videoElem.value!);
+async function captureFrame(w = 720, h = 360, q = 0.7) {
+  if (!import.meta.client || !videoElem.value) return null;
 
-  const thumbnailBuffer = await thumbnailBlob?.arrayBuffer();
-  thumbnailBuffer &&
-    socket.emit("uploadThumbnail", {
-      imageBuffer: thumbnailBuffer,
-    });
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    toast.error({ message: "Error while getting canvas context" });
+    return;
+  }
+
+  canvas.width = w;
+  canvas.height = h;
+  ctx.drawImage(videoElem.value, 0, 0, w, h);
+
+  canvas.toBlob(
+    (blob) => {
+      if (blob) {
+        socket.emit("uploadThumbnail", {
+          imageBuffer: blob.arrayBuffer(),
+        });
+      } else {
+        toast.error({ message: "Failed to get canvas blob" });
+      }
+    },
+    "image/jpeg",
+    q
+  );
 }
 
 watch(videoElem, (val, _, onCleanup) => {
   if (!val) return;
 
   const handlePlaying = () => {
-    captureFirstFrame();
+    captureFrame();
 
     const interval = setInterval(() => {
-      captureFirstFrame();
+      captureFrame();
     }, 15 * 60 * 1000);
 
     onCleanup(() => clearInterval(interval));
@@ -50,7 +70,7 @@ watch(videoElem, (val, _, onCleanup) => {
     ]"
   >
     <div
-      class="absolute z-50 bottom-2 right-3 flex gap-3 items-center bg-[#1c1c1c] px-2.5 py-1 rounded-md"
+      class="absolute bottom-2 right-3 flex gap-3 items-center bg-[#1c1c1c] px-2.5 py-1 rounded-md"
     >
       <Icon
         :name="

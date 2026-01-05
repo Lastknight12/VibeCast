@@ -3,7 +3,7 @@ import { Type } from "@sinclair/typebox";
 import { Server } from "socket.io";
 import { rooms } from "src/state/roomState";
 import { CustomSocket, SocketError } from "src/socket/core";
-import { ApiRoomErrors } from "../utils/errors";
+import { ApiRoomErrors } from "../errors";
 
 const joinRoomSchema = Type.Object({
   roomId: Type.String({ minLength: 1 }),

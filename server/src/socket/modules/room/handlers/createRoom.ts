@@ -3,8 +3,9 @@ import { RouterRtpCodecCapability } from "mediasoup/node/lib/types";
 import { Type } from "@sinclair/typebox";
 import { CustomSocket, SocketError } from "src/socket/core";
 import { rooms } from "src/state/roomState";
-import { ApiRoomErrors } from "../utils/errors";
+import { ApiRoomErrors } from "../errors";
 import { createRoom } from "../utils";
+import { chatMessagesState } from "src/state/chatMessages";
 
 export const createRoomSchema = Type.Object({
   roomName: Type.String({ minLength: 1 }),
@@ -85,6 +86,7 @@ export default function (socket: CustomSocket) {
       });
 
       const roomId = createRoom(router, data.roomType, data.roomName);
+      chatMessagesState.set(roomId, []);
 
       if (data.roomType === "public") {
         socket.broadcast.emit("roomCreated", {

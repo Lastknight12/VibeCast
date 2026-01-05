@@ -20,9 +20,9 @@ RUN npm ci
 COPY src /server/src
 COPY tsconfig.json /server/
 
-RUN npm run build
+# RUN npm run build
 
 EXPOSE 5001
 EXPOSE 40000-40050/udp
 
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "dev"]
