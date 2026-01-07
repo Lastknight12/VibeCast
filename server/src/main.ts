@@ -13,13 +13,10 @@ async function startServer() {
     logger: {
       level: env.LOGGER_LEVEL,
     },
-    https:
-      env.CERT && env.KEY
-        ? {
-            cert: env.CERT,
-            key: env.KEY,
-          }
-        : null,
+    https: {
+      cert: env.CERT,
+      key: env.KEY,
+    },
   });
 
   await createMediasoupWorkers();
