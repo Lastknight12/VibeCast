@@ -1,5 +1,11 @@
 { pkgs ? import <nixpkgs> {} }:
+let 
+  shellsRoot = builtins.getEnv "DEV_SHELLS";
+  baseShell = import "${shellsRoot}/node.nix" { inherit pkgs; };
+in
 pkgs.mkShell {
+  inputsFrom = [baseShell];
+
   buildInputs = [
     (pkgs.python311.withPackages (ps: [ ps.pip ]))
     pkgs.openssl

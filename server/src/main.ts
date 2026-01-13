@@ -4,6 +4,8 @@ import { setupFastifyModules } from "./setup/fastifyModules";
 import { initializeSocketServer } from "./setup/socket";
 import { createMediasoupWorkers } from "./lib/worker";
 import { logger } from "./lib/logger";
+import path from "node:path";
+import fs from "fs";
 
 async function startServer() {
   const port = +env.PORT;
@@ -13,10 +15,13 @@ async function startServer() {
     logger: {
       level: env.LOGGER_LEVEL,
     },
-    https: {
-      cert: env.CERT,
-      key: env.KEY,
-    },
+    https:
+      env.CERT && env.KEY
+        ? {
+            cert: fs.readFileSync(path.join(__dirname, "..", env.CERT)),
+            key: fs.readFileSync(path.join(__dirname, "..", env.KEY)),
+          }
+        : null,
   });
 
   await createMediasoupWorkers();
