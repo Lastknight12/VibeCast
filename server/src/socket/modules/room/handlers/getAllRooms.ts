@@ -1,6 +1,6 @@
-import { User } from "better-auth/types";
 import { rooms } from "src/state/roomState";
 import { CustomSocket, HandlerCallback } from "src/socket/core";
+import { User } from "better-auth/types";
 
 type Result = Record<string, { name: string; peers: Record<string, User> }>;
 
@@ -11,9 +11,10 @@ export default function (socket: CustomSocket) {
       expectCb: true,
     },
     handler: (_input, cb: HandlerCallback<Result>) => {
-      const roomList: Result = {};
-      
-      rooms.getAll(((room, id) => {
+      const roomsList = rooms.getAll("public");
+
+      const formatedList = {};
+      roomsList.forEach((room, id) => {
         if (room.type === "private") {
           return;
         }
@@ -27,13 +28,12 @@ export default function (socket: CustomSocket) {
           };
         });
 
-        roomList[id] = {
+        formatedList[id] = {
           name: room.name,
           peers,
         };
-      }));
-
-      cb({ data: roomList });
+      });
+      cb({ data: formatedList });
     },
   });
 }

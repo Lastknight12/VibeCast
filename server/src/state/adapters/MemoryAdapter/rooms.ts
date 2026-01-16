@@ -1,17 +1,21 @@
 import { PeersMap } from "src/lib/dataTypes/peersMap";
 import { Router } from "mediasoup/node/lib/RouterTypes";
-import { RoomsAdapter, Room } from "../core/room";
+import { RoomsAdapter, Room, RoomType } from "../core/room";
 
 export class RoomsMemoryAdapter implements RoomsAdapter {
-  rooms = new Map<string, Room>();
+  rooms = new Map<string, Room>([]);
 
   get(id: string) {
     return this.rooms.get(id);
   }
 
-  getAll(): Room[] {
+  getAll(type: RoomType | "all"): Room[] {
     const result: Room[] = [];
     this.rooms.forEach((r) => {
+      if (type !== "all" && r.type !== type) {
+        return;
+      }
+
       result.push(r);
     });
 
