@@ -1,0 +1,25 @@
+services:
+  server:
+    build: ./server
+    image: vibecast-server
+    volumes:
+      - ./src:/server/src
+      - ./prisma:/server/prisma
+      - ./.env:/server/.env
+    ports:
+      - "5001:5001"
+      - "40000-40050:40000-40050/udp"
+    networks:
+      - "vibecast"
+
+  client:
+    build: ./client
+    image: frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - vibecast
+
+networks:
+  vibecast:
+    driver: bridge

@@ -12,8 +12,8 @@ export default function (socket: CustomSocket) {
     },
     handler: (_input, cb: HandlerCallback<Result>) => {
       const roomList: Result = {};
-
-      rooms.forEach((room, id) => {
+      
+      rooms.getAll(((room, id) => {
         if (room.type === "private") {
           return;
         }
@@ -31,7 +31,7 @@ export default function (socket: CustomSocket) {
           name: room.name,
           peers,
         };
-      });
+      }));
 
       cb({ data: roomList });
     },

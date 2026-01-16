@@ -4,7 +4,6 @@ import { Type } from "@sinclair/typebox";
 import { CustomSocket, SocketError } from "src/socket/core";
 import { rooms } from "src/state/roomState";
 import { ApiRoomErrors } from "../errors";
-import { createRoom } from "../utils";
 import { chatMessagesState } from "src/state/chatMessages";
 
 export const createRoomSchema = Type.Object({
@@ -72,7 +71,8 @@ export default function (socket: CustomSocket) {
     },
     handler: async (input, cb) => {
       const { data } = input;
-      if (rooms.has(data.roomName)) {
+      const roomExist = rooms.get(data.roomName)
+      if (roomExist) {
         throw new SocketError(ApiRoomErrors.ALREADY_EXISTS);
       }
 
@@ -85,8 +85,8 @@ export default function (socket: CustomSocket) {
         mediaCodecs,
       });
 
-      const roomId = createRoom(router, data.roomType, data.roomName);
-      chatMessagesState.set(roomId, []);
+      const roomId = rooms.create(router, data.roomType, data.roomName);
+      chatMessagesState.createChat(roomId);
 
       if (data.roomType === "public") {
         socket.broadcast.emit("roomCreated", {

@@ -8,28 +8,7 @@ import { logger } from "src/lib/logger";
 import { CustomSocket } from "src/socket/core";
 import { Server } from "socket.io";
 import { closeRelatedConsumers } from "../sfu/utils";
-
-export function createRoom(
-  router: Router,
-  roomType: Static<typeof createRoomSchema.properties.roomType>,
-  name: Static<typeof createRoomSchema.properties.roomName>
-) {
-  const uuid = crypto.randomUUID();
-
-  if (rooms.has(uuid)) {
-    const uuid = createRoom(router, roomType, name);
-    return uuid;
-  }
-
-  rooms.set(uuid, {
-    name,
-    router,
-    peers: new PeersMap(),
-    type: roomType,
-  });
-
-  return uuid;
-}
+import { chatMessagesState } from "src/state/chatMessages";
 
 export async function leaveRoom(
   io: Server,
@@ -77,6 +56,7 @@ export async function leaveRoom(
 
   if (room.peers.size === 0) {
     rooms.delete(clientInfo.roomId);
+    chatMessagesState.delete(clientInfo.roomId)
 
     if (room.type === "public") {
       io.emit("roomDeleted", { roomId: clientInfo.roomId });

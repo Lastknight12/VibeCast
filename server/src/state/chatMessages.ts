@@ -1,10 +1,4 @@
-export interface Message {
-  text: string;
-  sender: {
-    id: string;
-    name: string;
-    avatar: string;
-  };
-}
+import { ChatAdapter } from "./adapters/MemoryAdapter/chat";
+import { Adapter } from "./adapters/core/chat";
 
-export const chatMessagesState = new Map<string, Message[]>([]);
+export const chatMessagesState: Adapter = new ChatAdapter();

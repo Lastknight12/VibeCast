@@ -1,13 +1,4 @@
-import { Router } from "mediasoup/node/lib/RouterTypes";
-import { PeersMap } from "src/lib/dataTypes/peersMap";
+import { Adapter } from "./adapters/core/room";
+import { RoomsAdapter } from "./adapters/MemoryAdapter/rooms";
 
-export type RoomType = "private" | "public";
-
-export interface Room {
-  name: string;
-  type: RoomType;
-  router: Router;
-  peers: PeersMap;
-}
-
-export const rooms = new Map<string, Room>();
+export const rooms: Adapter = new RoomsAdapter();

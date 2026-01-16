@@ -32,7 +32,7 @@ export default function (socket: CustomSocket) {
         },
       };
 
-      const roomMessages = chatMessagesState.get(user.roomId);
+      const roomMessages = chatMessagesState.getMessages(user.roomId);
       if (!roomMessages) {
         throw new SocketError(ApiChatErrors.messages.NOT_FOUND);
       }
