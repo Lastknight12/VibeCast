@@ -1,4 +1,4 @@
-import { ChatAdapter } from "./adapters/MemoryAdapter/chat";
-import { Adapter } from "./adapters/core/chat";
+import { ChatAdapter } from "./adapters/core/chat";
+import { ChatMemoryAdapter } from "./adapters/MemoryAdapter/chat";
 
-export const chatMessagesState: Adapter = new ChatAdapter();
+export const chatMessagesState: ChatAdapter = new ChatMemoryAdapter();

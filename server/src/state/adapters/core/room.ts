@@ -9,9 +9,9 @@ export interface Room {
   peers: PeersMap;
 }
 
-export interface Adapter {
-    get(roomId: string): Room | undefined
-    create(router: Router, type: RoomType, name: string): string
-    getAll(tranformCb: (room: Room, id: string) => void): Room[]
-    delete(roomId: string): void
+export interface RoomsAdapter {
+  get(roomId: string): Room | undefined;
+  create(router: Router, type: RoomType, name: string): string;
+  getAll(tranformCb: (room: Room, id: string) => void): Room[];
+  delete(roomId: string): void;
 }

@@ -1,9 +1,10 @@
 import { Type } from "@sinclair/typebox";
 import { defaultUserAvatar } from "src/lib/auth";
 import { CustomSocket, SocketError } from "src/socket/core";
-import { chatMessagesState, Message } from "src/state/chatMessages";
+import { chatMessagesState } from "src/state/chatMessages";
 import { ApiRoomErrors } from "../../room/errors";
 import { ApiChatErrors } from "../errors";
+import { Message } from "src/state/adapters/core/chat";
 
 const sendMessageSchema = Type.Object({
   message: Type.String({ minLength: 1 }),

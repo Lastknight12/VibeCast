@@ -1,4 +1,4 @@
-import { Adapter } from "./adapters/core/room";
-import { RoomsAdapter } from "./adapters/MemoryAdapter/rooms";
+import { RoomsAdapter } from "./adapters/core/room";
+import { RoomsMemoryAdapter } from "./adapters/MemoryAdapter/rooms";
 
-export const rooms: Adapter = new RoomsAdapter();
+export const rooms: RoomsAdapter = new RoomsMemoryAdapter();

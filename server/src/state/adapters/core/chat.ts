@@ -7,9 +7,9 @@ export interface Message {
   };
 }
 
-export interface Adapter {
-  createChat(roomId: string): void
-  getMessages(roomId: string): Message[]
-  pushMessage(roomId: string, message: Message): void
-  delete(roomId: string): void
+export interface ChatAdapter {
+  createChat(roomId: string): void;
+  getMessages(roomId: string): Message[];
+  pushMessage(roomId: string, message: Message): void;
+  delete(roomId: string): void;
 }

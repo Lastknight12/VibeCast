@@ -1,8 +1,4 @@
-import { Static } from "@sinclair/typebox";
-import { Router } from "mediasoup/node/lib/types";
-import { createRoomSchema } from "./handlers/createRoom";
 import { rooms } from "src/state/roomState";
-import { PeersMap } from "src/lib/dataTypes/peersMap";
 import { cloudinary } from "src/lib/cloudinary";
 import { logger } from "src/lib/logger";
 import { CustomSocket } from "src/socket/core";
@@ -56,7 +52,7 @@ export async function leaveRoom(
 
   if (room.peers.size === 0) {
     rooms.delete(clientInfo.roomId);
-    chatMessagesState.delete(clientInfo.roomId)
+    chatMessagesState.delete(clientInfo.roomId);
 
     if (room.type === "public") {
       io.emit("roomDeleted", { roomId: clientInfo.roomId });
