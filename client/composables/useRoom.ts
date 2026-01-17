@@ -209,9 +209,6 @@ export function useRoom(roomId: string) {
             await toggleMicState();
 
             connected.value = true;
-            setInterval(() => {
-              connected.value = !connected.value;
-            }, 2000);
             resolve();
           } catch (err) {
             reject(err);
