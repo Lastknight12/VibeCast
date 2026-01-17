@@ -71,7 +71,8 @@ export default function (socket: CustomSocket) {
     },
     handler: async (input, cb) => {
       const { data } = input;
-      const roomExist = rooms.get(data.roomName)
+
+      const roomExist = rooms.get(data.roomName);
       if (roomExist) {
         throw new SocketError(ApiRoomErrors.ALREADY_EXISTS);
       }

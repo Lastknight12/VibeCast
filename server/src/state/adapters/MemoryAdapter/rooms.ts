@@ -9,14 +9,14 @@ export class RoomsMemoryAdapter implements RoomsAdapter {
     return this.rooms.get(id);
   }
 
-  getAll(type: RoomType | "all"): Room[] {
-    const result: Room[] = [];
-    this.rooms.forEach((r) => {
+  getAll(type: RoomType | "all"): ReturnType<RoomsAdapter["getAll"]> {
+    const result: ReturnType<RoomsAdapter["getAll"]> = [];
+    this.rooms.forEach((r, id) => {
       if (type !== "all" && r.type !== type) {
         return;
       }
 
-      result.push(r);
+      result.push({ id, ...r });
     });
 
     return result;

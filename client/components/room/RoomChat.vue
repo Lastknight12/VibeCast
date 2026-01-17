@@ -1,7 +1,19 @@
 <script setup lang="ts">
 import { cn } from "~/lib/utils";
 
+interface Message {
+  text: string;
+  sender: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
+}
+
+const props = defineProps<{ roomId: string }>();
+
 const socket = useSocket();
+const room = useRoom(props.roomId);
 
 const chatMessage = ref("");
 const isChatShown = ref(false);
@@ -25,16 +37,27 @@ const scrollToEnd = async () => {
 };
 
 onMounted(() => {
-  socket.on("newMessage", (message: Message) => {
-    messages.value.push(message);
-    scrollToEnd;
-  });
+  watch(
+    room.refs.connected,
+    (connected, _) => {
+      if (connected) {
+        socket.emit(
+          "getMessages",
+          (response: SocketCallbackArgs<Message[]>) => {
+            if (response.data) {
+              messages.value = response.data;
+            }
+          },
+        );
 
-  socket.emit("getMessages", (response: SocketCallbackArgs<Message[]>) => {
-    if (response.data) {
-      messages.value = response.data;
-    }
-  });
+        socket.on("newMessage", (message: Message) => {
+          messages.value.push(message);
+          scrollToEnd();
+        });
+      }
+    },
+    { once: true },
+  );
 });
 
 onUnmounted(() => {
@@ -58,7 +81,7 @@ onUnmounted(() => {
     <div
       :class="
         cn(
-          'min-h-full flex flex-col px-3 py-2 absolute top-0 right-0 opacity-100 z-40'
+          'min-h-full flex flex-col px-3 py-2 absolute top-0 right-0 opacity-100 z-40',
         )
       "
       v-show="isChatShown"

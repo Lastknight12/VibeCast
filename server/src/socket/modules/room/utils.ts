@@ -12,8 +12,12 @@ export async function leaveRoom(
     id: string;
     roomId: string;
     socket: CustomSocket;
-  }
+  },
 ) {
+  if (!clientInfo.socket.data.user) {
+    throw new Error("Current user don't have active session");
+  }
+
   const room = rooms.get(clientInfo.roomId);
   if (!room) {
     throw new Error("room not found for given id");
@@ -31,7 +35,7 @@ export async function leaveRoom(
         user.producers.screenShare?.audio?.id,
         user.producers.screenShare?.video.id,
       ].filter(Boolean) as string[],
-      clientInfo.roomId
+      clientInfo.roomId,
     );
   }
 

@@ -4,7 +4,7 @@ import { auth } from "../lib/auth";
 
 export async function socketGuard(
   socket: Socket,
-  next: (err?: ExtendedError) => void
+  next: (err?: ExtendedError) => void,
 ) {
   try {
     const headers = new Headers();

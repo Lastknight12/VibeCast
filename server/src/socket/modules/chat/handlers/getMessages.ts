@@ -17,7 +17,7 @@ export default function (socket: CustomSocket) {
 
       const roomMessages = chatMessagesState.getMessages(user.roomId);
 
-      cb({ data: roomMessages, errors: undefined });
+      cb({ data: roomMessages });
     },
   });
 }

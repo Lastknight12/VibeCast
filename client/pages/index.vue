@@ -13,6 +13,7 @@ useHead({
     },
   ],
 });
+
 onMounted(() => {
   const socket = useSocket();
   socket.emit("getAllRooms", handleRooms);
@@ -26,12 +27,12 @@ const toast = useToast();
 const authClient = useAuthClient();
 const session = await authClient.useSession(useCustomFetch);
 
-const rooms = ref<
-  Map<
-    string,
-    { name: string; peers: Map<string, Pick<User, "id" | "name" | "image">> }
-  >
->(new Map());
+interface Room {
+  name: string;
+  peers: RoomPeers;
+}
+
+const rooms = reactive<Record<string, Room>>({});
 
 const googleLogin = () => {
   authClient.signIn.social({
@@ -39,21 +40,26 @@ const googleLogin = () => {
   });
 };
 
-interface RoomInfo {
-  name: string;
-  peers: Map<string, User>;
-}
-const handleRooms: SocketCallback<Record<string, RoomInfo>> = ({ data }) => {
-  if (data) {
-    const map = new Map<string, RoomInfo>();
+type RoomPeers = Record<string, Pick<User, "id" | "name" | "image">>;
 
-    for (const [roomId, room] of Object.entries(data)) {
-      map.set(roomId, {
-        ...room,
-        peers: new Map(Object.entries(room.peers)),
-      });
-    }
-    rooms.value = map;
+interface RoomInfo {
+  id: string;
+  name: string;
+  peers: User[];
+}
+
+const handleRooms: SocketCallback<RoomInfo[]> = ({ data }) => {
+  if (!data) return;
+  for (const room of data) {
+    const peersObj: RoomPeers = {};
+    room.peers.forEach((user) => {
+      peersObj[user.id] = { id: user.id, name: user.name, image: user.image };
+    });
+
+    rooms[room.id] = {
+      name: room.name,
+      peers: peersObj,
+    };
   }
 };
 
@@ -61,29 +67,23 @@ const handleUserJoin = (data: {
   roomId: string;
   userData: Pick<User, "id" | "name" | "image">;
 }) => {
-  const room = rooms.value.get(data.roomId);
-  if (!room) {
-    console.log("no room with name" + data.roomId + "exist");
-  }
-
-  room?.peers.set(data.userData.id, data.userData);
+  const room = rooms[data.roomId];
+  if (!room) return console.log("Room not found:", data.roomId);
+  room.peers[data.userData.id] = data.userData;
 };
 
 const handleUserLeftRoom = (data: { roomId: string; userId: string }) => {
-  const room = rooms.value.get(data.roomId);
-  if (!room) {
-    console.log("no room with name" + data.roomId + "exist");
-  }
-
-  room?.peers.delete(data.userId);
+  const room = rooms[data.roomId];
+  if (!room) return console.log("Room not found:", data.roomId);
+  delete room.peers[data.userId];
 };
 
 const handleRoomCreated = (data: { name: string; id: string }) => {
-  rooms.value.set(data.id, { name: data.name, peers: new Map() });
+  rooms[data.id] = reactive({ name: data.name, peers: {} });
 };
 
 const handleRoomDeleted = (data: { roomId: string }) => {
-  rooms.value.delete(data.roomId);
+  delete rooms[data.roomId];
 };
 
 const handleRoomClick = async (roomId: string, roomName: string) => {
@@ -122,8 +122,8 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
         class="mt-6 grid gap-8 p-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
       >
         <div
-          v-if="rooms.size > 0"
-          v-for="[roomId, room] of rooms"
+          v-if="Object.keys(rooms).length > 0"
+          v-for="(room, roomId) in rooms"
           :key="roomId"
           class="p-6 bg-[#070707] border border-border rounded-xl"
           :id="`room-${room.name}`"
@@ -134,7 +134,7 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
           </h1>
           <div
             class="flex flex-wrap gap-2 mt-4"
-            v-for="[id, peer] of room.peers"
+            v-for="(peer, id) in room.peers"
             :key="id"
           >
             <div
@@ -142,7 +142,7 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
             >
               <img
                 :src="peer.image!"
-                :alt="peer.name + 'avatar'"
+                :alt="peer.name + ' avatar'"
                 width="30"
                 height="30"
                 class="rounded-full"

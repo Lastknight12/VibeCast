@@ -37,6 +37,7 @@ const peers = ref<Map<string, Peer>>(new Map());
 const videoElem = ref<HTMLVideoElement | null>(null);
 const activeSpeakers = ref<Set<string>>(new Set());
 const disconnected = ref<boolean>(false);
+const connected = ref<boolean>(false);
 
 export function useRoom(roomId: string) {
   const socket = useSocket();
@@ -136,7 +137,7 @@ export function useRoom(roomId: string) {
     }
 
     const videoConsumer = mediaConn.consumers.get(
-      peer.streams.screenShare.video.consumerId
+      peer.streams.screenShare.video.consumerId,
     );
     if (!videoConsumer) {
       console.log("consumer with provided id don't exist");
@@ -196,6 +197,8 @@ export function useRoom(roomId: string) {
           if (errors?.length) return reject(errors[0]?.message);
 
           try {
+            socket.emit("getRoomPeers", handlePeers);
+
             await mediaConn.createDevice();
             await Promise.all([
               mediaConn.createTransport("send"),
@@ -205,12 +208,15 @@ export function useRoom(roomId: string) {
             await startMic();
             await toggleMicState();
 
-            socket.emit("getRoomPeers", handlePeers);
+            connected.value = true;
+            setInterval(() => {
+              connected.value = !connected.value;
+            }, 2000);
             resolve();
           } catch (err) {
             reject(err);
           }
-        }
+        },
       );
     });
   }
@@ -432,6 +438,7 @@ export function useRoom(roomId: string) {
     videoElem.value = null;
     activeSpeakers.value = new Set();
     disconnected.value = false;
+    connected.value = false;
   }
 
   return {
@@ -441,6 +448,7 @@ export function useRoom(roomId: string) {
       peers,
       pinnedStream,
       disconnected,
+      connected,
       videoElem,
     },
     registerSocketListeners,

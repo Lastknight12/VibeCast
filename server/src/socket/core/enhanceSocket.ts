@@ -27,7 +27,7 @@ export function enhanceSocket(
     ServerToClientEvents,
     DefaultEventsMap,
     SocketData
-  >
+  >,
 ) {
   const socket = _socket as CustomSocket;
 

@@ -1,8 +1,15 @@
 import { rooms } from "src/state/roomState";
 import { CustomSocket, HandlerCallback } from "src/socket/core";
-import { User } from "better-auth/types";
 
-type Result = Record<string, { name: string; peers: Record<string, User> }>;
+interface Result {
+  id: string;
+  name: string;
+  peers: {
+    id: string;
+    image: string;
+    name: string;
+  }[];
+}
 
 export default function (socket: CustomSocket) {
   socket.customOn({
@@ -10,29 +17,31 @@ export default function (socket: CustomSocket) {
     config: {
       expectCb: true,
     },
-    handler: (_input, cb: HandlerCallback<Result>) => {
+    handler: (_input, cb: HandlerCallback<Result[]>) => {
       const roomsList = rooms.getAll("public");
 
-      const formatedList = {};
-      roomsList.forEach((room, id) => {
+      const formatedList: Result[] = [];
+      roomsList.forEach((room) => {
         if (room.type === "private") {
           return;
         }
 
-        const peers = {};
+        const peers: Result["peers"] = [];
         room.peers.forEach((peer, id) => {
-          peers[id] = {
+          peers.push({
             id,
-            image: peer.user.image,
+            image: peer.user.image as string,
             name: peer.user.name,
-          };
+          });
         });
 
-        formatedList[id] = {
+        formatedList.push({
+          id: room.id,
           name: room.name,
           peers,
-        };
+        });
       });
+
       cb({ data: formatedList });
     },
   });

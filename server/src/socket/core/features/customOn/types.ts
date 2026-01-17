@@ -10,8 +10,8 @@ interface HandlerError {
   message: string;
 }
 
-export type HandlerCallback<Data> = (result: {
-  data: Data;
+export type HandlerCallback<Data = unknown> = (result: {
+  data?: Data;
   errors?: HandlerError[];
 }) => void;
 
@@ -33,7 +33,7 @@ export interface CustomOnParams<
   handler: ExpectCb extends true
     ? (
         input: { data: Static<Schema>; context: Context },
-        cb: HandlerCallback<unknown>
+        cb: HandlerCallback,
       ) => void | Promise<void>
     : (input: {
         data: Static<Schema>;

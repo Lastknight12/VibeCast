@@ -13,6 +13,6 @@ export interface Room {
 export interface RoomsAdapter {
   get(roomId: string): Room | undefined;
   create(router: Router, type: RoomType, name: string): string;
-  getAll(type: RoomType | "all"): Room[];
+  getAll(type: RoomType | "all"): (Room & { id: string })[];
   delete(roomId: string): void;
 }

@@ -69,7 +69,7 @@ async function leave() {
 </script>
 
 <template>
-  <RoomChat />
+  <RoomChat :room-id="roomId" />
 
   <!-- TODO: rebuild this Bullshit so error will have some sort of code? -->
   <RoomError v-if="isDisconnected" message="Discconnected from room" />
@@ -85,7 +85,7 @@ async function leave() {
         class="rounded-lg object-cover shadow max-w-[780px] mt-4"
         @click="
           room.userActions.togglePinnedStream(
-            room.refs.pinnedStream.value.peerId
+            room.refs.pinnedStream.value.peerId,
           )
         "
       ></video>
