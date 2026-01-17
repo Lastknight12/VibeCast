@@ -3,8 +3,6 @@ import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "./db";
 import { cloudinary } from "./cloudinary";
-import streamifier from "streamifier";
-import axios from "axios";
 import { env } from "../config";
 import { logger } from "./logger";
 
@@ -22,44 +20,22 @@ export const auth = betterAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       redirectURI: env.GOOGLE_REDIRECT_URL,
       async mapProfileToUser(profile) {
+        let image = defaultUserAvatar;
+
         try {
-          const res = await axios.get(profile.picture, {
-            responseType: "arraybuffer",
+          const result = await cloudinary.uploader.upload(profile.picture, {
+            folder: "avatars",
+            resource_type: "image",
           });
 
-          let image = defaultUserAvatar;
-
-          const cldUploadStream = cloudinary.uploader.upload_stream(
-            {
-              folder: "avatars",
-              public_id: profile.picture,
-            },
-            (err, response) => {
-              if (err) {
-                logger.error(err.message);
-                return;
-              }
-
-              if (response?.secure_url) {
-                image = response.secure_url;
-              }
-            }
-          );
-
-          streamifier
-            .createReadStream(Buffer.from(res.data))
-            .pipe(cldUploadStream);
-
-          return {
-            image,
-          };
-        } catch (error) {
-          if (error instanceof Error) {
-            logger.error(`Cloudinary upload failed: ${error.message}`);
-          } else {
-            logger.error(`Cloudinary upload failed with unhadled error`);
+          if (result?.secure_url) {
+            image = result.secure_url;
           }
+        } catch (error) {
+          logger.error(`Cloudinary upload failed: ${error}`);
         }
+
+        return { image };
       },
     },
   },
