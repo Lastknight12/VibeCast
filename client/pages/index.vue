@@ -83,7 +83,7 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
   await navigateTo(`/rooms/${roomId}?name=${roomName}`);
 };
 
-onMounted(async () => {
+onMounted(() => {
   const socket = useSocket();
   const {
     data: roomsList,

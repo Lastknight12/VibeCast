@@ -5,6 +5,7 @@ import { ApiCoreErrors } from "../../errors";
 import { extractPayloadAndCb } from "./utils";
 import { CustomSocket } from "../../enhanceSocket";
 import { Params } from "./types";
+
 export * from "./types";
 
 export class SocketError extends Error {
@@ -33,21 +34,28 @@ export function customOn<
     const { payload, cb } = extractPayloadAndCb(args);
 
     if (params.config?.protected && !this.data.user) {
+      this.emit("error", ApiCoreErrors.UNAUTHORIZED);
+      return;
     }
 
     if (params.config?.schema) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const validator = schemasCache.get(params.config.schema)!;
-      const isValid = validator.Check(payload);
+      const validator = schemasCache.get(params.config.schema);
+      if (!validator) {
+        this.emit("error", ApiCoreErrors.UNEXPECTED_ERROR);
+        return;
+      }
 
+      const isValid = validator.Check(payload);
       if (!isValid) {
-        this.emit("error", {
-          event: params.event,
-          error: {
-            code: "INVALID_PAYLOAD",
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            message: validator.Errors(payload).First()!.message,
-          },
+        cb({
+          data: undefined,
+          errors: [
+            {
+              code: "INVALID_PAYLOAD",
+              message:
+                validator.Errors(payload).First()?.message ?? "Invalid payload",
+            },
+          ],
         });
         return;
       }
@@ -59,14 +67,6 @@ export function customOn<
         event: params.event,
       });
 
-      if (!cb || typeof cb !== "function") {
-        this.emit("error", {
-          event: params.event,
-          error: new SocketError(ApiCoreErrors.INVALID_CALLBACK),
-        });
-        return;
-      }
-
       await params.handler(
         {
           data: payload,
@@ -74,32 +74,16 @@ export function customOn<
         },
         cb,
       );
-    } catch (error) {
-      logger.error(error);
-      if (error instanceof SocketError) {
-        if (cb) {
-          cb({
-            data: undefined,
-            errors: [
-              {
-                code: error.code,
-                message: error.message,
-              },
-            ],
-          });
-          return;
-        }
+    } catch (handlerError) {
+      const socketError =
+        handlerError instanceof SocketError
+          ? handlerError
+          : new SocketError(ApiCoreErrors.UNEXPECTED_ERROR);
 
-        this.emit("error", {
-          event: params.event,
-          error: { code: error.code, message: error.message },
-        });
-      } else {
-        this.emit("error", {
-          event: params.event,
-          error: new SocketError(ApiCoreErrors.UNEXPECTED_ERROR),
-        });
-      }
+      cb({
+        data: undefined,
+        errors: [socketError],
+      });
     }
   };
 

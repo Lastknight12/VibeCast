@@ -2,6 +2,11 @@ import { Static, TSchema } from "@sinclair/typebox";
 import { User } from "better-auth/types";
 import pino from "pino";
 
+export interface EventError {
+  code: string;
+  message: string;
+}
+
 interface Context<ProtectedEvent extends boolean> {
   logger: pino.Logger;
   user: ProtectedEvent extends true

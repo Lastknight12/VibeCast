@@ -6,7 +6,7 @@ import { customOn } from "./features/customOn";
 import { User } from "better-auth/*";
 
 export interface SocketData {
-  user: User & {
+  user?: User & {
     roomId?: string;
   };
 }

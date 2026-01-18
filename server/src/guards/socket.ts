@@ -23,9 +23,10 @@ export async function socketGuard(
     const session = await auth.api.getSession({
       headers,
     });
-    if (!session) throw new Error("Invalid session");
 
-    socket.data.user = { ...session.user, roomId: undefined };
+    socket.data.user = session?.user
+      ? { ...session.user, roomId: undefined }
+      : undefined;
     next();
   } catch (error) {
     logger.error(error);

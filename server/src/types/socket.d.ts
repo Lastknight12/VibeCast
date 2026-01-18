@@ -1,18 +1,11 @@
 import { User } from "better-auth/types";
+import { EventError } from "src/socket/core";
 import { Message } from "src/state/chatMessages";
-
-export interface EventError {
-  event: string;
-  error: {
-    code: string;
-    message: string;
-  };
-}
 
 type ProducerType = "audio" | "video" | "video_audio";
 
 export interface ServerToClientEvents {
-  error: (payload: EventError) => void;
+  error: (data: EventError) => void;
   newProducer: (data: {
     producerId: string;
     userId: string;

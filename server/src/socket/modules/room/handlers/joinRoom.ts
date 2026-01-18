@@ -32,12 +32,14 @@ export default function (socket: CustomSocket, io: Server) {
         const pSocket = io.sockets.sockets.get(socketId) as CustomSocket;
 
         await pSocket?.leave(data.roomId);
-        pSocket.data.user.roomId = undefined;
+        if (pSocket.data.user) {
+          pSocket.data.user.roomId = undefined;
+        }
         pSocket?.emit("leaveRoom");
       }
 
       socket.join(data.roomId);
-      socket.data.user.roomId = data.roomId;
+      input.context.user.roomId = data.roomId;
 
       room.peers.set(user.id, {
         sockets: new DataList([socket.id]),

@@ -37,7 +37,7 @@ export default function (socket: CustomSocket) {
       const peers = new Array<Result>();
 
       for (const [id, data] of room.peers.entries()) {
-        if (id === socket.data.user.id) continue;
+        if (id === input.context.user.id) continue;
 
         const videoProducer = data.producers.screenShare?.video;
         const systemAudioProducer = data.producers.screenShare?.audio;

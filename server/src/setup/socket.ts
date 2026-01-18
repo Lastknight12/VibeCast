@@ -31,7 +31,7 @@ export function initializeSocketServer(fastifyServer: FastifyInstance) {
     const socket = enhanceSocket(_socket);
 
     socket.on("disconnect", async () => {
-      if (socket.data.user.roomId) {
+      if (socket.data.user?.roomId) {
         try {
           await leaveRoom(io, {
             id: socket.data.user.id,

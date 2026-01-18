@@ -6,14 +6,15 @@ const PlainObject = Type.Object({}, { additionalProperties: true });
 
 export function extractPayloadAndCb(args: unknown[]): {
   payload?: object;
-  cb?: HandlerCallback<unknown>;
+  cb: HandlerCallback<unknown>;
 } {
-  const cb: HandlerCallback<unknown> | undefined =
-    (args.findLast(
-      (elem) => typeof elem === "function",
-    ) as HandlerCallback<unknown>) ?? undefined;
+  const cb: HandlerCallback<unknown> | undefined = args.findLast(
+    (elem) => typeof elem === "function",
+  ) as HandlerCallback<unknown>;
+
+  const finalCb = cb ?? new Function();
 
   const payload = Value.Check(PlainObject, args[0]) ? args[0] : undefined;
 
-  return { payload, cb };
+  return { payload, cb: finalCb };
 }
