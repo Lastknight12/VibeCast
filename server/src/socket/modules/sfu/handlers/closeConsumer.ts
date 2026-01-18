@@ -16,8 +16,7 @@ export default function (socket: CustomSocket) {
       protected: true,
     },
     handler(input) {
-      const { data } = input;
-      const { user } = socket.data;
+      const { user } = input.context;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
@@ -31,6 +30,8 @@ export default function (socket: CustomSocket) {
       if (!peer) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
+
+      const { data } = input;
 
       const consumer = peer.consumers.get(data.id);
       if (!consumer) {

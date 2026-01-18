@@ -17,7 +17,7 @@ const codecSchema = Type.Object({
   channels: Type.Optional(Type.Number()),
   parameters: Type.Record(
     Type.String(),
-    Type.Union([Type.String(), Type.Number()])
+    Type.Union([Type.String(), Type.Number()]),
   ),
   rtcpFeedback: Type.Array(rtcpFeedbackSchema),
 });
@@ -74,11 +74,9 @@ export default function (socket: CustomSocket) {
     config: {
       schema: produceSchema,
       protected: true,
-      expectCb: true,
     },
     handler: async (input, cb: HandlerCallback<Result>) => {
-      const { data } = input;
-      const { user } = socket.data;
+      const { user } = input.context;
 
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
@@ -91,6 +89,8 @@ export default function (socket: CustomSocket) {
       if (!peer) throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       if (!peer.transports.send)
         throw new SocketError(ApiSfuErrors.transport.SEND_TRANSPORT_NOT_FOUND);
+
+      const { data } = input;
 
       const producer = await peer.transports.send.produce({
         kind: data.kind,
@@ -123,7 +123,7 @@ export default function (socket: CustomSocket) {
       cb({ data: { id: producer.id } });
 
       input.context.logger.info(
-        `producing ${data.appData.type}: ${producer.id}`
+        `producing ${data.appData.type}: ${producer.id}`,
       );
     },
   });

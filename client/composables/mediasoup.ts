@@ -6,9 +6,9 @@ import type {
   RtpEncodingParameters,
   RtpParameters,
   Transport,
+  TransportOptions,
 } from "mediasoup-client/types";
 import * as mediasoup from "mediasoup-client";
-import type { SocketCallbackArgs } from "./useSocket";
 
 export class mediasoupConn {
   private socket = useSocket();
@@ -72,85 +72,74 @@ export class mediasoupConn {
   }
 
   async createDevice() {
-    const rtpCapabilities = await new Promise((resolve, reject) => {
-      this.socket.emit(
-        "getRTPCapabilities",
-        async ({ data, errors }: SocketCallbackArgs<RtpCapabilities>) => {
-          if (errors) {
-            reject(errors[0]?.message);
-            return;
-          }
+    const { data: rtpCapabilities, errors } =
+      await emitSocket<RtpCapabilities>("getRTPCapabilities");
 
-          resolve(data);
-        }
-      );
-    });
-
-    this.device = new mediasoup.Device();
-
-    await toRaw(this.device).load({
-      routerRtpCapabilities: rtpCapabilities!,
-    });
-
-    console.log("Device created with RTP capabilities:", rtpCapabilities);
+    if (errors) {
+      return;
+    }
+    if (rtpCapabilities) {
+      this.device = new mediasoup.Device();
+      await toRaw(this.device).load({
+        routerRtpCapabilities: rtpCapabilities,
+      });
+      console.log("Device created with RTP capabilities:", rtpCapabilities);
+    }
   }
 
   async createTransport(type: "send" | "recv") {
-    return new Promise<void>((resolve, reject) => {
-      if (!this.device) return reject("no device created");
+    if (!this.device) throw new Error("no device created");
 
-      this.socket.emit(
-        "createTransport",
-        { type },
-        ({ data, errors }: SocketCallbackArgs<any>) => {
+    const { data, errors } = await emitSocket<TransportOptions>(
+      "createTransport",
+      { type },
+    );
+    if (errors) {
+      throw new Error(errors[0]?.message);
+    }
+    if (data) {
+      const transport =
+        type === "send"
+          ? this.device!.createSendTransport(data)
+          : this.device!.createRecvTransport(data);
+
+      transport.on(
+        "connect",
+        async ({ dtlsParameters }, callback, errorCallback) => {
+          const { errors } = await emitSocket("connectTransport", {
+            dtlsParameters,
+            type,
+          });
+
           if (errors) {
-            return reject(errors[0]!.message);
+            errorCallback(Error(errors[0]?.message));
+            console.log(errors[0]?.message);
+            return;
           }
-
-          const transport =
-            type === "send"
-              ? this.device!.createSendTransport(data)
-              : this.device!.createRecvTransport(data);
-
-          transport.on(
-            "connect",
-            ({ dtlsParameters }, callback, errorCallback) => {
-              this.socket.emit(
-                "connectTransport",
-                { dtlsParameters, type },
-                ({ errors }: SocketCallbackArgs<unknown>) => {
-                  if (errors) {
-                    errorCallback(Error(errors[0]?.message));
-                    return console.log(errors[0]?.message);
-                  }
-                  callback();
-                }
-              );
-            }
-          );
-
-          if (type === "send") {
-            transport.on("produce", (parameters, callback, errorCallback) => {
-              this.socket.emit(
-                "produce",
-                parameters,
-                ({ data, errors }: SocketCallbackArgs<{ id: string }>) => {
-                  if (errors) {
-                    errorCallback(Error(errors[0]?.message));
-                    return console.log(errors[0]?.message);
-                  }
-                  callback({ id: data?.id });
-                }
-              );
-            });
-          }
-
-          if (type === "send") this.transports.send = transport;
-          else this.transports.recv = transport;
-          resolve();
-        }
+          callback();
+        },
       );
-    });
+
+      if (type === "send") {
+        transport.on("produce", async (parameters, callback, errorCallback) => {
+          const { data, errors } = await emitSocket<{ id: string }>(
+            "produce",
+            parameters,
+          );
+          if (errors) {
+            errorCallback(Error(errors[0]?.message));
+            console.log(errors[0]?.message);
+            return;
+          }
+          if (data) {
+            callback({ id: data.id });
+          }
+        });
+      }
+
+      if (type === "send") this.transports.send = transport;
+      else this.transports.recv = transport;
+    }
   }
 
   async consume(producerId: string) {
@@ -171,46 +160,34 @@ export class mediasoupConn {
 
     let createdConsumer: Consumer | undefined;
 
-    await new Promise((resolve, reject) => {
-      this.socket.emit(
-        "consume",
-        {
-          producerId,
-          rtpCapabilities: this.device!.rtpCapabilities,
-        },
-        async ({
-          data,
-          errors,
-        }: SocketCallbackArgs<{
-          id: string;
-          producerId: string;
-          kind: MediaKind;
-          rtpParameters: RtpParameters;
-        }>) => {
-          if (!errors) {
-            const consumer = await this.transports.recv!.consume({
-              id: data.id,
-              producerId: data.producerId,
-              kind: data.kind,
-              rtpParameters: data.rtpParameters,
-            });
-
-            this.consumers.set(consumer.id, consumer);
-            createdConsumer = consumer;
-            this.socket.emit(
-              "consumerReady",
-              { id: consumer.id },
-              ({ errors }: SocketCallbackArgs<unknown>) => {
-                if (errors) return reject(errors[0]!.message);
-                resolve(null);
-              }
-            );
-          } else {
-            reject(errors[0]!.message);
-          }
-        }
-      );
+    const { data, errors } = await emitSocket<{
+      id: string;
+      producerId: string;
+      kind: MediaKind;
+      rtpParameters: RtpParameters;
+    }>("consume", {
+      producerId,
+      rtpCapabilities: this.device!.rtpCapabilities,
     });
+    if (errors) {
+      throw new Error(errors[0]?.message);
+    }
+    if (data) {
+      const consumer = await this.transports.recv!.consume({
+        id: data.id,
+        producerId: data.producerId,
+        kind: data.kind,
+        rtpParameters: data.rtpParameters,
+      });
+
+      this.consumers.set(consumer.id, consumer);
+      createdConsumer = consumer;
+
+      const { errors } = await emitSocket("consumerReady", { id: consumer.id });
+      if (errors) {
+        throw new Error(errors[0]?.message);
+      }
+    }
 
     return createdConsumer;
   }
@@ -225,18 +202,11 @@ export class mediasoupConn {
 
     consumer.close();
     this.consumers.delete(id);
-    this.socket.emit(
-      "closeConsumer",
-      { id },
-      (data: SocketCallbackArgs<unknown>) => {
-        if (
-          data.errors &&
-          data.errors[0]?.code === "MEDIASOUP_CONSUMER_NOT_FOUND"
-        ) {
-          console.log("invalid consumer id");
-        }
-      }
-    );
+
+    const { errors } = await emitSocket("closeConsumer", { id });
+    if (errors) {
+      console.log(errors[0]?.message);
+    }
   }
 
   async produce(type: "video" | "audio" | "video_audio") {
@@ -261,7 +231,7 @@ export class mediasoupConn {
     const parsedType = type === "video_audio" ? "audio" : type;
     if (!this.device.canProduce(parsedType)) {
       console.error(
-        `Device cannot produce ${type} with current RTP Capabilities`
+        `Device cannot produce ${type} with current RTP Capabilities`,
       );
       return;
     }
@@ -287,13 +257,13 @@ export class mediasoupConn {
 
     if (this._enableSharingLayers) {
       const firstVideoCodec = this.device.rtpCapabilities?.codecs?.find(
-        (c) => c.kind === "video"
+        (c) => c.kind === "video",
       );
 
       if (
         firstVideoCodec &&
         ["video/vp9", "video/av1"].includes(
-          firstVideoCodec.mimeType.toLowerCase()
+          firstVideoCodec.mimeType.toLowerCase(),
         )
       ) {
         encodings = [
@@ -371,18 +341,10 @@ export class mediasoupConn {
 
     this.localStream = null;
 
-    await new Promise<void>((resolve, reject) => {
-      this.socket.emit(
-        "closeProducer",
-        { type: "video" },
-        ({ errors }: SocketCallbackArgs<unknown>) => {
-          if (errors) {
-            reject(errors[0]!.message);
-          }
-          resolve();
-        }
-      );
-    });
+    const { errors } = await emitSocket("closeProducer", { type: "video" });
+    if (errors) {
+      throw new Error(errors[0]?.message);
+    }
   }
 
   toggleMic() {

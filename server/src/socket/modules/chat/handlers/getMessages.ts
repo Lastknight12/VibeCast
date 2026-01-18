@@ -7,10 +7,10 @@ export default function (socket: CustomSocket) {
   socket.customOn({
     event: "getMessages",
     config: {
-      expectCb: true,
+      protected: true,
     },
-    handler(_input, cb: HandlerCallback<Message[]>) {
-      const { user } = socket.data;
+    handler(input, cb: HandlerCallback<Message[]>) {
+      const { user } = input.context;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.NOT_FOUND);
       }

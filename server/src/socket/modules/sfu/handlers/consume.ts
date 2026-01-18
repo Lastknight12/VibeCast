@@ -21,8 +21,8 @@ const rtpCodecCapabilitySchema = Type.Object({
       Type.Object({
         type: Type.String(),
         parameter: Type.Optional(Type.String()),
-      })
-    )
+      }),
+    ),
   ),
 });
 
@@ -37,7 +37,7 @@ const rtpHeaderExtensionSchema = Type.Object({
       Type.Literal("sendonly"),
       Type.Literal("recvonly"),
       Type.Literal("inactive"),
-    ])
+    ]),
   ),
 });
 
@@ -65,11 +65,10 @@ export default function (socket: CustomSocket) {
     config: {
       schema: consumeSchema,
       protected: true,
-      expectCb: true,
     },
     handler: async (input, cb: HandlerCallback<Result>) => {
       const { data } = input;
-      const { user } = socket.data;
+      const { user } = input.context;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }

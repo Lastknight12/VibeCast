@@ -1,6 +1,6 @@
-import { TSchema, Type } from "@sinclair/typebox";
-import { CustomOnParams, HandlerCallback } from "./types";
+import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
+import { HandlerCallback } from "./types";
 
 const PlainObject = Type.Object({}, { additionalProperties: true });
 
@@ -16,14 +16,4 @@ export function extractPayloadAndCb(args: unknown[]): {
   const payload = Value.Check(PlainObject, args[0]) ? args[0] : undefined;
 
   return { payload, cb };
-}
-
-export function isExpectCb<Schema extends TSchema>(
-  p: CustomOnParams<boolean, Schema>,
-): p is CustomOnParams<true, Schema> {
-  if (p.config?.expectCb) {
-    return p.config.expectCb === true;
-  }
-
-  return false;
 }

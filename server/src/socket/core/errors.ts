@@ -7,4 +7,8 @@ export const ApiCoreErrors = {
     code: "UNEXPECTED_ERROR",
     message: "An unexpected error occurred. Please try again later.",
   },
+  UNAUTHORIZED: {
+    code: "UNAUTHORIZED",
+    message: "You must be authenticated to perform this action",
+  },
 };

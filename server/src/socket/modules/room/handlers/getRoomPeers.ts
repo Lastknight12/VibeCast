@@ -22,10 +22,9 @@ export default function (socket: CustomSocket) {
     event: "getRoomPeers",
     config: {
       protected: true,
-      expectCb: true,
     },
-    handler: (_input, cb: HandlerCallback<Result[]>) => {
-      const { user } = socket.data;
+    handler: (input, cb: HandlerCallback<Result[]>) => {
+      const { user } = input.context;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }

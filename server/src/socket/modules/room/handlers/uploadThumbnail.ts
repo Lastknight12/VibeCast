@@ -19,8 +19,10 @@ export default function (socket: CustomSocket) {
       schema: uploadThumbnailSchema,
     },
     async handler(input) {
-      const { data, context } = input;
-      const { user } = socket.data;
+      const {
+        data,
+        context: { logger, user },
+      } = input;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
@@ -33,15 +35,15 @@ export default function (socket: CustomSocket) {
           },
           (err, result) => {
             if (err) {
-              context.logger.error(err.message);
+              logger.error(err.message);
               return reject(err);
             }
 
             if (!result) {
               const error = new Error(
-                "Cloudinary upload failed: no result returned"
+                "Cloudinary upload failed: no result returned",
               );
-              context.logger.error(error.message);
+              logger.error(error.message);
               return reject(error);
             }
 
@@ -52,7 +54,7 @@ export default function (socket: CustomSocket) {
               url: result.secure_url,
               userId: user.id,
             });
-          }
+          },
         );
 
         streamifier

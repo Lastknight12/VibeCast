@@ -31,12 +31,13 @@ export default function (socket: CustomSocket) {
     event: "createTransport",
     config: {
       schema: createTransportSchema,
-      expectCb: true,
       protected: true,
     },
     handler: async (input, cb: HandlerCallback<Result>) => {
-      const { data, context } = input;
-      const { user } = socket.data;
+      const {
+        data,
+        context: { logger, user },
+      } = input;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
@@ -69,7 +70,7 @@ export default function (socket: CustomSocket) {
           },
         });
       } catch (error) {
-        context.logger.error(`Error creating transport: ${error}`);
+        logger.error(`Error creating transport: ${error}`);
         throw new SocketError(ApiCoreErrors.UNEXPECTED_ERROR);
       }
     },

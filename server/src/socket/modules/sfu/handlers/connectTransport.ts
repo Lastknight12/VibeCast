@@ -12,7 +12,7 @@ const connectTransportSchema = Type.Object({
         algorithm: Type.String(),
         value: Type.String(),
       }),
-      { minItems: 1 }
+      { minItems: 1 },
     ),
   }),
   type: Type.Union([Type.Literal("send"), Type.Literal("recv")]),
@@ -24,11 +24,9 @@ export default function (socket: CustomSocket) {
     config: {
       schema: connectTransportSchema,
       protected: true,
-      expectCb: true,
     },
     handler: async (input, cb) => {
-      const { data } = input;
-      const { user } = socket.data;
+      const { user } = input.context;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
@@ -40,6 +38,8 @@ export default function (socket: CustomSocket) {
       if (!peer) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
+
+      const { data } = input;
 
       switch (data.type) {
         case "send": {

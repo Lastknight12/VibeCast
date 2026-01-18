@@ -41,7 +41,7 @@ function createRoom() {
       } else {
         toast.error({ message: response.errors[0]?.message });
       }
-    }
+    },
   );
 }
 

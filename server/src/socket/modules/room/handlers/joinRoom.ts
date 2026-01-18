@@ -15,11 +15,10 @@ export default function (socket: CustomSocket, io: Server) {
     config: {
       schema: joinRoomSchema,
       protected: true,
-      expectCb: true,
     },
     handler: async (input, cb) => {
       const { data } = input;
-      const { user } = socket.data;
+      const { user } = input.context;
 
       const room = rooms.get(data.roomId);
       if (!room) {

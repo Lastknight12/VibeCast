@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import CreateRoomDialog from "~/components/CreateRoomDialog.vue";
 import type { User } from "better-auth/types";
-import type { SocketCallback } from "~/composables/useSocket";
 
 useHead({
   title: "VibeCast homepage",
@@ -14,25 +13,17 @@ useHead({
   ],
 });
 
-onMounted(() => {
-  const socket = useSocket();
-  socket.emit("getAllRooms", handleRooms);
-  socket.on("userJoinRoom", handleUserJoin);
-  socket.on("userLeftRoom", handleUserLeftRoom);
-  socket.on("roomCreated", handleRoomCreated);
-  socket.on("roomDeleted", handleRoomDeleted);
-});
-
 const toast = useToast();
 const authClient = useAuthClient();
 const session = await authClient.useSession(useCustomFetch);
+
+const rooms = reactive<Record<string, Room>>({});
+const loading = ref(true);
 
 interface Room {
   name: string;
   peers: RoomPeers;
 }
-
-const rooms = reactive<Record<string, Room>>({});
 
 const googleLogin = () => {
   authClient.signIn.social({
@@ -48,8 +39,7 @@ interface RoomInfo {
   peers: User[];
 }
 
-const handleRooms: SocketCallback<RoomInfo[]> = ({ data }) => {
-  if (!data) return;
+const handleRooms = (data: RoomInfo[]) => {
   for (const room of data) {
     const peersObj: RoomPeers = {};
     room.peers.forEach((user) => {
@@ -92,6 +82,35 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
 
   await navigateTo(`/rooms/${roomId}?name=${roomName}`);
 };
+
+onMounted(async () => {
+  const socket = useSocket();
+  const {
+    data: roomsList,
+    errors,
+    loading: loadingRooms,
+  } = useSocketEmit<RoomInfo[]>("getAllRooms");
+
+  watch(loadingRooms, (isLoading) => {
+    loading.value = isLoading;
+  });
+
+  watch(errors, (val) => {
+    if (val)
+      toast.error({
+        message: `Error while fetching rooms: ${val[0]?.message}`,
+      });
+  });
+
+  watch(roomsList, (val) => {
+    if (val) handleRooms(val);
+  });
+
+  socket.on("userJoinRoom", handleUserJoin);
+  socket.on("userLeftRoom", handleUserLeftRoom);
+  socket.on("roomCreated", handleRoomCreated);
+  socket.on("roomDeleted", handleRoomDeleted);
+});
 </script>
 
 <template>
@@ -119,14 +138,14 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
       </header>
 
       <div
-        class="mt-6 grid gap-8 p-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+        class="mt-6 h-[calc(100%-24px-32px-65px)] grid gap-8 p-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
       >
         <div
           v-if="Object.keys(rooms).length > 0"
           v-for="(room, roomId) in rooms"
           :key="roomId"
-          class="p-6 bg-[#070707] border border-border rounded-xl"
           :id="`room-${room.name}`"
+          class="p-6 bg-[#070707] border border-border rounded-xl"
           @click="() => handleRoomClick(roomId, room.name)"
         >
           <h1 :title="room.name" class="text-lg text-secondary">
@@ -154,8 +173,14 @@ const handleRoomClick = async (roomId: string, roomName: string) => {
           </div>
         </div>
 
-        <div v-else class="col-start-1 -col-end-1 text-center">
-          No rooms created
+        <div
+          v-else
+          class="col-start-1 -col-end-1 text-center h-full flex items-center justify-center"
+        >
+          <LoadingIcon v-if="loading">
+            <p class="text-xl text-gray-300">Loading rooms...</p>
+          </LoadingIcon>
+          <p v-else class="text-xl text-gray-300">No rooms created yet</p>
         </div>
       </div>
     </div>

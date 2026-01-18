@@ -18,12 +18,13 @@ const room = useRoom(props.roomId);
 const chatMessage = ref("");
 const isChatShown = ref(false);
 const messages = ref<Message[]>([]);
+const loading = ref(true);
 const subscribers = ref<Function[]>([]);
 
 const container = ref<HTMLDivElement | null>(null);
 
 function sendMessage() {
-  socket.emit("sendMessage", { message: chatMessage.value });
+  useSocketEmit("sendMessage", { message: chatMessage.value });
   chatMessage.value = "";
 }
 
@@ -35,29 +36,28 @@ const scrollToEnd = async () => {
     });
   }
 };
-
 onMounted(() => {
-  watch(
-    room.refs.connected,
-    (connected, _) => {
-      if (connected) {
-        socket.emit(
-          "getMessages",
-          (response: SocketCallbackArgs<Message[]>) => {
-            if (response.data) {
-              messages.value = response.data;
-            }
-          },
-        );
+  watch(room.refs.connected, (connected, _) => {
+    if (connected) {
+      const { data, loading: socketLoading } =
+        useSocketEmit<Message[]>("getMessages");
 
-        socket.on("newMessage", (message: Message) => {
-          messages.value.push(message);
-          scrollToEnd();
-        });
-      }
-    },
-    { once: true },
-  );
+      watch(socketLoading, (isLoading) => {
+        loading.value = isLoading;
+      });
+
+      watch(data, (newMessages) => {
+        if (newMessages) {
+          messages.value = newMessages;
+        }
+      });
+    }
+  });
+
+  socket.on("newMessage", (message: Message) => {
+    messages.value.push(message);
+    scrollToEnd();
+  });
 });
 
 onUnmounted(() => {
@@ -74,7 +74,7 @@ onUnmounted(() => {
     variant="outline"
     @click="isChatShown = !isChatShown"
   >
-    <Icon name="material-symbols:left-panel-open" size="22" />
+    {{ loading ? "Loading" : "Loaded!!!" }}
   </UiButton>
 
   <Transition name="chat">

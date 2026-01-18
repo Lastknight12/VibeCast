@@ -15,9 +15,10 @@ export default function (socket: CustomSocket) {
     event: "sendMessage",
     config: {
       schema: sendMessageSchema,
+      protected: true,
     },
     handler(input) {
-      const { user } = socket.data;
+      const { user } = input.context;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.NOT_FOUND);
       }

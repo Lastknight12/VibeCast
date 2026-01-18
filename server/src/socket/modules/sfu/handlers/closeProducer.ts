@@ -15,11 +15,12 @@ export default function (socket: CustomSocket) {
     config: {
       schema: closeProducerSchema,
       protected: true,
-      expectCb: true,
     },
     async handler(input, cb) {
-      const { data, context } = input;
-      const { user } = socket.data;
+      const {
+        data,
+        context: { logger, user },
+      } = input;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }
@@ -44,7 +45,7 @@ export default function (socket: CustomSocket) {
           const videoProducer = peer.producers.screenShare?.video;
           const systemAudioProducer = peer.producers.screenShare?.audio;
           if (!videoProducer) {
-            context.logger.error("Video producer not found");
+            logger.error("Video producer not found");
             return;
           }
           videoProducer.close();
@@ -58,21 +59,21 @@ export default function (socket: CustomSocket) {
 
           closeRelatedConsumers(
             [videoProducer.id, systemAudioProducer?.id].filter(
-              Boolean
+              Boolean,
             ) as string[],
             roomId,
-            onConsumerClosed
+            onConsumerClosed,
           );
 
           cloudinary.api
             .delete_resources_by_prefix(`thumbnails/${user.id}`)
-            .catch(context.logger.error);
+            .catch(logger.error);
           break;
         }
         case "audio": {
           const audioProducer = peer.producers.audio;
           if (!audioProducer) {
-            context.logger.error("Audio producer not found");
+            logger.error("Audio producer not found");
             return;
           }
           audioProducer.close();

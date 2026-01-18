@@ -10,8 +10,8 @@ export default function (socket: CustomSocket, io: Server) {
     config: {
       protected: true,
     },
-    async handler() {
-      const { user } = socket.data;
+    async handler(input) {
+      const { user } = input.context;
       if (!user.roomId) {
         throw new SocketError(ApiRoomErrors.USER_NOT_IN_ROOM);
       }

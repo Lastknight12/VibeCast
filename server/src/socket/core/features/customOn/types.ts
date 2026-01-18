@@ -1,8 +1,14 @@
 import { Static, TSchema } from "@sinclair/typebox";
+import { User } from "better-auth/types";
 import pino from "pino";
 
-export interface Context {
+interface Context<ProtectedEvent extends boolean> {
   logger: pino.Logger;
+  user: ProtectedEvent extends true
+    ? User & {
+        roomId?: string;
+      }
+    : undefined;
 }
 
 interface HandlerError {
@@ -15,28 +21,20 @@ export type HandlerCallback<Data = unknown> = (result: {
   errors?: HandlerError[];
 }) => void;
 
-export interface CustomOnConfig<
+export interface Params<
   Schema extends TSchema,
-  ExpectCb extends boolean,
-> {
-  schema?: Schema;
-  expectCb?: ExpectCb;
-  protected?: boolean;
-}
-
-export interface CustomOnParams<
-  ExpectCb extends boolean,
-  Schema extends TSchema,
+  ProtectedEvent extends boolean,
 > {
   event: string;
-  config?: CustomOnConfig<Schema, ExpectCb>;
-  handler: ExpectCb extends true
-    ? (
-        input: { data: Static<Schema>; context: Context },
-        cb: HandlerCallback,
-      ) => void | Promise<void>
-    : (input: {
-        data: Static<Schema>;
-        context: Context;
-      }) => void | Promise<void>;
+  config?: {
+    schema?: Schema;
+    protected?: ProtectedEvent;
+  };
+  handler: (
+    input: {
+      data: Static<Schema>;
+      context: Context<ProtectedEvent>;
+    },
+    cb: HandlerCallback,
+  ) => void | Promise<void>;
 }

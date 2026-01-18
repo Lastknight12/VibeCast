@@ -1,6 +1,6 @@
 import type { User } from "better-auth/types";
-import type { SocketCallbackArgs } from "./useSocket";
 import type { Consumer } from "mediasoup-client/types";
+import { emitSocket } from "./useSocket";
 
 type PeerStream = {
   stream?: MediaStream;
@@ -188,34 +188,43 @@ export function useRoom(roomId: string) {
     }
   }
 
-  async function joinRoom(): Promise<void> {
-    await new Promise<void>((resolve, reject) => {
-      socket.emit(
-        "joinRoom",
-        { roomId },
-        async ({ errors }: SocketCallbackArgs<unknown>) => {
-          if (errors?.length) return reject(errors[0]?.message);
+  async function joinRoom() {
+    const { errors: joinRoomErrors } = await emitSocket("joinRoom", { roomId });
+    if (joinRoomErrors) {
+      throw new Error(joinRoomErrors[0]?.message);
+    }
 
-          try {
-            socket.emit("getRoomPeers", handlePeers);
+    await mediaConn.createDevice();
+    await Promise.all([
+      mediaConn.createTransport("send"),
+      mediaConn.createTransport("recv"),
+    ]);
 
-            await mediaConn.createDevice();
-            await Promise.all([
-              mediaConn.createTransport("send"),
-              mediaConn.createTransport("recv"),
-            ]);
+    // const { data, errors: getPeersErorrs } = await emitSocket<
+    //   {
+    //     userData: User;
+    //     voiceMuted: boolean;
+    //     producers: {
+    //       audio?: string;
+    //       screenShare?: {
+    //         thumbnail?: string;
+    //         video: string;
+    //         audio?: string;
+    //       };
+    //     };
+    //   }[]
+    // >("getRoomPeers");
+    // if (getPeersErorrs) {
+    //   throw new Error(getPeersErorrs[0]!.message);
+    // }
+    // if (data) {
+    //   handlePeers(data);
+    // }
 
-            await startMic();
-            await toggleMicState();
+    // await startMic();
+    // await toggleMicState();
 
-            connected.value = true;
-            resolve();
-          } catch (err) {
-            reject(err);
-          }
-        },
-      );
-    });
+    connected.value = true;
   }
 
   function handleLeaveRoom() {
@@ -335,11 +344,8 @@ export function useRoom(roomId: string) {
     mediaConn.closeConsumer(data.consumerId);
   }
 
-  async function handlePeers({
-    data: peersList,
-    errors,
-  }: SocketCallbackArgs<
-    {
+  async function handlePeers(
+    result: {
       userData: User;
       voiceMuted: boolean;
       producers: {
@@ -350,15 +356,10 @@ export function useRoom(roomId: string) {
           audio?: string;
         };
       };
-    }[]
-  >) {
-    if (errors) {
-      toast.error({ message: errors[0]!.message });
-      return;
-    }
-
-    if (peersList) {
-      for (const peer of peersList) {
+    }[],
+  ) {
+    if (result) {
+      for (const peer of result) {
         let audioConsumer: Consumer | undefined;
 
         audioConsumer = peer.producers.audio

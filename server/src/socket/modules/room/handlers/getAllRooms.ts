@@ -14,9 +14,6 @@ interface Result {
 export default function (socket: CustomSocket) {
   socket.customOn({
     event: "getAllRooms",
-    config: {
-      expectCb: true,
-    },
     handler: (_input, cb: HandlerCallback<Result[]>) => {
       const roomsList = rooms.getAll("public");
 

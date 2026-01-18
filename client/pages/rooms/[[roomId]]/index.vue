@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Socket } from "socket.io-client";
-import { cn } from "~/lib/utils";
 
 const socket = useSocket();
 const route = useRoute();
@@ -35,13 +34,12 @@ watchEffect(() => {
   });
 });
 
-function handleBeforeUnload(socket: Socket) {
+function handleBeforeUnload() {
   if (!isDisconnected.value && !error.value) {
-    socket.emit("leave", ({ errors }: SocketCallbackArgs<unknown>) => {
-      if (errors) {
-        toast.error({ message: errors[0]!.message });
-      }
-    });
+    const { errors } = useSocketEmit("leave");
+    if (errors.value) {
+      toast.error({ message: errors.value[0]?.message });
+    }
   }
 }
 
@@ -60,7 +58,7 @@ onMounted(async () => {
 onUnmounted(() => {
   mediaConn.close();
   room.cleanup();
-  handleBeforeUnload(socket);
+  handleBeforeUnload();
 });
 
 async function leave() {
@@ -71,7 +69,6 @@ async function leave() {
 <template>
   <RoomChat :room-id="roomId" />
 
-  <!-- TODO: rebuild this Bullshit so error will have some sort of code? -->
   <RoomError v-if="isDisconnected" message="Discconnected from room" />
   <RoomError v-else-if="error" :message="error" />
 

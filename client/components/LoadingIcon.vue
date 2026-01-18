@@ -1,25 +1,26 @@
 <script lang="ts" setup>
 const props = defineProps<{
-  text?: string;
   lineWidth?: string;
   lineHeight?: string;
 }>();
 </script>
 
 <template>
-  <div class="flex gap-2">
-    <div
-      class="w-2 h-10 bg-yellow-300 rounded-2xl bounce"
-      :style="{
-        animationDelay: `${index * 0.1}s`,
-        width: `${props.lineWidth ?? 8}px`,
-        height: `${props.lineHeight ?? 40}px`,
-      }"
-      v-for="(_item, index) in Array(6).fill(null)"
-      :key="index"
-    />
+  <div class="flex flex-col items-center gap-3">
+    <div class="flex gap-2 justify-center">
+      <div
+        class="w-2 h-10 bg-yellow-300 rounded-2xl bounce"
+        :style="{
+          animationDelay: `${index * 0.1}s`,
+          width: `${props.lineWidth ?? 8}px`,
+          height: `${props.lineHeight ?? 40}px`,
+        }"
+        v-for="(_item, index) in Array(6).fill(null)"
+        :key="index"
+      />
+    </div>
+    <slot />
   </div>
-  <p class="text-3xl text-gray-300">{{ text }}</p>
 </template>
 
 <style>

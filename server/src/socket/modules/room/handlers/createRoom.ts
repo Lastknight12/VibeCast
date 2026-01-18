@@ -67,7 +67,6 @@ export default function (socket: CustomSocket) {
     config: {
       schema: createRoomSchema,
       protected: true,
-      expectCb: true,
     },
     handler: async (input, cb) => {
       const { data } = input;
