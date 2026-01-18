@@ -8,7 +8,7 @@ interface toastOpts {
   duration?: number;
 }
 
-const toasts = ref<Toast[]>([]);
+const toasts = ref<Map<string, Toast>>(new Map());
 const duration = 3500;
 
 export function useToast() {
@@ -16,7 +16,7 @@ export function useToast() {
 
   function sucess(
     toast: Omit<Toast, "id" | "label"> | { message?: string },
-    opts?: toastOpts
+    opts?: toastOpts,
   ) {
     const id = $crypto.randomUUID();
     const newToast: Toast = {
@@ -26,16 +26,18 @@ export function useToast() {
       message: toast.message ?? "",
     };
 
-    toasts.value.push(newToast);
+    toasts.value.set(id, newToast);
 
     setTimeout(() => {
-      toasts.value = toasts.value.filter((t) => t.id !== id);
+      toasts.value.delete(id);
     }, opts?.duration ?? duration);
+
+    return id;
   }
 
   function error(
     toast: Omit<Toast, "id" | "label"> | { message?: string },
-    opts?: toastOpts
+    opts?: toastOpts,
   ) {
     const id = $crypto.randomUUID();
     const newToast: Toast = {
@@ -45,11 +47,13 @@ export function useToast() {
       message: toast.message ?? "",
     };
 
-    toasts.value.push(newToast);
+    toasts.value.set(id, newToast);
 
     setTimeout(() => {
-      toasts.value = toasts.value.filter((t) => t.id !== id);
+      toasts.value.delete(id);
     }, opts?.duration ?? duration);
+
+    return id;
   }
 
   return {
