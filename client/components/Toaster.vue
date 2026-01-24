@@ -9,19 +9,15 @@ const icons: Record<Toast["label"], { name: string; color: string }> = {
 
 onMounted(() => {
   socket.on("error", async (error: { code: string; message: string }) => {
-    toaster.error({ message: error.message }, { duration: 999999 });
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(null);
-      }, 2000);
-    });
-    toaster.error({ message: error.message }, { duration: 999999 });
+    toaster.error({ message: error.message });
   });
 });
 </script>
 
 <template>
-  <div class="fixed w-full top-3 left-1/2 -translate-x-1/2 z-90">
+  <div
+    class="fixed w-full top-3 left-1/2 -translate-x-1/2 z-90 pointer-events-none"
+  >
     <transition-group
       name="fade"
       tag="div"
@@ -29,7 +25,7 @@ onMounted(() => {
     >
       <div
         v-for="[id, toast] in toaster.toasts.value"
-        class="bg-[#2b2b2b] w-[95%] px-3 py-2 rounded-xl shadow-2x max-w-max"
+        class="bg-[#2b2b2b] mx-2 px-3 py-2 rounded-xl shadow-2x max-w-max pointer-events-auto"
         :key="id"
       >
         <div class="flex items-center gap-2">

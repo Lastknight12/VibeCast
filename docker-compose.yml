@@ -10,7 +10,7 @@ services:
       - "5001:5001"
       - "40000-40050:40000-40050/udp"
     networks:
-      - "vibecast"
+      - vibecast
 
   client:
     build: ./client

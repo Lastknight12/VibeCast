@@ -15,7 +15,7 @@ useHead({
 
 const toast = useToast();
 const authClient = useAuthClient();
-const session = await authClient.useSession(useCustomFetch);
+const session = authClient.useSession();
 
 const rooms = reactive<Record<string, Room>>({});
 const loading = ref(true);
@@ -77,8 +77,7 @@ const handleRoomDeleted = (data: { roomId: string }) => {
 };
 
 const handleRoomClick = async (roomId: string, roomName: string) => {
-  if (!session.data.value)
-    return toast.error({ message: "Login to join room" });
+  if (!session.value) return toast.error({ message: "Login to join room" });
 
   await navigateTo(`/rooms/${roomId}?name=${roomName}`);
 };
@@ -126,9 +125,12 @@ onMounted(() => {
       >
         <h1 class="text-secondary text-xl">VibeCast</h1>
 
-        <div v-if="session.data.value" class="flex items-center gap-2">
+        <div v-if="session.data" class="flex items-center gap-2">
           <CreateRoomDialog />
-          <UiButton variant="destructive" @click="authClient.signOut()"
+          <UiButton
+            size="sm"
+            variant="destructive"
+            @click="authClient.signOut()"
             >Leave</UiButton
           >
         </div>

@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { cn } from "@/lib/utils";
-import type { SocketCallbackArgs } from "~/composables/useSocket";
 
 interface Error {
   type: "validation" | "api";
@@ -28,21 +27,17 @@ function createRoom() {
     return;
   }
 
-  socket.emit(
-    "createRoom",
-    {
-      roomName: roomName.value.toString(),
-      roomType: isPrivate.value === true ? "private" : "public",
-    },
-    (response: SocketCallbackArgs<{ id: string }>) => {
-      if (!response.errors) {
-        navigateTo(`/rooms/${response.data.id}?name=${roomName.value}`);
-        roomName.value = "";
-      } else {
-        toast.error({ message: response.errors[0]?.message });
-      }
-    },
-  );
+  const { data, errors } = useSocketEmit<{ id: string }>("createRoom", {
+    roomName: unref(roomName),
+    roomType: isPrivate.value === true ? "private" : "public",
+  });
+
+  if (!errors.value) {
+    navigateTo(`/rooms/${data.value?.id}?name=${roomName.value}`);
+    roomName.value = "";
+  } else {
+    toast.error({ message: errors.value[0]?.message });
+  }
 }
 
 function reset() {
@@ -65,7 +60,9 @@ function reset() {
     "
   >
     <UiDialogTrigger as-child>
-      <UiButton variant="secondary" id="createRoomBtn"> Create Room </UiButton>
+      <UiButton size="sm" variant="secondary" id="createRoomBtn">
+        Create Room
+      </UiButton>
     </UiDialogTrigger>
     <UiDialogContent>
       <UiDialogHeader>

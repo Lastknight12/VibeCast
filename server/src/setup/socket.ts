@@ -19,7 +19,7 @@ let handlers: Awaited<ReturnType<typeof preloadModules>>;
 export function initializeSocketServer(fastifyServer: FastifyInstance) {
   const io = new Server(fastifyServer.server, {
     cors: {
-      origin: env.FRONTEND_URL ?? "http://localhost:3000",
+      origin: env.FRONTEND_URL,
       methods: ["GET", "POST"],
       credentials: true,
     },
