@@ -5,7 +5,7 @@ services:
     volumes:
       - ./src:/server/src
       - ./prisma:/server/prisma
-      - ./.env:/server/.env
+      - ./server/.env:/server/.env
     ports:
       - "5001:5001"
       - "40000-40050:40000-40050/udp"
