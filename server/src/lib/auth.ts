@@ -4,9 +4,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { db } from "./db";
 import { cloudinary } from "./cloudinary";
 import { env } from "../config";
-import { logger } from "./logger";
 
-// HACK: Yeah yeah bullshit, just lazy to figure out how to make image type of string, not null or undefined
 export const defaultUserAvatar =
   "https://i.pinimg.com/736x/27/5f/99/275f99923b080b18e7b474ed6155a17f.jpg";
 
@@ -19,23 +17,33 @@ export const auth = betterAuth({
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       redirectURI: env.GOOGLE_REDIRECT_URL,
-      async mapProfileToUser(profile) {
-        let image = defaultUserAvatar;
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        async before(user) {
+          console.log("created @#!()#*!@)(#*@!#&^#%(&@!^#*&@!&#)!@*&#*@!#&");
+          let image =
+            "https://i.pinimg.com/736x/27/5f/99/275f99923b080b18e7b474ed6155a17f.jpg";
 
-        try {
-          const result = await cloudinary.uploader.upload(profile.picture, {
-            folder: "avatars",
-            resource_type: "image",
-          });
+          if (user.image) {
+            try {
+              const result = await cloudinary.uploader.upload(user.image, {
+                folder: "avatars",
+                resource_type: "image",
+              });
 
-          if (result?.secure_url) {
-            image = result.secure_url;
+              if (result?.secure_url) {
+                image = result.secure_url;
+              }
+            } catch (error) {
+              console.error(`Cloudinary upload failed: ${String(error)}`);
+            }
           }
-        } catch (error) {
-          logger.error(`Cloudinary upload failed: ${error}`);
-        }
 
-        return { image };
+          return { data: { ...user, image } };
+        },
       },
     },
   },
