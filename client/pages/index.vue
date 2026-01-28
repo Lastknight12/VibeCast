@@ -114,7 +114,7 @@ onMounted(() => {
 
 <template>
   <KeepAlive>
-    <div class="overflow-hidden relative h-full">
+    <div class="overflow-y-scroll relative h-full">
       <div
         ref="ballRef"
         class="w-screen h-[500px] rounded-full absolute -top-1/4 left-1/2 -translate-x-1/2 -z-10 blur-[140px]"
@@ -140,7 +140,7 @@ onMounted(() => {
       </header>
 
       <div
-        class="mt-6 h-[calc(100%-24px-32px-65px)] grid gap-8 p-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
+        class="mt-6 grid gap-8 p-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5"
       >
         <div
           v-if="Object.keys(rooms).length > 0"

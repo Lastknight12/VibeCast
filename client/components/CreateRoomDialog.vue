@@ -15,7 +15,7 @@ const isPrivate = ref<boolean>(true);
 
 const error = ref<Error | null>(null);
 
-function createRoom() {
+async function createRoom() {
   if (roomName.value.trim() === "") {
     error.value = { type: "validation", message: "Room name cannot be empty" };
     return;
@@ -27,16 +27,16 @@ function createRoom() {
     return;
   }
 
-  const { data, errors } = useSocketEmit<{ id: string }>("createRoom", {
+  const { data, errors } = await emitSocket<{ id: string }>("createRoom", {
     roomName: unref(roomName),
     roomType: isPrivate.value === true ? "private" : "public",
   });
 
-  if (!errors.value) {
-    navigateTo(`/rooms/${data.value?.id}?name=${roomName.value}`);
+  if (!errors) {
+    navigateTo(`/rooms/${data?.id}?name=${roomName.value}`);
     roomName.value = "";
   } else {
-    toast.error({ message: errors.value[0]?.message });
+    toast.error({ message: errors[0]?.message });
   }
 }
 

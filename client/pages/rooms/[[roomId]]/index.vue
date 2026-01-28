@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { UseFetchOptions } from "#app";
 import type { Socket } from "socket.io-client";
 
 const socket = useSocket();
@@ -18,6 +19,16 @@ useHead({
 });
 
 const authClient = useAuthClient();
+
+function useCustomFetch(path: string, opts?: UseFetchOptions<any>) {
+  return useFetch(path, {
+    baseURL: opts?.baseURL ?? useRuntimeConfig().public.backendUrl,
+    headers: opts?.headers ?? useRequestHeaders(),
+    credentials: "include",
+    ...opts,
+  });
+}
+
 const { data: authData } = await authClient.useSession(useCustomFetch);
 
 const loading = ref(true);
