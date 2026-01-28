@@ -13,7 +13,7 @@ export default async function (fastify: FastifyInstance) {
       try {
         const url = new URL(
           request.url,
-          `${request.protocol}://${request.host}`
+          `${request.protocol}://${request.host}`,
         );
 
         const headers = new Headers();

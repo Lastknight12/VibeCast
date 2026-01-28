@@ -2,7 +2,7 @@ import { DataList } from "src/lib/dataTypes/dataList";
 import { Type } from "@sinclair/typebox";
 import { Server } from "socket.io";
 import { rooms } from "src/state/roomState";
-import { CustomSocket, SocketError } from "src/socket/core";
+import { ApiCoreErrors, CustomSocket, SocketError } from "src/socket/core";
 import { ApiRoomErrors } from "../errors";
 
 const joinRoomSchema = Type.Object({
@@ -39,7 +39,10 @@ export default function (socket: CustomSocket, io: Server) {
       }
 
       socket.join(data.roomId);
-      input.context.user.roomId = data.roomId;
+
+      if (!socket.data.user)
+        throw new SocketError(ApiCoreErrors.UNEXPECTED_ERROR);
+      socket.data.user.roomId = data.roomId;
 
       room.peers.set(user.id, {
         sockets: new DataList([socket.id]),
