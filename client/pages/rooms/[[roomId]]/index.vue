@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { UseFetchOptions } from "#app";
-import type { Socket } from "socket.io-client";
 
 const socket = useSocket();
 const route = useRoute();
