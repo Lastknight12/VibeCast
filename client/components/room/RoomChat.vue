@@ -74,7 +74,8 @@ onUnmounted(() => {
     variant="outline"
     @click="isChatShown = !isChatShown"
   >
-    {{ loading ? "Loading" : "Loaded!!!" }}
+    {{ loading ? "Loading" :
+    <Icon name="material-symbols:left-panel-open" size="22" />}}
   </UiButton>
 
   <Transition name="chat">

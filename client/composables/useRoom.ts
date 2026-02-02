@@ -200,29 +200,29 @@ export function useRoom(roomId: string) {
       mediaConn.createTransport("recv"),
     ]);
 
-    // const { data, errors: getPeersErorrs } = await emitSocket<
-    //   {
-    //     userData: User;
-    //     voiceMuted: boolean;
-    //     producers: {
-    //       audio?: string;
-    //       screenShare?: {
-    //         thumbnail?: string;
-    //         video: string;
-    //         audio?: string;
-    //       };
-    //     };
-    //   }[]
-    // >("getRoomPeers");
-    // if (getPeersErorrs) {
-    //   throw new Error(getPeersErorrs[0]!.message);
-    // }
-    // if (data) {
-    //   handlePeers(data);
-    // }
+    const { data, errors: getPeersErorrs } = await emitSocket<
+      {
+        userData: User;
+        voiceMuted: boolean;
+        producers: {
+          audio?: string;
+          screenShare?: {
+            thumbnail?: string;
+            video: string;
+            audio?: string;
+          };
+        };
+      }[]
+    >("getRoomPeers");
+    if (getPeersErorrs) {
+      throw new Error(getPeersErorrs[0]!.message);
+    }
+    if (data) {
+      handlePeers(data);
+    }
 
-    // await startMic();
-    // await toggleMicState();
+    await startMic();
+    await toggleMicState();
 
     connected.value = true;
   }
