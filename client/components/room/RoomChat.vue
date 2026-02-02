@@ -74,8 +74,7 @@ onUnmounted(() => {
     variant="outline"
     @click="isChatShown = !isChatShown"
   >
-    {{ loading ? "Loading" :
-    <Icon name="material-symbols:left-panel-open" size="22" />}}
+    <Icon name="material-symbols:left-panel-open" size="22" />
   </UiButton>
 
   <Transition name="chat">
@@ -114,7 +113,7 @@ onUnmounted(() => {
 
         <UiButton
           variant="secondary"
-          :disabled="chatMessage.length <= 0"
+          :disabled="chatMessage.length <= 0 || loading"
           @click="sendMessage"
         >
           <Icon name="ic:baseline-send" />
