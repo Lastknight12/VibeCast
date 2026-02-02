@@ -23,7 +23,6 @@ export const auth = betterAuth({
     user: {
       create: {
         async before(user) {
-          console.log("created @#!()#*!@)(#*@!#&^#%(&@!^#*&@!&#)!@*&#*@!#&");
           let image =
             "https://i.pinimg.com/736x/27/5f/99/275f99923b080b18e7b474ed6155a17f.jpg";
 

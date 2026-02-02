@@ -20,9 +20,10 @@ export async function createMediasoupWorkers() {
       logLevel: "debug",
       logTags: ["info", "ice", "dtls", "rtp", "srtp", "rtcp"],
     });
+
     worker.on("died", (data) => {
       console.error(
-        `Mediasoup worker #${i} died, exiting in 2 seconds. ${data}`
+        `Mediasoup worker #${i} died, exiting in 2 seconds. ${data}`,
       );
       setTimeout(() => process.exit(1), 2000);
     });
